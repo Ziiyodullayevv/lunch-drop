@@ -11,7 +11,7 @@ RUN corepack enable
 RUN yarn install --frozen-lockfile
 
 COPY . .
-RUN yarn build
+RUN NODE_OPTIONS=--max-old-space-size=6144 yarn build
 
 FROM node:22-alpine AS runner
 
