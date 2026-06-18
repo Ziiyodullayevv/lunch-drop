@@ -5,7 +5,7 @@ Bu sozlama `admin/` Next.js ilovasini GitHub Actions orqali build qiladi, Docker
 Joriy production server:
 
 ```text
-IP: 206.189.229.8
+IP: 159.203.188.17
 Domain: lunchdrop.uz
 Public ports: 80, 443
 Internal admin app port: admin:8082
@@ -17,8 +17,8 @@ Domain DNS panelida quyidagi yozuvlarni qo'shing:
 
 ```text
 Type  Name  Value
-A     @     206.189.229.8
-A     www   206.189.229.8
+A     @     159.203.188.17
+A     www   159.203.188.17
 ```
 
 DNS tarqalishini tekshirish:
@@ -28,7 +28,7 @@ dig +short lunchdrop.uz
 dig +short www.lunchdrop.uz
 ```
 
-Ikkalasi ham `206.189.229.8` qaytarishi kerak.
+Ikkalasi ham `159.203.188.17` qaytarishi kerak.
 
 ## 1. Serverni tayyorlash
 
@@ -58,7 +58,7 @@ Yoniga `.env` fayl yarating:
 ```bash
 cat > .env <<'EOF'
 ADMIN_IMAGE=ghcr.io/GITHUB_USERNAME/launch-drop-admin:latest
-NEXT_PUBLIC_SERVER_URL=http://206.189.229.8:8000
+NEXT_PUBLIC_SERVER_URL=http://159.203.188.17:8000
 DOMAIN=lunchdrop.uz
 SUBDOMAINS=www
 SSL_EMAIL=you@example.com
@@ -122,7 +122,7 @@ Repo `Settings -> Secrets and variables -> Actions` bo'limiga qo'shing:
 VPS_HOST=server_ip_yoki_domain
 VPS_USER=root_yoki_deploy_user
 VPS_SSH_KEY=private_ssh_key
-NEXT_PUBLIC_SERVER_URL=http://206.189.229.8:8000
+NEXT_PUBLIC_SERVER_URL=http://159.203.188.17:8000
 ```
 
 ## 3. SSH key ulash
