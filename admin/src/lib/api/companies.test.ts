@@ -40,8 +40,8 @@ import {
   updateCompany,
   assignKitchens,
   fetchCompanies,
-  fetchBranchesWithKitchenIds,
   fetchCompanyKitchenCatalog,
+  fetchBranchesWithKitchenIds,
 } from './companies';
 
 // ----------------------------------------------------------------------

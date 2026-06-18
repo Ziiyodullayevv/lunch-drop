@@ -12,8 +12,8 @@ import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
-import Stack from '@mui/material/Stack';
 import Tabs from '@mui/material/Tabs';
+import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -64,7 +64,15 @@ import {
 
 import { useAuthContext } from 'src/auth/hooks';
 
-import { useMeals, useSchedules, useCategories, useCreateMeal, useDeleteMeal, useUpdateMeal, useScheduleMenu } from '../hooks/use-meals';
+import {
+  useMeals,
+  useSchedules,
+  useCategories,
+  useCreateMeal,
+  useDeleteMeal,
+  useUpdateMeal,
+  useScheduleMenu,
+} from '../hooks/use-meals';
 
 // ----------------------------------------------------------------------
 

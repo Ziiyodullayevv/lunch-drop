@@ -14,8 +14,8 @@ import { RouterLink } from 'src/routes/components';
 
 import { fDate } from 'src/utils/format-time';
 
-import { DashboardContent } from 'src/layouts/dashboard';
 import { getImagePreviewUrl } from 'src/lib/image-url';
+import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Image } from 'src/components/image';
 import { Iconify } from 'src/components/iconify';
