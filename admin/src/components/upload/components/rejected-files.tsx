@@ -39,7 +39,10 @@ export function RejectedFiles({ files = [], sx, className, ...other }: RejectedF
 // ----------------------------------------------------------------------
 
 const RejectedList = styled('ul')(({ theme }) => ({
+  width: '100%',
+  minWidth: 0,
   display: 'flex',
+  overflow: 'hidden',
   gap: theme.spacing(1),
   flexDirection: 'column',
   padding: theme.spacing(2),
@@ -50,14 +53,21 @@ const RejectedList = styled('ul')(({ theme }) => ({
 }));
 
 const RejectedItem = styled('li')({
+  minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
 });
 
 const RejectedTitle = styled('span')(({ theme }) => ({
   ...theme.typography.subtitle2,
+  maxWidth: '100%',
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }));
 
 const RejectedMsg = styled('span')(({ theme }) => ({
   ...theme.typography.caption,
+  maxWidth: '100%',
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }));

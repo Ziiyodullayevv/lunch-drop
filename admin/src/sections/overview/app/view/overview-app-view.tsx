@@ -1,13 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import type {
+  DashboardRole,
+  DashboardSummaryKey,
+  DashboardSummaryCard,
+} from 'src/lib/api/dashboard';
 
-import Box from '@mui/material/Box';
+import { useQuery } from '@tanstack/react-query';
+
 import Grid from '@mui/material/Grid';
+import Alert from '@mui/material/Alert';
+import Stack from '@mui/material/Stack';
+import Skeleton from '@mui/material/Skeleton';
 import { useTheme } from '@mui/material/styles';
-import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 
-import axios from 'src/lib/axios';
+import { fDateTime } from 'src/utils/format-time';
+import { fNumber, fCurrency } from 'src/utils/format-number';
+
+import { fetchDashboard } from 'src/lib/api/dashboard';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { useAuthContext } from 'src/auth/hooks';
@@ -18,246 +29,198 @@ import { AppCurrentDownload } from '../app-current-download';
 
 // ----------------------------------------------------------------------
 
-type WidgetData = { total: number; percent: number; series: number[] };
+const MONTHS = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
 
-type DashboardStats = {
-  role: string;
-  super_admin?: { orders: WidgetData; revenue: WidgetData; companies: WidgetData };
-  company_admin?: { employees: WidgetData; monthly_cost: WidgetData; delivered: WidgetData };
-  kitchen_admin?: { portions: WidgetData; revenue: WidgetData; companies: WidgetData };
+const SUMMARY_META: Record<
+  DashboardSummaryKey,
+  { title: string; color: 'primary' | 'info' | 'warning' | 'success' | 'error'; currency?: boolean }
+> = {
+  orders_today: { title: 'Bugungi buyurtmalar', color: 'primary' },
+  delivered_today: { title: 'Bugun yetkazildi', color: 'success' },
+  cancelled_today: { title: 'Bugun bekor qilindi', color: 'error' },
+  orders_total: { title: 'Umumiy buyurtmalar', color: 'primary' },
+  revenue_total: { title: 'Umumiy aylanma', color: 'info', currency: true },
+  active_companies: { title: 'Faol kompaniyalar', color: 'success' },
+  companies_total: { title: 'Jami kompaniyalar', color: 'primary' },
+  active_kitchens: { title: 'Faol oshxonalar', color: 'warning' },
+  lunch_subscribers_today: { title: 'Bugungi tushlik xodimlari', color: 'primary' },
+  monthly_cost: { title: 'Oylik xarajat', color: 'info', currency: true },
+  delivered_total: { title: 'Yetkazilgan tushliklar', color: 'success' },
+  branches_total: { title: 'Jami filiallar', color: 'warning' },
+  active_employees: { title: 'Faol xodimlar', color: 'primary' },
+  portions_today: { title: 'Bugungi porsiyalar', color: 'primary' },
+  weekly_revenue: { title: 'Haftalik tushum', color: 'info', currency: true },
+  connected_companies: { title: 'Biriktirilgan kompaniyalar', color: 'warning' },
 };
 
-type AreaSeriesItem = { name: string; data: number[] };
-type AreaChartYear = { name: string; data: AreaSeriesItem[] };
-type AreaChartData = {
-  title: string;
-  subheader: string;
-  categories: string[];
-  series: AreaChartYear[];
-};
+const STATUS_META = [
+  { key: 'created', label: 'Yangi' },
+  { key: 'preparing', label: 'Tayyorlanmoqda' },
+  { key: 'on_the_way', label: "Yo'lda" },
+  { key: 'delivered', label: 'Yetkazildi' },
+  { key: 'cancelled', label: 'Bekor qilindi' },
+] as const;
 
-type DonutSlice = { label: string; value: number };
-type DonutChartData = { title: string; subheader: string; series: DonutSlice[] };
+const SUPER_ADMIN_HIDDEN_SUMMARY_KEYS: DashboardSummaryKey[] = [
+  'orders_total',
+  'active_companies',
+];
 
-const DAYS = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
+function isDashboardRole(role: unknown): role is DashboardRole {
+  return role === 'super_admin' || role === 'company_admin' || role === 'kitchen_admin';
+}
+
+function summaryCategories(card: DashboardSummaryCard) {
+  return card.history.map((point) =>
+    new Intl.DateTimeFormat('uz-UZ', { weekday: 'short' }).format(new Date(`${point.date}T00:00:00`))
+  );
+}
 
 // ----------------------------------------------------------------------
 
 export function OverviewAppView() {
   const theme = useTheme();
   const { user } = useAuthContext();
-  const role: string = user?.role ?? '';
+  const role = isDashboardRole(user?.role) ? user.role : null;
 
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [areaChart, setAreaChart] = useState<AreaChartData | null>(null);
-  const [donutChart, setDonutChart] = useState<DonutChartData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [areaLoading, setAreaLoading] = useState(true);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['dashboard', role],
+    queryFn: () => fetchDashboard(role!),
+    enabled: Boolean(role),
+  });
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await axios.get({ dashboard: "/api/v1/super-admin/dashboard", areaChart: "/api/v1/stats/area-chart", donutChart: "/api/v1/stats/donut-chart" }.dashboard);
-      setStats(res.data);
-    } catch { /* ignore */ } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchAreaChart = useCallback(async () => {
-    try {
-      const res = await axios.get({ dashboard: "/api/v1/super-admin/dashboard", areaChart: "/api/v1/stats/area-chart", donutChart: "/api/v1/stats/donut-chart" }.areaChart);
-      setAreaChart(res.data);
-    } catch { /* ignore */ } finally {
-      setAreaLoading(false);
-    }
-  }, []);
-
-  const fetchDonutChart = useCallback(async () => {
-    try {
-      const res = await axios.get({ dashboard: "/api/v1/super-admin/dashboard", areaChart: "/api/v1/stats/area-chart", donutChart: "/api/v1/stats/donut-chart" }.donutChart);
-      setDonutChart(res.data);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    fetchStats();
-    fetchAreaChart();
-    fetchDonutChart();
-  }, [fetchStats, fetchAreaChart, fetchDonutChart]);
-
-  // ── role-based widget cards ───────────────────────────────────────────────
-
-  const renderWidgets = () => {
-    if (loading) {
-      return (
-        <Grid size={{ xs: 12 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        </Grid>
-      );
-    }
-
-    if (role === 'super_admin' && stats?.super_admin) {
-      const { orders, revenue, companies } = stats.super_admin;
-      return (
-        <>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Umumiy buyurtmalar"
-              percent={orders.percent}
-              total={orders.total}
-              chart={{ categories: DAYS, series: orders.series }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Tizimdagi aylanma"
-              percent={revenue.percent}
-              total={revenue.total}
-              chart={{ colors: [theme.palette.info.main], categories: DAYS, series: revenue.series }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Faol kompaniyalar"
-              percent={companies.percent}
-              total={companies.total}
-              chart={{ colors: [theme.palette.warning.main], categories: DAYS, series: companies.series }}
-            />
-          </Grid>
-        </>
-      );
-    }
-
-    if (role === 'company_admin' && stats?.company_admin) {
-      const { employees, monthly_cost, delivered } = stats.company_admin;
-      return (
-        <>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Tushlikka yozilgan xodimlar"
-              percent={employees.percent}
-              total={employees.total}
-              chart={{ categories: DAYS, series: employees.series }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Oylik xarajat"
-              percent={monthly_cost.percent}
-              total={monthly_cost.total}
-              chart={{ colors: [theme.palette.info.main], categories: DAYS, series: monthly_cost.series }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Yetkazib berilgan tushliklar"
-              percent={delivered.percent}
-              total={delivered.total}
-              chart={{ colors: [theme.palette.success.main], categories: DAYS, series: delivered.series }}
-            />
-          </Grid>
-        </>
-      );
-    }
-
-    if (role === 'kitchen_admin' && stats?.kitchen_admin) {
-      const { portions, revenue, companies } = stats.kitchen_admin;
-      return (
-        <>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Bugungi porsiyalar"
-              percent={portions.percent}
-              total={portions.total}
-              chart={{ categories: DAYS, series: portions.series }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Haftalik tushum"
-              percent={revenue.percent}
-              total={revenue.total}
-              chart={{ colors: [theme.palette.info.main], categories: DAYS, series: revenue.series }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <AppWidgetSummary
-              title="Biriktirilgan kompaniyalar"
-              percent={companies.percent}
-              total={companies.total}
-              chart={{ colors: [theme.palette.warning.main], categories: DAYS, series: companies.series }}
-            />
-          </Grid>
-        </>
-      );
-    }
-
-    return null;
+  const colorMap = {
+    primary: theme.palette.primary.main,
+    info: theme.palette.info.main,
+    warning: theme.palette.warning.main,
+    success: theme.palette.success.main,
+    error: theme.palette.error.main,
   };
 
-  // ── area chart ────────────────────────────────────────────────────────────
+  const statusSeries = data
+    ? STATUS_META.map(({ key, label }) => ({
+        label,
+        value: data.order_status_totals[key],
+      }))
+    : [];
 
-  const FALLBACK_AREA_CHART = {
-    categories: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'],
-    series: [
-      {
-        name: String(new Date().getFullYear()),
-        data: [{ name: '—', data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }],
-      },
-    ],
-  };
+  const summaryCards =
+    role === 'super_admin'
+      ? data?.summary.filter((card) => !SUPER_ADMIN_HIDDEN_SUMMARY_KEYS.includes(card.key))
+      : data?.summary;
 
-  const renderAreaChart = () => {
-    const hasData = !areaLoading && areaChart && areaChart.series.length > 0 &&
-      areaChart.series.every((yr) => yr.data.length > 0);
-
-    return (
-      <AppAreaInstalled
-        title={hasData ? areaChart!.title : 'Buyurtmalar dinamikasi'}
-        sx={{ height: '100%', width: '100%' }}
-        chart={
-          hasData
-            ? {
-                categories: areaChart!.categories,
-                series: areaChart!.series.map((yr) => ({
-                  name: yr.name,
-                  data: yr.data.map((item) => ({ name: item.name, data: item.data })),
-                })),
-              }
-            : FALLBACK_AREA_CHART
-        }
-      />
-    );
-  };
-
-  // ── main ──────────────────────────────────────────────────────────────────
+  const monthlyChart = data
+    ? {
+        categories: MONTHS,
+        series: [
+          {
+            name: String(data.monthly_orders.year),
+            data: [
+              { name: 'Yetkazildi', data: data.monthly_orders.delivered },
+              { name: 'Bekor qilindi', data: data.monthly_orders.cancelled },
+            ],
+          },
+        ],
+      }
+    : {
+        categories: MONTHS,
+        series: [
+          {
+            name: String(new Date().getFullYear()),
+            data: [
+              { name: 'Yetkazildi', data: Array(12).fill(0) },
+              { name: 'Bekor qilindi', data: Array(12).fill(0) },
+            ],
+          },
+        ],
+      };
 
   return (
     <DashboardContent maxWidth="xl">
+      <Stack spacing={0.75} sx={{ mb: 3 }}>
+        <Typography variant="h4">
+          {user?.name ? `Xush kelibsiz, ${user.name}` : 'Dashboard'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {data
+            ? `${data.year}-yil statistikasi. Yangilandi: ${fDateTime(data.generated_at)}`
+            : "Asosiy ko'rsatkichlar va buyurtmalar statistikasi"}
+        </Typography>
+      </Stack>
+
+      {isError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error instanceof Error ? error.message : "Dashboard ma'lumotlarini yuklab bo'lmadi"}
+        </Alert>
+      )}
+
       <Grid container spacing={3}>
+        {isLoading
+          ? Array.from({ length: 6 }, (_, index) => (
+              <Grid key={index} size={{ xs: 12, sm: 6, lg: 4 }}>
+                <Skeleton variant="rounded" height={152} />
+              </Grid>
+            ))
+          : summaryCards?.map((card) => {
+              const meta = SUMMARY_META[card.key];
 
-        {renderWidgets()}
+              return (
+                <Grid key={card.key} size={{ xs: 12, sm: 6, lg: 4 }}>
+                  <AppWidgetSummary
+                    title={meta.title}
+                    percent={card.trend_percent}
+                    total={card.value}
+                    valueFormatter={meta.currency ? fCurrency : fNumber}
+                    chart={{
+                      colors: [colorMap[meta.color]],
+                      categories: summaryCategories(card),
+                      series: card.history.map((point) => point.value),
+                    }}
+                    sx={{ height: 1 }}
+                  />
+                </Grid>
+              );
+            })}
 
-        {/* Donut chart */}
-        <Grid size={{ xs: 12, md: 6, lg: 4 }} sx={{ display: 'flex' }}>
-          <AppCurrentDownload
-            key={donutChart?.title ?? 'loading'}
-            title={donutChart?.title ?? 'Buyurtmalar holati'}
-            chart={{
-              series: donutChart?.series ?? [],
-            }}
-            sx={{ height: '100%' }}
-          />
+        {!isLoading && !isError && summaryCards?.length === 0 && (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="info">Dashboard statistikasi hozircha mavjud emas.</Alert>
+          </Grid>
+        )}
+
+        <Grid size={{ xs: 12 }}>
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
+              <AppCurrentDownload
+                title="Buyurtmalar holati"
+                subheader={data ? `${data.year}-yil bo'yicha` : undefined}
+                chart={{
+                  colors: [
+                    theme.palette.grey[400],
+                    theme.palette.warning.main,
+                    theme.palette.info.main,
+                    theme.palette.success.main,
+                    theme.palette.error.main,
+                  ],
+                  series: statusSeries,
+                }}
+                sx={{ width: 1, height: 1 }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
+              <AppAreaInstalled
+                title="Buyurtmalar dinamikasi"
+                subheader={data ? `${data.monthly_orders.year}-yil, oylar kesimida` : undefined}
+                chart={{
+                  colors: [theme.palette.success.main, theme.palette.error.main],
+                  ...monthlyChart,
+                }}
+                sx={{ width: 1, height: 1 }}
+              />
+            </Grid>
+          </Grid>
         </Grid>
-
-        {/* Role-based area chart */}
-        <Grid size={{ xs: 12, md: 6, lg: 8 }} sx={{ display: 'flex' }}>
-          {renderAreaChart()}
-        </Grid>
-
-
       </Grid>
     </DashboardContent>
   );

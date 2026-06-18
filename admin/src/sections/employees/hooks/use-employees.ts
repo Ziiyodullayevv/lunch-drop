@@ -1,11 +1,11 @@
 import type { AccountStatus } from 'src/lib/api/orders';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
+  updateEmployeeStatus,
   fetchCompanyEmployees,
   fetchPendingEmployees,
-  updateEmployeeStatus,
 } from 'src/lib/api/orders';
 
 // ----------------------------------------------------------------------

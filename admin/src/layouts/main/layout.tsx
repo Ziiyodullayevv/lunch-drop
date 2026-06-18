@@ -101,15 +101,13 @@ export function MainLayout({
             {/** @slot Purchase button */}
             <Button
               variant="contained"
-              rel="noopener noreferrer"
-              target="_blank"
-              href={paths.minimalStore}
+              href={paths.auth.jwt.signUp}
               sx={(theme) => ({
                 display: 'none',
                 [theme.breakpoints.up(layoutQuery)]: { display: 'inline-flex' },
               })}
             >
-              Purchase
+              Ro‘yxatdan o‘tish
             </Button>
           </Box>
         </>

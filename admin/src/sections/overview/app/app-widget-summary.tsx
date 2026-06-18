@@ -15,7 +15,8 @@ import { Chart, useChart } from 'src/components/chart';
 type Props = CardProps & {
   title: string;
   total: number;
-  percent: number;
+  percent: number | null;
+  valueFormatter?: (value: number) => string;
   chart: {
     colors?: string[];
     categories: string[];
@@ -24,7 +25,15 @@ type Props = CardProps & {
   };
 };
 
-export function AppWidgetSummary({ title, percent, total, chart, sx, ...other }: Props) {
+export function AppWidgetSummary({
+  title,
+  percent,
+  total,
+  chart,
+  valueFormatter = fNumber,
+  sx,
+  ...other
+}: Props) {
   const theme = useTheme();
 
   const chartColors = chart.colors ?? [theme.palette.primary.main];
@@ -41,7 +50,11 @@ export function AppWidgetSummary({ title, percent, total, chart, sx, ...other }:
     ...chart.options,
   });
 
-  const renderTrending = () => (
+  const renderTrending = () => percent === null ? (
+    <Box component="span" sx={{ typography: 'body2', color: 'text.secondary' }}>
+      Taqqoslash uchun ma&apos;lumot yetarli emas
+    </Box>
+  ) : (
     <Box sx={{ gap: 0.5, display: 'flex', alignItems: 'center' }}>
       <Iconify
         width={24}
@@ -82,10 +95,10 @@ export function AppWidgetSummary({ title, percent, total, chart, sx, ...other }:
       ]}
       {...other}
     >
-      <Box sx={{ flexGrow: 1 }}>
+      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
         <Box sx={{ typography: 'subtitle2' }}>{title}</Box>
 
-        <Box sx={{ mt: 1.5, mb: 1, typography: 'h3' }}>{fNumber(total)}</Box>
+        <Box sx={{ mt: 1.5, mb: 1, typography: 'h3' }}>{valueFormatter(total)}</Box>
 
         {renderTrending()}
       </Box>
@@ -94,7 +107,7 @@ export function AppWidgetSummary({ title, percent, total, chart, sx, ...other }:
         type="bar"
         series={[{ data: chart.series }]}
         options={chartOptions}
-        sx={{ width: 60, height: 40 }}
+        sx={{ width: 60, height: 40, flexShrink: 0 }}
       />
     </Card>
   );

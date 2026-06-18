@@ -5,9 +5,9 @@ import { HomeView } from 'src/sections/home/view';
 // ----------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Minimals UI: The starting point for your next project',
+  title: 'Lunch Drop — korporativ ovqatlanish platformasi',
   description:
-    'The starting point for your next project with Minimal UI Kit, built on the newest version of Material-UI ©, ready to be customized to your style',
+    'Lunch Drop kompaniyalar, oshxonalar va xodimlarni yagona platformada bog‘lab, korporativ ovqat buyurtmasi va yetkazib berish jarayonini boshqaradi.',
 };
 
 export default function Page() {

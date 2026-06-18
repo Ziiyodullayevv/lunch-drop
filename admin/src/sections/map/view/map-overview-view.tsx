@@ -1,187 +1,217 @@
 'use client';
 
 import type { MarkerEvent } from 'react-map-gl/maplibre';
+import type { SelectChangeEvent } from '@mui/material/Select';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
+import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
-import Checkbox from '@mui/material/Checkbox';
+import MenuItem from '@mui/material/MenuItem';
+import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
+import FormControl from '@mui/material/FormControl';
 import CircularProgress from '@mui/material/CircularProgress';
+
+import { paths } from 'src/routes/paths';
 
 import axios, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { fetchCompanyKitchenCatalog } from 'src/lib/api/companies';
 
 import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { Map, MapPopup, MapMarker, MAP_STYLES, MapControls } from 'src/components/map';
 
+import { useAuthContext } from 'src/auth/hooks';
+
 // ----------------------------------------------------------------------
+
+type UserRole = 'super_admin' | 'company_admin' | 'kitchen_admin';
+type EntityType = 'all' | 'branch' | 'kitchen';
 
 type Kitchen = {
   id: string;
   name: string;
-  status: string;
-  logo_url: string | null;
-  contact_phone: string | null;
-  cutoff_time: string;
-  latitude: number | null;
-  longitude: number | null;
+  description: string | null;
+  phone: string | null;
+  lat: number | null;
+  lng: number | null;
+  order_cutoff_time: string;
+  delivery_start_time: string;
+  delivery_end_time: string;
+  is_active: boolean;
+  connected_branch_ids?: string[];
 };
 
 type Company = {
   id: string;
   name: string;
-  status: string;
+  description: string | null;
   logo_url: string | null;
-  contact_phone: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  billing_day: number;
+};
+
+type CompanyWithBranches = {
+  id: string;
+  name: string;
+  branches: Array<{
+    id: string;
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+  }>;
 };
 
 type Branch = {
   id: string;
   name: string;
   address: string;
-  status: string;
   company_id: string;
-  latitude: number | null;
-  longitude: number | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 type MarkerItem =
   | { kind: 'kitchen'; data: Kitchen }
-  | { kind: 'company'; data: Company }
   | { kind: 'branch'; data: Branch };
 
-const KITCHEN_STATUS_COLOR: Record<string, 'default' | 'success' | 'warning' | 'error'> = {
-  approved: 'success',
-  pending: 'warning',
-  suspended: 'error',
-  deleted: 'error',
-};
-
-const KITCHEN_STATUS_LABEL: Record<string, string> = {
-  approved: 'Tasdiqlangan',
-  pending: 'Kutilmoqda',
-  suspended: "To'xtatilgan",
-  deleted: "O'chirilgan",
-};
-
-const COMPANY_STATUS_LABEL: Record<string, string> = {
-  active: 'Faol',
-  pending: 'Kutilmoqda',
-  suspended: "To'xtatilgan",
-  deleted: "O'chirilgan",
+type PageResponse<T> = {
+  items: T[];
+  total: number;
 };
 
 const DEFAULT_VIEW = { latitude: 41.2995, longitude: 69.2401, zoom: 11 };
+const PAGE_LIMIT = 100;
 
-// Colors
 const C_KITCHEN = '#FF416D';
-const C_COMPANY = '#3B82F6';
-const C_BRANCH  = '#10B981';
+const C_BRANCH = '#10B981';
 
 // ----------------------------------------------------------------------
 
+async function fetchAllItems<T>(url: string): Promise<T[]> {
+  const firstResponse = await axios.get<PageResponse<T>>(url, {
+    params: { limit: PAGE_LIMIT, offset: 0 },
+  });
+  const firstPage = firstResponse.data;
+  const remainingPageCount = Math.max(0, Math.ceil(firstPage.total / PAGE_LIMIT) - 1);
+
+  if (remainingPageCount === 0) return firstPage.items;
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: remainingPageCount }, (_, index) =>
+      axios.get<PageResponse<T>>(url, {
+        params: { limit: PAGE_LIMIT, offset: (index + 1) * PAGE_LIMIT },
+      })
+    )
+  );
+
+  return [
+    ...firstPage.items,
+    ...remainingPages.flatMap((response) => response.data.items),
+  ];
+}
+
 function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
   return (
-    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 200 }}>
+    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 220 }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Avatar src={kitchen.logo_url ?? undefined} sx={{ width: 40, height: 40 }}>
+        <Avatar sx={{ width: 40, height: 40, bgcolor: C_KITCHEN }}>
           {kitchen.name[0]}
         </Avatar>
-        <Box>
-          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 150 }}>{kitchen.name}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 165 }}>
+            {kitchen.name}
+          </Typography>
           <Chip
             size="small"
-            label={KITCHEN_STATUS_LABEL[kitchen.status] ?? kitchen.status}
-            color={KITCHEN_STATUS_COLOR[kitchen.status] ?? 'default'}
+            label={kitchen.is_active ? 'Faol' : 'Nofaol'}
+            color={kitchen.is_active ? 'success' : 'default'}
             sx={{ height: 20, fontSize: 11 }}
           />
         </Box>
       </Stack>
+
       <Divider />
-      {kitchen.contact_phone && (
+
+      {kitchen.phone && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Iconify icon="solar:phone-bold" width={14} sx={{ color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{kitchen.contact_phone}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {kitchen.phone}
+          </Typography>
         </Stack>
       )}
+
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         <Iconify icon="solar:clock-circle-bold" width={14} sx={{ color: 'text.secondary' }} />
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          Buyurtma: {kitchen.cutoff_time} gacha
+          Buyurtma: {kitchen.order_cutoff_time} gacha
         </Typography>
       </Stack>
     </Stack>
   );
 }
 
-function CompanyPopupCard({ company }: { company: Company }) {
-  return (
-    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 200 }}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Avatar src={company.logo_url ?? undefined} sx={{ width: 40, height: 40, bgcolor: C_COMPANY }}>
-          {company.name[0]}
-        </Avatar>
-        <Box>
-          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 150 }}>{company.name}</Typography>
-          <Chip
-            size="small"
-            label={COMPANY_STATUS_LABEL[company.status] ?? company.status}
-            color={company.status === 'active' ? 'success' : 'default'}
-            sx={{ height: 20, fontSize: 11 }}
-          />
-        </Box>
-      </Stack>
-      <Divider />
-      {company.contact_phone && (
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Iconify icon="solar:phone-bold" width={14} sx={{ color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{company.contact_phone}</Typography>
-        </Stack>
-      )}
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Iconify icon={"solar:buildings-bold" as any} width={14} sx={{ color: 'text.secondary' }} />
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>Kompaniya</Typography>
-      </Stack>
-    </Stack>
-  );
-}
+function BranchPopupCard({
+  branch,
+  companies,
+}: {
+  branch: Branch;
+  companies: Company[];
+}) {
+  const company = companies.find((item) => item.id === branch.company_id);
 
-function BranchPopupCard({ branch, companies }: { branch: Branch; companies: Company[] }) {
-  const company = companies.find((c) => c.id === branch.company_id);
   return (
-    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 200 }}>
+    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 220 }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Avatar sx={{ width: 40, height: 40, bgcolor: C_BRANCH, color: '#fff', fontWeight: 700 }}>
+        <Avatar
+          sx={{
+            width: 40,
+            height: 40,
+            bgcolor: C_BRANCH,
+            color: '#fff',
+            fontWeight: 700,
+          }}
+        >
           {branch.name[0]}
         </Avatar>
-        <Box>
-          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 150 }}>{branch.name}</Typography>
-          <Chip
-            size="small"
-            label={branch.status === 'active' ? 'Faol' : branch.status}
-            color={branch.status === 'active' ? 'success' : 'default'}
-            sx={{ height: 20, fontSize: 11 }}
-          />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 165 }}>
+            {branch.name}
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            Filial
+          </Typography>
         </Box>
       </Stack>
+
       <Divider />
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Iconify icon={"solar:map-point-bold" as any} width={14} sx={{ color: 'text.secondary' }} />
-        <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{branch.address}</Typography>
+
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <Iconify
+          icon="mingcute:location-fill"
+          width={14}
+          sx={{ mt: 0.25, color: 'text.secondary' }}
+        />
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {branch.address}
+        </Typography>
       </Stack>
+
       {company && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Iconify icon={"solar:buildings-bold" as any} width={14} sx={{ color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>{company.name}</Typography>
+          <Iconify icon="solar:home-2-outline" width={14} sx={{ color: 'text.secondary' }} />
+          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            {company.name}
+          </Typography>
         </Stack>
       )}
     </Stack>
@@ -191,33 +221,161 @@ function BranchPopupCard({ branch, companies }: { branch: Branch; companies: Com
 // ----------------------------------------------------------------------
 
 export function MapOverviewView() {
+  const { user } = useAuthContext();
+  const role = user?.role as UserRole | undefined;
+  const isSuperAdmin = role === 'super_admin';
+  const isCompanyAdmin = role === 'company_admin';
+  const isKitchenAdmin = role === 'kitchen_admin';
+
   const [kitchens, setKitchens] = useState<Kitchen[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visible, setVisible] = useState<string[]>(['kitchen', 'company', 'branch']);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [entityType, setEntityType] = useState<EntityType>('all');
+  const [companyFilter, setCompanyFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [kitchenFilter, setKitchenFilter] = useState('');
   const [selected, setSelected] = useState<MarkerItem | null>(null);
   const [popupCoords, setPopupCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchData = useCallback(async () => {
+    if (!role) return;
+
     try {
       setLoading(true);
-      const [kitchenRes, companyRes, branchRes] = await Promise.all([
-        axios.get(endpoints.superAdmin.kitchens),
-        axios.get(endpoints.superAdmin.companies),
-        axios.get(endpoints.superAdmin.branches),
-      ]);
-      setKitchens(kitchenRes.data?.items ?? kitchenRes.data ?? []);
-      setCompanies(companyRes.data?.items ?? companyRes.data ?? []);
-      setBranches(branchRes.data?.items ?? branchRes.data ?? []);
-    } catch {
-      // silent
+      setErrorMessage('');
+
+      if (isSuperAdmin) {
+        const [companyItems, kitchenItems, branchItems] = await Promise.all([
+          fetchAllItems<Company>(endpoints.superAdmin.companies),
+          fetchAllItems<Kitchen>(endpoints.superAdmin.kitchens),
+          fetchAllItems<Branch>(endpoints.superAdmin.branches),
+        ]);
+
+        setCompanies(companyItems);
+        setKitchens(kitchenItems);
+        setBranches(branchItems);
+        return;
+      }
+
+      if (isCompanyAdmin) {
+        const [companyResponse, catalog] = await Promise.all([
+          axios.get<Company>(endpoints.company.me),
+          fetchCompanyKitchenCatalog(),
+        ]);
+
+        setCompanies([companyResponse.data]);
+        setBranches(catalog.branches);
+        setKitchens(catalog.kitchens.filter((kitchen) => kitchen.is_active));
+        return;
+      }
+
+      if (isKitchenAdmin) {
+        const kitchenResponse = await axios.get<Kitchen>(endpoints.kitchen.me);
+
+        setKitchens([kitchenResponse.data]);
+
+        try {
+          const companyResponse = await axios.get<CompanyWithBranches[]>(
+            endpoints.employee.companies
+          );
+        const companyItems: Company[] = companyResponse.data.map((company) => ({
+          id: company.id,
+          name: company.name,
+          description: null,
+          logo_url: null,
+          billing_day: 1,
+        }));
+        const branchItems: Branch[] = companyResponse.data.flatMap((company) =>
+          company.branches.map((branch) => ({
+            ...branch,
+            company_id: company.id,
+          }))
+        );
+
+        setCompanies(companyItems);
+        setBranches(branchItems);
+        } catch (error) {
+          setCompanies([]);
+          setBranches([]);
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Kompaniya va filiallarni yuklab bo'lmadi"
+          );
+        }
+      }
+    } catch (error) {
+      setCompanies([]);
+      setBranches([]);
+      setKitchens([]);
+      setErrorMessage(error instanceof Error ? error.message : "Ma'lumotlarni yuklab bo'lmadi");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isCompanyAdmin, isKitchenAdmin, isSuperAdmin, role]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const branchOptions = useMemo(
+    () =>
+      branches.filter(
+        (branch) => !companyFilter || branch.company_id === companyFilter
+      ),
+    [branches, companyFilter]
+  );
+
+  const kitchenOptions = useMemo(() => {
+    if (!isCompanyAdmin || !branchFilter) return kitchens;
+
+    return kitchens.filter((kitchen) =>
+      kitchen.connected_branch_ids?.includes(branchFilter)
+    );
+  }, [branchFilter, isCompanyAdmin, kitchens]);
+
+  const branchesWithCoords = useMemo(
+    () => branches.filter((branch) => branch.lat != null && branch.lng != null),
+    [branches]
+  );
+  const kitchensWithCoords = useMemo(
+    () => kitchens.filter((kitchen) => kitchen.lat != null && kitchen.lng != null),
+    [kitchens]
+  );
+
+  const filteredBranches = useMemo(
+    () =>
+      branchesWithCoords.filter((branch) => {
+        if (companyFilter && branch.company_id !== companyFilter) return false;
+        if (branchFilter && branch.id !== branchFilter) return false;
+        return true;
+      }),
+    [branchFilter, branchesWithCoords, companyFilter]
+  );
+
+  const filteredKitchens = useMemo(
+    () =>
+      kitchensWithCoords.filter((kitchen) => {
+        if (kitchenFilter && kitchen.id !== kitchenFilter) return false;
+        if (
+          isCompanyAdmin &&
+          branchFilter &&
+          !kitchen.connected_branch_ids?.includes(branchFilter)
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [branchFilter, isCompanyAdmin, kitchenFilter, kitchensWithCoords]
+  );
+
+  const visibleBranches = entityType === 'kitchen' ? [] : filteredBranches;
+  const visibleKitchens = entityType === 'branch' ? [] : filteredKitchens;
+  const totalWithoutCoords =
+    branches.length + kitchens.length - branchesWithCoords.length - kitchensWithCoords.length;
+  const visibleMarkerCount = visibleBranches.length + visibleKitchens.length;
 
   const handleMarkerClick = useCallback(
     (event: MarkerEvent<MouseEvent>, item: MarkerItem, lat: number, lng: number) => {
@@ -228,79 +386,132 @@ export function MapOverviewView() {
     []
   );
 
-  const handleToggleVisible = (key: string) => {
-    setVisible((prev) => {
-      if (prev.includes(key)) {
-        return prev.length > 1 ? prev.filter((v) => v !== key) : prev;
-      }
-      return [...prev, key];
-    });
+  const handleCompanyChange = (event: SelectChangeEvent<string>) => {
+    setCompanyFilter(event.target.value);
+    setBranchFilter('');
+    setSelected(null);
+    setPopupCoords(null);
   };
 
-  const kitchensWithCoords  = kitchens.filter((k) => k.latitude != null && k.longitude != null);
-  const companiesWithCoords = companies.filter((c) => c.latitude != null && c.longitude != null);
-  const branchesWithCoords  = branches.filter((b) => b.latitude != null && b.longitude != null);
-  const totalWithout =
-    kitchens.length + companies.length + branches.length
-    - kitchensWithCoords.length - companiesWithCoords.length - branchesWithCoords.length;
+  const handleBranchChange = (event: SelectChangeEvent<string>) => {
+    setBranchFilter(event.target.value);
+    setKitchenFilter('');
+    setSelected(null);
+    setPopupCoords(null);
+  };
+
+  const handleKitchenChange = (event: SelectChangeEvent<string>) => {
+    setKitchenFilter(event.target.value);
+    setSelected(null);
+    setPopupCoords(null);
+  };
+
+  const handleEntityTypeChange = (event: SelectChangeEvent<EntityType>) => {
+    const nextEntityType = event.target.value as EntityType;
+
+    setEntityType(nextEntityType);
+    if (nextEntityType === 'branch') setKitchenFilter('');
+    if (nextEntityType === 'kitchen' && isSuperAdmin) {
+      setCompanyFilter('');
+      setBranchFilter('');
+    }
+    setSelected(null);
+    setPopupCoords(null);
+  };
 
   return (
     <DashboardContent>
       <CustomBreadcrumbs
         heading="Xarita"
-        links={[{ name: 'Dashboard', href: '/dashboard' }, { name: 'Xarita' }]}
+        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Xarita' }]}
         sx={{ mb: 3 }}
       />
 
-      {/* Stats row */}
-      <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: 'wrap' }}>
-        {[
-          { key: 'kitchen', label: 'Oshxonalar',   total: kitchens.length,  coords: kitchensWithCoords.length,  color: C_KITCHEN },
-          { key: 'company', label: 'Kompaniyalar', total: companies.length, coords: companiesWithCoords.length, color: C_COMPANY },
-          { key: 'branch',  label: 'Filiallar',    total: branches.length,  coords: branchesWithCoords.length,  color: C_BRANCH  },
-        ].map((s) => {
-          const isActive = visible.includes(s.key);
-          return (
-            <Card
-              key={s.label}
-              onClick={() => handleToggleVisible(s.key)}
-              sx={{
-                px: 2.5, py: 1.5,
-                display: 'flex', alignItems: 'center', gap: 1.5,
-                flex: '0 0 auto', cursor: 'pointer', userSelect: 'none',
-                outline: isActive ? `2px solid ${s.color}` : '2px solid transparent',
-                transition: 'outline 0.15s',
-              }}
+      <Card sx={{ p: 2.5, mb: 2 }}>
+        <Stack
+          spacing={2}
+          direction={{ xs: 'column', lg: 'row' }}
+          sx={{ alignItems: { xs: 'stretch', lg: 'center' } }}
+        >
+          <FormControl sx={{ minWidth: { xs: 1, sm: 190 } }}>
+            <InputLabel>Ko&apos;rinish</InputLabel>
+            <Select
+              label="Ko'rinish"
+              value={entityType}
+              onChange={handleEntityTypeChange}
             >
-              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: s.color, flexShrink: 0 }} />
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2">{s.label}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {s.coords} / {s.total} koordinatali
-                </Typography>
-              </Box>
-              <Checkbox
-                checked={isActive}
-                size="small"
-                disableRipple
-                sx={{ p: 0, pointerEvents: 'none', color: s.color, '&.Mui-checked': { color: s.color } }}
-              />
-            </Card>
-          );
-        })}
+              <MenuItem value="all">Barchasi</MenuItem>
+              <MenuItem value="branch">Faqat filiallar</MenuItem>
+              <MenuItem value="kitchen">Faqat oshxonalar</MenuItem>
+            </Select>
+          </FormControl>
 
-        {totalWithout > 0 && (
-          <Card sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flex: '0 0 auto', border: '1px solid', borderColor: 'warning.main' }}>
-            <Iconify icon="solar:danger-bold" width={18} sx={{ color: 'warning.main' }} />
-            <Typography variant="caption" sx={{ color: 'warning.main' }}>
-              {totalWithout} ta yozuvda koordinata yo'q
-            </Typography>
-          </Card>
-        )}
-      </Stack>
+          {(isSuperAdmin || isKitchenAdmin) && entityType !== 'kitchen' && (
+            <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
+              <InputLabel>Kompaniya</InputLabel>
+              <Select
+                label="Kompaniya"
+                value={companyFilter}
+                onChange={handleCompanyChange}
+              >
+                <MenuItem value="">Barcha kompaniyalar</MenuItem>
+                {companies.map((company) => (
+                  <MenuItem key={company.id} value={company.id}>
+                    {company.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
 
-      {/* Map card */}
-      <Card sx={{ position: 'relative' }}>
+          {(entityType !== 'kitchen' || isCompanyAdmin) && (
+            <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
+              <InputLabel>Filial</InputLabel>
+              <Select label="Filial" value={branchFilter} onChange={handleBranchChange}>
+                <MenuItem value="">Barcha filiallar</MenuItem>
+                {branchOptions.map((branch) => (
+                  <MenuItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {entityType !== 'branch' && (
+            <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
+              <InputLabel>Oshxona</InputLabel>
+              <Select
+                label="Oshxona"
+                value={kitchenFilter}
+                onChange={handleKitchenChange}
+              >
+                <MenuItem value="">Barcha oshxonalar</MenuItem>
+                {kitchenOptions.map((kitchen) => (
+                  <MenuItem key={kitchen.id} value={kitchen.id}>
+                    {kitchen.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+        </Stack>
+      </Card>
+
+      {totalWithoutCoords > 0 && !loading && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {totalWithoutCoords} ta yozuvda koordinata yo&apos;q
+        </Alert>
+      )}
+
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {errorMessage}
+        </Alert>
+      )}
+
+      <Card sx={{ position: 'relative', overflow: 'hidden' }}>
         {loading ? (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 500 }}>
             <CircularProgress />
@@ -311,60 +522,82 @@ export function MapOverviewView() {
               initialViewState={DEFAULT_VIEW}
               mapStyle={MAP_STYLES.light}
               sx={{ height: { xs: 500, md: 680 } }}
-              onClick={() => { setSelected(null); setPopupCoords(null); }}
+              onClick={() => {
+                setSelected(null);
+                setPopupCoords(null);
+              }}
             >
               <MapControls />
 
-              {/* Kitchen markers */}
-              {visible.includes('kitchen') &&
-                kitchensWithCoords.map((kitchen) => (
-                  <MapMarker
-                    key={`k-${kitchen.id}`}
-                    latitude={kitchen.latitude!}
-                    longitude={kitchen.longitude!}
-                    onClick={(e) => handleMarkerClick(e, { kind: 'kitchen', data: kitchen }, kitchen.latitude!, kitchen.longitude!)}
-                    sx={{ color: C_KITCHEN }}
-                  />
-                ))}
+              {visibleKitchens.map((kitchen) => (
+                <MapMarker
+                  key={`k-${kitchen.id}`}
+                  latitude={kitchen.lat!}
+                  longitude={kitchen.lng!}
+                  onClick={(event) =>
+                    handleMarkerClick(
+                      event,
+                      { kind: 'kitchen', data: kitchen },
+                      kitchen.lat!,
+                      kitchen.lng!
+                    )
+                  }
+                  sx={{ color: C_KITCHEN }}
+                />
+              ))}
 
-              {/* Company markers */}
-              {visible.includes('company') &&
-                companiesWithCoords.map((company) => (
-                  <MapMarker
-                    key={`c-${company.id}`}
-                    latitude={company.latitude!}
-                    longitude={company.longitude!}
-                    onClick={(e) => handleMarkerClick(e, { kind: 'company', data: company }, company.latitude!, company.longitude!)}
-                    sx={{ color: C_COMPANY }}
-                  />
-                ))}
+              {visibleBranches.map((branch) => (
+                <MapMarker
+                  key={`b-${branch.id}`}
+                  latitude={branch.lat!}
+                  longitude={branch.lng!}
+                  onClick={(event) =>
+                    handleMarkerClick(
+                      event,
+                      { kind: 'branch', data: branch },
+                      branch.lat!,
+                      branch.lng!
+                    )
+                  }
+                  sx={{ color: C_BRANCH }}
+                />
+              ))}
 
-              {/* Branch markers */}
-              {visible.includes('branch') &&
-                branchesWithCoords.map((branch) => (
-                  <MapMarker
-                    key={`b-${branch.id}`}
-                    latitude={branch.latitude!}
-                    longitude={branch.longitude!}
-                    onClick={(e) => handleMarkerClick(e, { kind: 'branch', data: branch }, branch.latitude!, branch.longitude!)}
-                    sx={{ color: C_BRANCH }}
-                  />
-                ))}
-
-              {/* Popup */}
               {selected && popupCoords && (
                 <MapPopup
                   latitude={popupCoords.lat}
                   longitude={popupCoords.lng}
-                  onClose={() => { setSelected(null); setPopupCoords(null); }}
+                  onClose={() => {
+                    setSelected(null);
+                    setPopupCoords(null);
+                  }}
                   closeOnClick={false}
                 >
-                  {selected.kind === 'kitchen' && <KitchenPopupCard kitchen={selected.data} />}
-                  {selected.kind === 'company' && <CompanyPopupCard company={selected.data} />}
-                  {selected.kind === 'branch'  && <BranchPopupCard branch={selected.data} companies={companies} />}
+                  {selected.kind === 'kitchen' && (
+                    <KitchenPopupCard kitchen={selected.data} />
+                  )}
+                  {selected.kind === 'branch' && (
+                    <BranchPopupCard branch={selected.data} companies={companies} />
+                  )}
                 </MapPopup>
               )}
             </Map>
+
+            {visibleMarkerCount === 0 && !errorMessage && (
+              <Alert
+                severity="info"
+                sx={{
+                  position: 'absolute',
+                  top: 16,
+                  left: '50%',
+                  zIndex: 1,
+                  transform: 'translateX(-50%)',
+                  boxShadow: 3,
+                }}
+              >
+                Tanlangan filtr bo&apos;yicha lokatsiya topilmadi
+              </Alert>
+            )}
           </Box>
         )}
       </Card>

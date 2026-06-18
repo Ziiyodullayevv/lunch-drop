@@ -77,7 +77,7 @@ export function CategoriesView() {
             startIcon={<Iconify icon="mingcute:add-line" />}
             onClick={() => setAddOpen(true)}
           >
-            Kategoriya qo'shish
+            Kategoriya qo&apos;shish
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -89,12 +89,12 @@ export function CategoriesView() {
         </Box>
       ) : !categories || categories.length === 0 ? (
         <Card sx={{ p: 5, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>Kategoriyalar yo'q</Typography>
+          <Typography variant="h6" gutterBottom>Kategoriyalar yo&apos;q</Typography>
           <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Hali ovqat kategoriyalari qo'shilmagan
+            Hali ovqat kategoriyalari qo&apos;shilmagan
           </Typography>
           <Button variant="contained" onClick={() => setAddOpen(true)}>
-            Birinchi kategoriyani qo'shish
+            Birinchi kategoriyani qo&apos;shish
           </Button>
         </Card>
       ) : (
@@ -154,7 +154,7 @@ export function CategoriesView() {
           <DialogActions>
             <Button onClick={() => setAddOpen(false)} color="inherit">Bekor qilish</Button>
             <LoadingButton type="submit" variant="contained" loading={addMethods.formState.isSubmitting}>
-              Qo'shish
+              Qo&apos;shish
             </LoadingButton>
           </DialogActions>
         </Form>

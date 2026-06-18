@@ -10,6 +10,8 @@ describe('BranchSchema', () => {
       company_id: 'uuid-123',
       name:       'Chilonzor filiali',
       address:    'Chilonzor 4-kvartal',
+      lat:        41.2995,
+      lng:        69.2401,
     });
     expect(result.success).toBe(true);
   });
@@ -37,6 +39,8 @@ describe('BranchSchema', () => {
       company_id: 'uuid-123',
       name:       '',
       address:    'Manzil',
+      lat:        41.2995,
+      lng:        69.2401,
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toBe('Filial nomi majburiy');
@@ -47,19 +51,22 @@ describe('BranchSchema', () => {
       company_id: 'uuid-123',
       name:       'Test',
       address:    '',
+      lat:        41.2995,
+      lng:        69.2401,
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toBe('Manzil majburiy');
   });
 
-  it("latitude va longitude optional", () => {
+  it("lat va lng majburiy", () => {
     const result = BranchSchema.safeParse({
       company_id: 'uuid-123',
       name:       'Test',
       address:    'Manzil',
-      latitude:   '41.2995',
-      longitude:  '69.2401',
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.path[0])).toEqual(
+      expect.arrayContaining(['lat', 'lng'])
+    );
   });
 });

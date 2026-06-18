@@ -4,15 +4,26 @@ Barcha endpoint 🔐 — `Authorization: Bearer <access_token>` (role: `company_
 
 Base: `http://164.90.210.222:8000/api/v1/company`
 
+2026-06-11 live tekshiruv holati:
+[live-verification.md](./live-verification.md#company-admin).
+
 ---
 
 ## Dashboard
 
-### `GET /company/dashboard`
+### `GET /company/dashboard?year=2026`
 
-Kompaniya statistikasi (tarkib aniqlanmagan — dynamic object).
+Token egasining kompaniyasi bo'yicha statistika va tanlangan yilning oylik
+analytics ma'lumotlari.
 
-**Response `200`:** — statistika ob'ekti
+| Query | Shart | Ma'no |
+|---|---|---|
+| `year` | ixtiyoriy | Oylik chart yili. Berilmasa joriy yil olinadi. |
+
+OpenAPI response'i `DashboardResponse` modeliga ulangan. 2026-06-14 live
+tekshiruvda 6 ta summary karta, har biri uchun 8 ta history nuqtasi, barcha
+statuslar va 12 oylik qatorlar qaytdi:
+[live-verification.md](./live-verification.md#dashboard-analytics-openapi).
 
 ---
 
@@ -139,6 +150,17 @@ Filialga biriktirish mumkin bo'lgan barcha faol oshxonalar.
 
 **Response `200`:** — `Page<KitchenRead>`
 
+Admin panel barcha sahifalarni yuklaydi va har bir filial uchun
+`GET /company/branches/{branch_id}/kitchens` javobi bilan bog'lanishlarni
+yig'adi. Shu asosda oshxonalarni filial bo'yicha filtrlash, ulangan/mavjud
+holatini ko'rsatish va oshxona, filial, telefon yoki ID bo'yicha qidirish
+ishlaydi.
+
+Oshxonani filialga ulash yoki uzish
+`POST /company/branches/{branch_id}/assign-kitchens` orqali filialning to'liq
+oshxonalar ro'yxatini saqlash bilan bajariladi; oshxonaning `is_active` holati
+o'zgartirilmaydi.
+
 ---
 
 ### `GET /company/branches/{branch_id}/kitchens`
@@ -182,6 +204,11 @@ Filialga oshxonalar biriktirish. Eski ro'yxat to'liq almashtiriladi.
 ---
 
 ## Xodimlar
+
+> `POST /company/employees` va `POST /super-admin/employees` mavjud emas.
+> Xodim mobil ilovada OTP bilan kiradi, `POST /employee/join-branch` orqali
+> qo'shilish so'rovi yuboradi va company admin quyidagi status endpointi orqali
+> uni tasdiqlaydi.
 
 ### `GET /company/employees`
 
@@ -260,6 +287,18 @@ Kompaniyaning barcha buyurtmalari.
 
 ---
 
+### `GET /company/orders/{order_id}`
+
+Kompaniyaga tegishli bitta buyurtma tafsilotlarini qaytaradi.
+
+**Response `200`:** — `OrderRead`
+
+`OrderRead` taom, oshxona, filial, kompaniya va xodim nomlarini ham qaytarishi
+mumkin: `meal_name`, `kitchen_name`, `branch_name`, `company_name`,
+`employee_name`.
+
+---
+
 ### `PATCH /company/orders/bulk-confirm`
 
 Bugungi barcha `on_the_way` statusdagi buyurtmalarni `delivered` ga o'tkazish.
@@ -316,6 +355,7 @@ export const endpoints = {
     pendingEmployees: '/company/employees/pending',
     employeeStatus:   (id: string) => `/company/employees/${id}/status`,
     orders:           '/company/orders',
+    order:            (id: string) => `/company/orders/${id}`,
     bulkConfirm:      '/company/orders/bulk-confirm',
     invoices:         '/company/invoices',
   },

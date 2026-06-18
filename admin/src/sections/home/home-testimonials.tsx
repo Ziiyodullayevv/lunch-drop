@@ -74,9 +74,9 @@ export function HomeTestimonials({ sx, ...other }: BoxProps) {
 
   const renderDescription = () => (
     <SectionTitle
-      caption="testimonials"
-      title="Rumors are flying"
-      txtGradient="that..."
+      caption="mijozlar fikri"
+      title="Hamkorlar aytmoqda"
+      txtGradient="natija bor"
       sx={{ mb: { xs: 5, md: 8 }, textAlign: 'center' }}
     />
   );
@@ -181,16 +181,16 @@ export function HomeTestimonials({ sx, ...other }: BoxProps) {
         sx={{ gap: 5, flexDirection: { xs: 'column', md: 'row' } }}
       >
         {[
-          { label: 'Purchased order', value: 12.121 },
-          { label: 'Happy customers', value: 160 },
-          { label: 'Review rate', value: 4.9 },
+          { label: 'Yetkazilgan buyurtmalar', value: 12.121 },
+          { label: 'Faol foydalanuvchilar', value: 160 },
+          { label: 'Mijozlar bahosi', value: 4.9 },
         ].map((item) => (
           <Stack key={item.label} spacing={2} sx={{ textAlign: 'center', width: 1 }}>
             <m.div variants={varFade('inUp', { distance: 24 })}>
               <AnimateCountUp
                 to={item.value}
-                unit={item.label === 'Purchased order' ? 'k+' : '+'}
-                toFixed={item.label === 'Happy customers' ? 0 : 1}
+                unit={item.label === 'Yetkazilgan buyurtmalar' ? 'k+' : '+'}
+                toFixed={item.label === 'Faol foydalanuvchilar' ? 0 : 1}
                 sx={[
                   (theme) => ({
                     fontWeight: 'fontWeightBold',
@@ -257,53 +257,53 @@ const createReview = (index: number) => ({
 const TESTIMONIALS = [
   {
     ...createReview(1),
-    category: 'Design Quality',
-    content: `The quality of this template is very good, the TypeScript files are neat and the communication with the team behind this template is very good! I would recommend this template for any kind of project, as they implement new features every now and then and enhance their design. I will definitely be using more templates from this team and re-purchasing this template for other projects.`,
+    category: 'Buyurtma nazorati',
+    content: `Lunch Drop bilan tushlik jarayoni ancha tartibga tushdi. Xodimlar buyurtmani oson beradi, adminlar esa holatni bir joydan kuzatadi.`,
     postedAt: 'April 20, 2024 23:15:30',
   },
   {
     ...createReview(2),
-    category: 'Design Quality',
-    content: `Amazing. I've never purchased complete front ends before, but I'll definitely be doing this again!`,
+    category: 'Qulay interfeys',
+    content: `Platforma sodda va tushunarli. Filial, oshxona va xodimlar bilan ishlashda ortiqcha qadamlar kamaydi.`,
     postedAt: 'March 19, 2024 23:15:30',
   },
   {
     ...createReview(3),
-    category: 'Code Quality',
-    content: `Clean & Complete (Design & Code). Thansk Minimal team :)`,
+    category: 'Hisobotlar',
+    content: `Kunlik buyurtmalar va statuslar tez ko'rinadi. Qaysi oshxona faol, qaysi yetkazish jarayoni ketayotganini darhol bilamiz.`,
     postedAt: 'April 19, 2023 23:15:30',
   },
   {
     ...createReview(4),
-    category: 'Customer Support',
-    content: `Thanks to Minimal for customer support with email. I solved the problem. And the code quality is good, too.`,
+    category: 'Tezkor boshqaruv',
+    content: `Xodimlarni tasdiqlash, filialga biriktirish va oshxonalarni ulash jarayoni oldingidan ancha tezlashdi.`,
     postedAt: 'May 19, 2023 23:15:30',
   },
   {
     ...createReview(5),
-    category: 'Customer Support',
+    category: 'Yetkazish jarayoni',
     content:
-      'Great UI kit, really beautiful as well. Also the customer support is very warm-hearted. However, I hope the components and themes can be provided as a separated project (package).',
+      'Buyurtma va yetkazish vaqtlarini aniq belgilash ishni yengillashtirdi. Tushlik vaqti oldindan rejalashtiriladi.',
     postedAt: 'June 19, 2023 23:15:30',
   },
   {
     ...createReview(6),
-    category: 'Design Quality',
-    content: 'I would never have been able to create all these beautifull components myself!',
+    category: 'Korporativ ovqatlanish',
+    content: 'Kompaniya uchun tushlik xarajatlari va filiallar kesimidagi buyurtmalarni boshqarish osonlashdi.',
     postedAt: 'July 19, 2023 23:15:30',
   },
   {
     ...createReview(7),
-    category: 'Code Quality',
+    category: 'Barqaror ish',
     content:
-      'The quality of this template is excellent. However, as an individual, the cost of obtaining the TypeScript Source version is beyond my means. Despite my strong desire to acquire it, my limited personal budget does not allow me to do so.',
+      "Har kuni takrorlanadigan buyurtmalar, statuslar va bildirishnomalar bir tizimda ishlagani jamoamizga qulay bo'ldi.",
     postedAt: 'August 19, 2023 23:15:30',
   },
   {
     ...createReview(8),
-    category: 'Customizability',
+    category: 'Moslashuvchanlik',
     content:
-      'The design and code quality are impressive. Regular updates and excellent customer support are major advantages.',
+      "Turli kompaniya, filial va oshxona rollari alohida boshqariladi. Har bir foydalanuvchi o'ziga kerakli bo'limni ko'radi.",
     postedAt: 'September 19, 2023 23:15:30',
   },
 ];

@@ -2,7 +2,7 @@
 
 import type { Dayjs } from 'dayjs';
 import type { MapRef, MarkerDragEvent } from 'react-map-gl/maplibre';
-import type { GeolocateCoords } from 'src/components/map';
+import type { KitchenCreate } from 'src/lib/api/kitchens';
 
 import * as z from 'zod';
 import dayjs from 'dayjs';
@@ -22,13 +22,22 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
-import axios, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { toast } from 'src/components/snackbar';
 import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
-import { Map, MapMarker, MapControls, MapLocateButton } from 'src/components/map';
+import {
+  Map,
+  MapMarker,
+  MapControls,
+  MapLocateButton,
+  type GeolocateCoords,
+  MapAddressAutocomplete,
+  type MapAddressSuggestion,
+} from 'src/components/map';
+
+import { useCreateKitchen } from '../hooks/use-kitchens';
 
 // ----------------------------------------------------------------------
 
@@ -42,56 +51,80 @@ function makeTime(hour: number, minute = 0): Dayjs {
 function formatTime(value: Dayjs | string | null | undefined): string | undefined {
   if (!value) return undefined;
   const d = dayjs.isDayjs(value) ? value : dayjs(value as string);
-  return d.isValid() ? d.format('HH:mm') : undefined;
+  return d.isValid() ? d.format('HH:mm:ss') : undefined;
 }
 
 export const KitchenSchema = z.object({
-  name:                z.string().min(1, { message: 'Oshxona nomi majburiy' }),
-  description:         z.string().optional(),
-  phone:               z.string().optional(),
-  order_cutoff_time:   z.custom<Dayjs>().optional().nullable(),
+  name: z.string().trim().min(1, { message: 'Oshxona nomi majburiy' }).max(255),
+  description: z.string().optional(),
+  phone: z.string().max(32).optional(),
+  image_url: z.string().optional(),
+  order_cutoff_time: z.custom<Dayjs>().optional().nullable(),
   delivery_start_time: z.custom<Dayjs>().optional().nullable(),
-  delivery_end_time:   z.custom<Dayjs>().optional().nullable(),
-  is_active:           z.boolean(),
-  latitude:            z.string().optional(),
-  longitude:           z.string().optional(),
+  delivery_end_time: z.custom<Dayjs>().optional().nullable(),
+  is_active: z.boolean(),
+  lat: z.number({ message: 'Joylashuvni xaritadan belgilang' }),
+  lng: z.number({ message: 'Joylashuvni xaritadan belgilang' }),
 });
 
 type FormValues = z.infer<typeof KitchenSchema>;
+
+export function buildKitchenCreatePayload(data: FormValues): KitchenCreate {
+  return {
+    name: data.name,
+    description: data.description || null,
+    phone: data.phone || null,
+    image_url: data.image_url || null,
+    order_cutoff_time: formatTime(data.order_cutoff_time),
+    delivery_start_time: formatTime(data.delivery_start_time),
+    delivery_end_time: formatTime(data.delivery_end_time),
+    is_active: data.is_active,
+    lat: data.lat,
+    lng: data.lng,
+  };
+}
 
 // ----------------------------------------------------------------------
 
 export function KitchenCreateView() {
   const router = useRouter();
+  const createKitchen = useCreateKitchen();
   const mapRef = useRef<MapRef | null>(null);
   const [marker, setMarker] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [hasLocation, setHasLocation] = useState(false);
+  const [addressSearch, setAddressSearch] = useState('');
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(KitchenSchema),
     defaultValues: {
-      name:                '',
-      description:         '',
-      phone:               '',
-      order_cutoff_time:   makeTime(11),
-      delivery_start_time: makeTime(12),
-      delivery_end_time:   makeTime(13),
-      is_active:           true,
-      latitude:            '',
-      longitude:           '',
+      name: '',
+      description: '',
+      phone: '',
+      image_url: '',
+      order_cutoff_time: makeTime(10, 30),
+      delivery_start_time: makeTime(12, 30),
+      delivery_end_time: makeTime(13),
+      is_active: true,
+      lat: undefined,
+      lng: undefined,
     },
   });
 
-  const { handleSubmit, setValue, watch, formState: { isSubmitting } } = methods;
-  const lat = watch('latitude');
-  const lng = watch('longitude');
+  const {
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = methods;
+  const lat = watch('lat');
+  const lng = watch('lng');
 
-  const handleMarkerDrag = useCallback(
+  const handleMarkerDragEnd = useCallback(
     (e: MarkerDragEvent) => {
       const { lat: newLat, lng: newLng } = e.lngLat;
       setMarker({ latitude: newLat, longitude: newLng });
-      setValue('latitude', newLat.toFixed(6));
-      setValue('longitude', newLng.toFixed(6));
+      setValue('lat', newLat, { shouldDirty: true, shouldValidate: true });
+      setValue('lng', newLng, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
     },
     [setValue]
@@ -100,32 +133,42 @@ export function KitchenCreateView() {
   const handleLocate = useCallback(
     ({ latitude, longitude }: GeolocateCoords) => {
       setMarker({ latitude, longitude });
-      setValue('latitude', latitude.toFixed(6));
-      setValue('longitude', longitude.toFixed(6));
+      setValue('lat', latitude, { shouldDirty: true, shouldValidate: true });
+      setValue('lng', longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
     },
     [setValue]
   );
 
-  const onSubmit = handleSubmit(async (data) => {
-    try {
-      await axios.post(endpoints.superAdmin.kitchens, {
-        name:                data.name,
-        description:         data.description || null,
-        phone:               data.phone       || null,
-        order_cutoff_time:   formatTime(data.order_cutoff_time),
-        delivery_start_time: formatTime(data.delivery_start_time),
-        delivery_end_time:   formatTime(data.delivery_end_time),
-        is_active:           data.is_active,
-        lat:  hasLocation && data.latitude  ? parseFloat(data.latitude)  : undefined,
-        lng:  hasLocation && data.longitude ? parseFloat(data.longitude) : undefined,
+  const handleAddressSelect = useCallback(
+    (suggestion: MapAddressSuggestion) => {
+      setAddressSearch(suggestion.label);
+      handleLocate({ latitude: suggestion.lat, longitude: suggestion.lng });
+      mapRef.current?.flyTo({
+        center: [suggestion.lng, suggestion.lat],
+        zoom: 16,
+        duration: 900,
       });
-      toast.success('Oshxona yaratildi!');
-      router.push(paths.dashboard.kitchen.root);
-    } catch (err: any) {
-      toast.error(err?.message || 'Xato yuz berdi');
+    },
+    [handleLocate]
+  );
+
+  const onSubmit = handleSubmit(
+    async (data) => {
+      try {
+        await createKitchen.mutateAsync(buildKitchenCreatePayload(data));
+        toast.success('Oshxona yaratildi!');
+        router.push(paths.dashboard.kitchen.root);
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Xato yuz berdi');
+      }
+    },
+    (validationErrors) => {
+      if (validationErrors.lat || validationErrors.lng) {
+        toast.error('Oshxona joylashuvini xaritadan belgilang');
+      }
     }
-  });
+  );
 
   return (
     <DashboardContent>
@@ -139,13 +182,24 @@ export function KitchenCreateView() {
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <Card sx={{ p: 3, maxWidth: 900, width: '100%', mx: 'auto' }}>
+      <Card sx={{ p: 3, maxWidth: 600, width: '100%', mx: 'auto' }}>
         <Form methods={methods} onSubmit={onSubmit}>
           <Stack spacing={3}>
-            <Field.Text name="name" label="Oshxona nomi" slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.Text name="description" label="Tavsif" multiline rows={3} slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.Phone name="phone" label="Telefon" country="UZ" />
-            <Stack direction="row" spacing={2}>
+            <Field.Text
+              name="name"
+              label="Oshxona nomi"
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <Field.Text
+              name="description"
+              label="Tavsif"
+              multiline
+              rows={3}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <Field.ImageUpload name="image_url" label="Rasm" prefix="kitchens" />
+            <Field.Phone name="phone" label="Oshxona telefoni (login emas)" country="UZ" />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Field.TimePicker
                 name="order_cutoff_time"
                 label="Buyurtma yopilish vaqti"
@@ -173,8 +227,19 @@ export function KitchenCreateView() {
             </Stack>
             <Field.Switch name="is_active" label="Faol" />
 
+            <MapAddressAutocomplete
+              value={addressSearch}
+              onChange={setAddressSearch}
+              onSelect={handleAddressSelect}
+              latitude={marker.latitude}
+              longitude={marker.longitude}
+              label="Manzil qidirish"
+            />
+
             <Divider>
-              <Typography variant="caption" color="text.secondary">Joylashuv</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Joylashuv
+              </Typography>
             </Divider>
 
             <Stack spacing={1}>
@@ -193,7 +258,7 @@ export function KitchenCreateView() {
                     longitude={marker.longitude}
                     draggable
                     anchor="bottom"
-                    onDrag={handleMarkerDrag}
+                    onDragEnd={handleMarkerDragEnd}
                     sx={{ color: hasLocation ? '#FF416D' : '#9CA3AF' }}
                   />
                 </Map>
@@ -203,23 +268,37 @@ export function KitchenCreateView() {
               <Box sx={{ display: 'flex', gap: 2 }}>
                 {hasLocation ? (
                   <>
-                    <Typography variant="caption" color="text.secondary">Lat: {lat}</Typography>
-                    <Typography variant="caption" color="text.secondary">Lng: {lng}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Lat: {lat?.toFixed(6)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Lng: {lng?.toFixed(6)}
+                    </Typography>
                   </>
                 ) : (
-                  <Typography variant="caption" color="text.disabled">
-                    Markerni sudrab joylashuvni belgilang (ixtiyoriy)
+                  <Typography
+                    variant="caption"
+                    color={errors.lat || errors.lng ? 'error' : 'text.disabled'}
+                  >
+                    {errors.lat?.message ??
+                      errors.lng?.message ??
+                      'Markerni sudrab joylashuvni belgilang (majburiy)'}
                   </Typography>
                 )}
               </Box>
             </Stack>
 
             <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end' }}>
-              <Button component={RouterLink} href={paths.dashboard.kitchen.root} variant="outlined" color="inherit">
+              <Button
+                component={RouterLink}
+                href={paths.dashboard.kitchen.root}
+                variant="outlined"
+                color="inherit"
+              >
                 Bekor qilish
               </Button>
               <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
-                Yaratish
+                Adminsiz oshxona yaratish
               </LoadingButton>
             </Stack>
           </Stack>

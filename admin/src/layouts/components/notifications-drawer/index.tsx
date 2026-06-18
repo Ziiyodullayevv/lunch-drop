@@ -108,7 +108,7 @@ export function NotificationsDrawer({ sx, ...other }: NotificationsDrawerProps) 
     if (!filtered.length) {
       return (
         <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary', typography: 'body2' }}>
-          Bildirishnoma yo'q
+          Bildirishnoma yo&apos;q
         </Box>
       );
     }

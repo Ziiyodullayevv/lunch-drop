@@ -1,35 +1,29 @@
 'use client';
 
-import { useBoolean, usePopover } from 'minimal-shared/hooks';
-import { useEffect, useState } from 'react';
+import { usePopover } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Chip from '@mui/material/Chip';
 import Table from '@mui/material/Table';
-import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
+import Stack from '@mui/material/Stack';
+import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import Divider from '@mui/material/Divider';
-import Checkbox from '@mui/material/Checkbox';
 import MenuItem from '@mui/material/MenuItem';
 import MenuList from '@mui/material/MenuList';
 import TableRow from '@mui/material/TableRow';
+import Checkbox from '@mui/material/Checkbox';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import Autocomplete from '@mui/material/Autocomplete';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import CircularProgress from '@mui/material/CircularProgress';
-import LoadingButton from '@mui/lab/LoadingButton';
 
 import { paths } from 'src/routes/paths';
+import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
+
+import { fDate, fTime } from 'src/utils/format-time';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 
@@ -45,18 +39,12 @@ import {
   TablePaginationCustom,
 } from 'src/components/table';
 
-import type { CompanyKitchenRead } from 'src/lib/api/companies';
-
 import { useAuthContext } from 'src/auth/hooks';
-
 
 import {
   useBranches,
+  useDeleteBranch,
   useCompanyBranches,
-  useCompanyBranchKitchens,
-  useCompanyKitchens,
-  useAssignCompanyKitchens,
-  useUpdateCompanyBranch,
   useDeleteCompanyBranch,
 } from '../hooks/use-branches';
 
@@ -67,136 +55,98 @@ type BranchRow = {
   name: string;
   address: string;
   company_id: string;
+  created_at?: string;
+  kitchen_ids?: string[];
 };
 
 const TABLE_HEAD = [
-  { id: 'name',    label: 'Filial'   },
-  { id: 'address', label: 'Manzil'  },
-  { id: 'actions', label: '',        width: 72 },
+  { id: 'name', label: 'Filial', width: 620 },
+  { id: 'created_at', label: 'Sana', width: 180 },
+  { id: 'kitchens', label: 'Oshxonalar', width: 140, align: 'center' as const },
+  { id: 'actions', label: '', width: 88 },
 ];
-
-// ----------------------------------------------------------------------
-
-type EditDialogProps = {
-  open: boolean;
-  branch: BranchRow | null;
-  onClose: () => void;
-  onSaved: () => void;
-};
-
-function EditBranchDialog({ open, branch, onClose, onSaved }: EditDialogProps) {
-  const [name, setName]       = useState(branch?.name ?? '');
-  const [address, setAddress] = useState(branch?.address ?? '');
-  const updateBranch    = useUpdateCompanyBranch(branch?.id ?? '');
-  const assignKitchens  = useAssignCompanyKitchens(branch?.id ?? '');
-
-  const { data: allKitchensData } = useCompanyKitchens();
-  const { data: branchKitchens }  = useCompanyBranchKitchens(branch?.id ?? '');
-
-  const allKitchens = allKitchensData ?? [];
-  const [selectedKitchenIds, setSelectedKitchenIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (branchKitchens) {
-      setSelectedKitchenIds(branchKitchens.map((k) => k.id));
-    }
-  }, [branchKitchens]);
-
-  const isPending = updateBranch.isPending || assignKitchens.isPending;
-
-  const handleSave = async () => {
-    if (!branch) return;
-    try {
-      await updateBranch.mutateAsync({ name, address });
-      await assignKitchens.mutateAsync(selectedKitchenIds);
-      toast.success('Filial yangilandi');
-      onSaved();
-      onClose();
-    } catch {
-      toast.error('Xatolik yuz berdi');
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Filial tahrirlash</DialogTitle>
-      <Divider />
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <TextField
-            label="Nomi"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Manzil"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            fullWidth
-          />
-          <Autocomplete
-            multiple
-            options={allKitchens}
-            getOptionLabel={(o: CompanyKitchenRead) => o.name}
-            value={allKitchens.filter((k: CompanyKitchenRead) => selectedKitchenIds.includes(k.id))}
-            onChange={(_, value: CompanyKitchenRead[]) => setSelectedKitchenIds(value.map((k) => k.id))}
-            disableCloseOnSelect
-            isOptionEqualToValue={(option: CompanyKitchenRead, val: CompanyKitchenRead) => option.id === val.id}
-            renderOption={(props, option: CompanyKitchenRead, { selected }) => (
-              <li {...props} key={option.id}>
-                <Checkbox sx={{ mr: 1 }} checked={selected} size="small" />
-                {option.name}
-              </li>
-            )}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Oshxonalar"
-                placeholder="Oshxona tanlang"
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-            )}
-          />
-        </Stack>
-      </DialogContent>
-      <Divider />
-      <DialogActions>
-        <Button onClick={onClose} color="inherit">Bekor qilish</Button>
-        <LoadingButton
-          variant="contained"
-          loading={isPending}
-          onClick={handleSave}
-          disabled={!name || !address}
-        >
-          Saqlash
-        </LoadingButton>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-// ----------------------------------------------------------------------
 
 type RowProps = {
   row: BranchRow;
-  isCompanyAdmin: boolean;
-  onEdit: (row: BranchRow) => void;
+  selected: boolean;
+  canManage: boolean;
+  onSelectRow: () => void;
   onDelete: (id: string) => void;
 };
 
-function BranchRow({ row, isCompanyAdmin, onEdit, onDelete }: RowProps) {
+function BranchRow({ row, selected, canManage, onSelectRow, onDelete }: RowProps) {
+  const router = useRouter();
   const popover = usePopover();
+  const kitchenCount = row.kitchen_ids?.length ?? 0;
+
   return (
     <>
-      <TableRow hover>
-        <TableCell>
-          <Box sx={{ fontWeight: 600 }}>{row.name}</Box>
-          <Box sx={{ color: 'text.secondary', fontSize: 12 }}>{row.id.slice(0, 8)}…</Box>
+      <TableRow
+        hover
+        selected={selected}
+        sx={{
+          '& > *': { borderBottomStyle: 'dashed' },
+        }}
+      >
+        <TableCell padding="checkbox">
+          <Checkbox
+            checked={selected}
+            onClick={onSelectRow}
+            slotProps={{ input: { 'aria-label': `${row.name} checkbox` } }}
+          />
         </TableCell>
-        <TableCell sx={{ color: 'text.secondary' }}>{row.address}</TableCell>
+
+        <TableCell>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', minWidth: 0 }}>
+            <Avatar
+              variant="rounded"
+              sx={{
+                width: 48,
+                height: 48,
+                flexShrink: 0,
+                bgcolor: 'primary.lighter',
+                color: 'primary.dark',
+                fontWeight: 700,
+              }}
+            >
+              {row.name.charAt(0).toUpperCase()}
+            </Avatar>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" noWrap>
+                {row.name}
+              </Typography>
+              <Typography variant="body2" noWrap sx={{ mt: 0.5, color: 'text.disabled' }}>
+                {row.address}
+              </Typography>
+            </Box>
+          </Stack>
+        </TableCell>
+
+        <TableCell>
+          {row.created_at ? (
+            <>
+              <Typography variant="body2">{fDate(row.created_at)}</Typography>
+              <Typography
+                variant="caption"
+                sx={{ mt: 0.5, display: 'block', color: 'text.disabled' }}
+              >
+                {fTime(row.created_at)}
+              </Typography>
+            </>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+              —
+            </Typography>
+          )}
+        </TableCell>
+
+        <TableCell align="center">
+          <Typography variant="subtitle2">{kitchenCount}</Typography>
+        </TableCell>
+
         <TableCell align="right">
-          {isCompanyAdmin && (
+          {canManage && (
             <IconButton
               size="small"
               color={popover.open ? 'inherit' : 'default'}
@@ -215,12 +165,29 @@ function BranchRow({ row, isCompanyAdmin, onEdit, onDelete }: RowProps) {
         slotProps={{ arrow: { placement: 'right-top' } }}
       >
         <MenuList>
-          <MenuItem onClick={() => { onEdit(row); popover.onClose(); }}>
+          <MenuItem
+            onClick={() => {
+              popover.onClose();
+              router.push(paths.dashboard.branch.details(row.id));
+            }}
+          >
+            <Iconify icon="solar:eye-bold" sx={{ mr: 1 }} />
+            Ko&apos;rish
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              popover.onClose();
+              router.push(paths.dashboard.branch.edit(row.id));
+            }}
+          >
             <Iconify icon="solar:pen-bold" sx={{ mr: 1 }} />
             Tahrirlash
           </MenuItem>
           <MenuItem
-            onClick={() => { onDelete(row.id); popover.onClose(); }}
+            onClick={() => {
+              onDelete(row.id);
+              popover.onClose();
+            }}
             sx={{ color: 'error.main' }}
           >
             <Iconify icon="solar:trash-bin-trash-bold" sx={{ mr: 1 }} />
@@ -238,46 +205,41 @@ export function BranchListView() {
   const table = useTable({ defaultRowsPerPage: 10 });
   const { user } = useAuthContext();
   const isCompanyAdmin = user?.role === 'company_admin';
-
-  const [editTarget, setEditTarget] = useState<BranchRow | null>(null);
-  const editDialog = useBoolean();
+  const isSuperAdmin = user?.role === 'super_admin';
 
   const queryParams = { limit: table.rowsPerPage, offset: table.page * table.rowsPerPage };
 
   // company_admin — /company/branches; super_admin — /super-admin/branches
-  const companyQuery = useCompanyBranches(queryParams);
-  const adminQuery   = useBranches(queryParams);
+  const companyQuery = useCompanyBranches(queryParams, isCompanyAdmin);
+  const adminQuery = useBranches(queryParams, !isCompanyAdmin);
 
   const activeQuery = isCompanyAdmin ? companyQuery : adminQuery;
-  const branches    = activeQuery.data?.items ?? [];
-  const total       = activeQuery.data?.total ?? 0;
-  const isLoading   = activeQuery.isLoading;
-  const isError     = activeQuery.isError;
+  const branches = activeQuery.data?.items ?? [];
+  const total = activeQuery.data?.total ?? 0;
+  const isLoading = activeQuery.isLoading;
+  const isError = activeQuery.isError;
 
-  const deleteBranch = useDeleteCompanyBranch();
+  const deleteBranch = useDeleteBranch();
+  const deleteCompanyBranch = useDeleteCompanyBranch();
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteBranch.mutateAsync(id);
+      if (isCompanyAdmin) {
+        await deleteCompanyBranch.mutateAsync(id);
+      } else {
+        await deleteBranch.mutateAsync(id);
+      }
       toast.success("Filial o'chirildi");
     } catch {
       toast.error('Xatolik yuz berdi');
     }
   };
 
-  const handleEdit = (row: BranchRow) => {
-    setEditTarget(row);
-    editDialog.onTrue();
-  };
-
   return (
     <DashboardContent>
       <CustomBreadcrumbs
         heading="Filiallar"
-        links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Filiallar' },
-        ]}
+        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Filiallar' }]}
         action={
           <Button
             component={RouterLink}
@@ -297,22 +259,40 @@ export function BranchListView() {
         </Alert>
       )}
 
-      <Card>
+      <Card
+        sx={{
+          borderRadius: 2,
+          overflow: 'hidden',
+        }}
+      >
         <Scrollbar>
-          <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 560 }}>
+          <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 900 }}>
             <TableHeadCustom
               order={table.order}
               orderBy={table.orderBy}
               headCells={TABLE_HEAD}
               rowCount={branches.length}
-              numSelected={0}
+              numSelected={table.selected.length}
               onSort={table.onSort}
+              onSelectAllRows={(checked) =>
+                table.onSelectAllRows(
+                  checked,
+                  branches.map((row) => row.id)
+                )
+              }
+              sx={{
+                '& .MuiTableCell-head': {
+                  bgcolor: 'background.neutral',
+                  typography: 'subtitle2',
+                  color: 'text.primary',
+                },
+              }}
             />
 
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={3} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
@@ -321,8 +301,9 @@ export function BranchListView() {
                   <BranchRow
                     key={row.id}
                     row={row}
-                    isCompanyAdmin={isCompanyAdmin}
-                    onEdit={handleEdit}
+                    selected={table.selected.includes(row.id)}
+                    canManage={isCompanyAdmin || isSuperAdmin}
+                    onSelectRow={() => table.onSelectRow(row.id)}
                     onDelete={handleDelete}
                   />
                 ))
@@ -341,17 +322,12 @@ export function BranchListView() {
           onPageChange={table.onChangePage}
           onChangeDense={table.onChangeDense}
           onRowsPerPageChange={table.onChangeRowsPerPage}
+          sx={{
+            borderTop: '1px dashed',
+            borderColor: 'divider',
+          }}
         />
       </Card>
-
-      {isCompanyAdmin && (
-        <EditBranchDialog
-          open={editDialog.value}
-          branch={editTarget}
-          onClose={editDialog.onFalse}
-          onSaved={() => activeQuery.refetch()}
-        />
-      )}
     </DashboardContent>
   );
 }

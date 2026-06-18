@@ -5,8 +5,7 @@ import { NextResponse } from 'next/server';
 // ----------------------------------------------------------------------
 // GET /api/v1/company/kitchens
 //
-// Company admin uchun BFF proxy — barcha faol oshxonalar ro'yxati.
-// super-admin/kitchens endpointidan olinadi.
+// Company admin uchun barcha faol oshxonalar ro'yxati.
 // ----------------------------------------------------------------------
 
 const BACKEND = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://164.90.210.222:8000';
@@ -16,7 +15,7 @@ export async function GET(req: NextRequest) {
   if (!auth) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
   try {
-    const url = new URL('/api/v1/super-admin/kitchens', BACKEND);
+    const url = new URL('/api/v1/company/kitchens', BACKEND);
     req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
 
     const res = await fetch(url.toString(), {

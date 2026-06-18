@@ -2,11 +2,12 @@ import type { NavListProps, NavSubListProps } from '../types';
 
 import { useBoolean } from 'minimal-shared/hooks';
 import { useRef, useEffect, useCallback } from 'react';
-import { isEqualPath, isActiveLink, isExternalLink } from 'minimal-shared/utils';
+import { isEqualPath, isExternalLink } from 'minimal-shared/utils';
 
 import { usePathname } from 'src/routes/hooks';
 
 import { NavItem } from './nav-desktop-item';
+import { useMainNavActive } from '../use-main-nav-active';
 import { Nav, NavLi, NavUl, NavDropdown } from '../components';
 import { NavItemDashboard } from './nav-desktop-item-dashboard';
 
@@ -16,7 +17,7 @@ export function NavList({ data, sx, ...other }: NavListProps) {
   const pathname = usePathname();
   const navItemRef = useRef<HTMLButtonElement>(null);
 
-  const isActive = isActiveLink(pathname, data.path, data.deepMatch ?? !!data.children);
+  const isActive = useMainNavActive(pathname, data.path, data.deepMatch ?? !!data.children);
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 

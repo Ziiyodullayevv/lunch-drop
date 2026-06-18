@@ -1,9 +1,11 @@
 import type { CardProps } from '@mui/material/Card';
 import type { ChartOptions } from 'src/components/chart';
 
+import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Divider from '@mui/material/Divider';
 import { useTheme } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
 
 import { fNumber } from 'src/utils/format-number';
@@ -36,6 +38,7 @@ export function AppCurrentDownload({ title, subheader, chart, sx, ...other }: Pr
   ];
 
   const chartSeries = chart.series.map((item) => item.value);
+  const hasData = chartSeries.some((value) => value > 0);
 
   const chartOptions = useChart({
     chart: { sparkline: { enabled: true } },
@@ -75,17 +78,37 @@ export function AppCurrentDownload({ title, subheader, chart, sx, ...other }: Pr
     <Card sx={sx} {...other}>
       <CardHeader title={title} subheader={subheader} />
 
-      <Chart
-        type="donut"
-        series={chartSeries}
-        options={chartOptions}
-        sx={{
-          my: 6,
-          mx: 'auto',
-          width: { xs: 240, xl: 260 },
-          height: { xs: 240, xl: 260 },
-        }}
-      />
+      {hasData ? (
+        <Chart
+          type="donut"
+          series={chartSeries}
+          options={chartOptions}
+          sx={{
+            my: 6,
+            mx: 'auto',
+            width: { xs: 240, xl: 260 },
+            height: { xs: 240, xl: 260 },
+          }}
+        />
+      ) : (
+        <Box
+          sx={{
+            mx: 'auto',
+            my: 6,
+            width: { xs: 240, xl: 260 },
+            height: { xs: 240, xl: 260 },
+            display: 'flex',
+            borderRadius: '50%',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'background.neutral',
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Buyurtmalar mavjud emas
+          </Typography>
+        </Box>
+      )}
 
       <Divider sx={{ borderStyle: 'dashed' }} />
 

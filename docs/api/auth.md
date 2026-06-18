@@ -125,6 +125,11 @@ OTP ni tasdiqlaydi va `registration_token` qaytaradi.
 
 Akkaunt yaratadi → `pending_approval` statusiga tushadi.
 
+`kitchen_admin` uchun login/parol aynan shu oqimda yaratiladi. Super adminning
+`POST /super-admin/kitchens` endpointi user yoki parol yaratmaydi. Oldindan
+yaratilgan oshxonaga mavjud adminni biriktirish kerak bo'lsa,
+`PATCH /super-admin/users/{user_id}` dagi `kitchen_id` ishlatiladi.
+
 **Request:**
 ```json
 {
@@ -177,6 +182,9 @@ Akkaunt yaratadi → `pending_approval` statusiga tushadi.
 
 > Har safar yangi `refresh_token` qaytadi (rotation).
 
+2026-06-11 live tekshiruvda access token muddati `900` soniya (15 daqiqa)
+bo'ldi. Token eskirganda himoyalangan endpointlar `401` qaytaradi.
+
 **Xatolar:** `401` refresh token noto'g'ri
 
 ---
@@ -217,6 +225,50 @@ Akkaunt yaratadi → `pending_approval` statusiga tushadi.
 
 ---
 
+### `PATCH /auth/me` 🔐
+
+Joriy foydalanuvchining account profilini yangilaydi. Endpoint
+`super_admin`, `company_admin`, `kitchen_admin` va `employee` profillari uchun
+bir xil ishlatiladi. Yuborilgan maydonlargina o'zgaradi.
+
+**Request:**
+```json
+{
+  "name": "Ali Valiyev",
+  "password": "yangi-parol",
+  "avatar_url": "/uploads/avatars/avatar.jpg"
+}
+```
+
+| Maydon | Shart | Cheklov |
+|---|---|---|
+| `name` | ixtiyoriy | `string` |
+| `password` | ixtiyoriy | `string` |
+| `avatar_url` | ixtiyoriy | avval upload qilingan rasm URL'i |
+
+**Response `200`:**
+```json
+{
+  "user": {
+    "id": "uuid",
+    "phone": "+998901234567",
+    "name": "Ali Valiyev",
+    "role": "company_admin",
+    "is_active": true,
+    "account_status": "approved",
+    "company_id": "uuid",
+    "branch_id": null,
+    "kitchen_id": null
+  }
+}
+```
+
+> Bu endpoint foydalanuvchining ismi va/yoki parolini yangilaydi.
+> Kompaniya nomi/logo uchun `PATCH /company/me`, oshxona sozlamalari uchun
+> `PATCH /kitchen/settings` ishlatiladi.
+
+---
+
 ## Frontend endpoints konstantasi
 
 ```ts
@@ -252,3 +304,6 @@ YANGI ADMIN (ro'yxat):
   POST /auth/verify-otp  →  registration_token
   POST /auth/admin-register  →  pending_approval (super admin kutadi)
 ```
+
+Real akkauntlar bilan tekshiruv natijalari:
+[live-verification.md](./live-verification.md).

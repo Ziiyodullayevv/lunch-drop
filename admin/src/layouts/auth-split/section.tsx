@@ -32,9 +32,9 @@ export function AuthSplitSection({
   method,
   methods,
   layoutQuery = 'md',
-  title = 'Manage the job',
+  title = 'Lunch Drop',
   imgUrl = `${CONFIG.assetsDir}/assets/illustrations/illustration-dashboard.webp`,
-  subtitle = 'More effectively with optimized workflows.',
+  subtitle = 'Korporativ ovqatlanish platformasi.',
   ...other
 }: AuthSplitSectionProps) {
   return (
@@ -57,6 +57,10 @@ export function AuthSplitSection({
           [theme.breakpoints.up(layoutQuery)]: {
             gap: 8,
             display: 'flex',
+            top: 0,
+            height: '100vh',
+            flexShrink: 0,
+            position: 'sticky',
             alignItems: 'center',
             flexDirection: 'column',
             justifyContent: 'center',

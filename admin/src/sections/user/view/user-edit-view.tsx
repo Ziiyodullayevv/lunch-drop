@@ -10,21 +10,23 @@ import { UserCreateEditForm } from '../user-create-edit-form';
 
 // ----------------------------------------------------------------------
 
-export function UserEditView() {
+type Props = { id: string };
+
+export function UserEditView({ id }: Props) {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Edit User"
+        heading="Foydalanuvchini tahrirlash"
         backHref={paths.dashboard.user.list}
         links={[
           { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Users', href: paths.dashboard.user.list },
-          { name: 'Edit' },
+          { name: 'Foydalanuvchilar', href: paths.dashboard.user.list },
+          { name: 'Tahrirlash' },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <UserCreateEditForm />
+      <UserCreateEditForm userId={id} />
     </DashboardContent>
   );
 }

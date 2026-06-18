@@ -5,7 +5,6 @@ import { m } from 'framer-motion';
 import { varAlpha } from 'minimal-shared/utils';
 
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
@@ -24,100 +23,47 @@ import { FloatLine, FloatPlusIcon, FloatTriangleDownIcon } from './components/sv
 
 const FAQs = [
   {
-    question: 'How can I get the update?',
+    question: 'Lunch Drop kimlar uchun mo‘ljallangan?',
     answer: (
       <Typography>
-        You will get 12 months of free
-        <Link
-          href="https://support.mui.com/hc/en-us/articles/360008775240-How-do-I-get-access-to-an-item-I-purchased"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ mx: 0.5 }}
-        >
-          updates
-        </Link>
-        with the purchase. Please renew your license to get updates after that.
+        Platforma xodimlarini ovqat bilan ta’minlaydigan kompaniyalar, korporativ buyurtmalarni
+        qabul qiluvchi oshxonalar va mobil ilova orqali taom tanlaydigan xodimlar uchun yaratilgan.
       </Typography>
     ),
   },
   {
-    question: 'Which license is right for you?',
-    answer: (
-      <Box component="ul" sx={{ pl: 3, listStyleType: 'disc' }}>
-        <li> All licenses do not apply to open source.</li>
-        <li> One licenses / one end product (3 licenses / 3 products...).</li>
-        <li>
-          <strong>Standard / Plus</strong> license used in free products (Internal management...).
-        </li>
-        <li>
-          <strong>Extended</strong> license used in charge products, collect fees from users
-          (SAAS...).
-        </li>
-        <li>
-          Learn more about the
-          <Link
-            href="https://docs.minimals.cc/package/"
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{ mx: 0.5 }}
-          >
-            package & license
-          </Link>
-        </li>
-      </Box>
-    ),
-  },
-  {
-    question: 'How long is my license valid for?',
-    answer: (
-      <Box component="ul" sx={{ pl: 3, listStyleType: 'disc' }}>
-        <li> The license is lifetime.</li>
-        <li> You get 12 months of free updates.</li>
-      </Box>
-    ),
-  },
-  {
-    question: 'Which platforms will the template support?',
+    question: 'Kompaniya platformada nimalarni boshqara oladi?',
     answer: (
       <Typography>
-        {`The components in MUI are designed to work in the latest, stable releases of all major browsers, including Chrome, Firefox, Safari, and Edge. We don't support Internet Explorer 11. `}
-        Learn more about the
-        <Link
-          href="https://mui.com/material-ui/getting-started/supported-platforms/"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ mx: 0.5 }}
-        >
-          supported platforms
-        </Link>
+        Kompaniya filiallar va xodimlarni qo‘shadi, oshxonalarni biriktiradi, buyurtmalarni kuzatadi
+        va korporativ ovqatlanish jarayonini yagona boshqaruv panelidan nazorat qiladi.
       </Typography>
     ),
   },
   {
-    question: 'For what kind of projects is the Standard license intended?',
+    question: 'Oshxona buyurtmalar bilan qanday ishlaydi?',
     answer: (
       <Typography>
-        The Standard license is designed for internal applications in which staff will access the
-        application. An example could be the back-office dashboard of a public-facing e-commerce
-        website in which staff would sign in and manage inventory, customers, etc.
+        Oshxona menyu va taomlarni boshqaradi, kompaniyalardan kelgan buyurtmalarni qabul qiladi,
+        ularni tayyorlash bo‘yicha jamlaydi hamda buyurtma holatini bosqichma-bosqich yangilaydi.
       </Typography>
     ),
   },
   {
-    question: 'Do you have a free demo to review the code before purchasing?',
+    question: 'Xodimlar uchun mobil ilova qanday imkoniyat beradi?',
     answer: (
       <Typography>
-        Yes, you can check out our
-        <Link
-          href="https://mui.com/store/items/minimal-dashboard-free/"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ mx: 0.5 }}
-        >
-          open source
-        </Link>
-        dashboard template which should give you an overview of the code quality and folder
-        structure. Keep in mind that some aspects may differ from this Paid version.
+        Xodim o‘z kompaniyasi uchun mavjud oshxona va menyularni ko‘radi, taom tanlaydi, buyurtma
+        beradi, faol buyurtma holatini kuzatadi va buyurtmalar tarixidan foydalanadi.
+      </Typography>
+    ),
+  },
+  {
+    question: 'Buyurtma holati barcha tomonlarga ko‘rinadimi?',
+    answer: (
+      <Typography>
+        Ha. Buyurtmaning qabul qilinishi, tayyorlanishi va keyingi holatlari tizimda yangilanadi.
+        Shu orqali kompaniya, oshxona va xodim jarayonning qaysi bosqichda ekanini kuzata oladi.
       </Typography>
     ),
   },
@@ -134,9 +80,9 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
 
   const renderDescription = () => (
     <SectionTitle
-      caption="FAQs"
-      title="We’ve got the"
-      txtGradient="answers"
+      caption="Ko‘p so‘raladigan savollar"
+      title="Muhim savollarga"
+      txtGradient="aniq javoblar"
       sx={{ textAlign: 'center' }}
     />
   );
@@ -205,12 +151,13 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
       ]}
     >
       <m.div variants={varFade('in')}>
-        <Typography variant="h4">Still have questions?</Typography>
+        <Typography variant="h4">Lunch Drop bilan ishlashni boshlang</Typography>
       </m.div>
 
       <m.div variants={varFade('in')}>
         <Typography sx={{ mt: 2, mb: 3, color: 'text.secondary' }}>
-          Please describe your case to receive the most accurate advice
+          Kompaniya yoki oshxona sifatida tizimga kiring va korporativ ovqatlanishni bitta joydan
+          boshqaring.
         </Typography>
       </m.div>
 
@@ -218,10 +165,10 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
         <Button
           color="inherit"
           variant="contained"
-          href="mailto:support@minimals.cc?subject=[Feedback] from Customer"
-          startIcon={<Iconify icon="solar:letter-bold" />}
+          href="/dashboard"
+          startIcon={<Iconify icon="solar:inbox-in-bold-duotone" />}
         >
-          Contact us
+          Boshqaruv paneliga kirish
         </Button>
       </m.div>
     </Box>

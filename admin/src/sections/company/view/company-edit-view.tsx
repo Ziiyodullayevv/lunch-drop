@@ -92,6 +92,7 @@ export function CompanyEditView({ id }: Props) {
     <DashboardContent>
       <CustomBreadcrumbs
         heading="Kompaniyani tahrirlash"
+        backHref={paths.dashboard.company.root}
         links={[
           { name: 'Dashboard', href: paths.dashboard.root },
           { name: 'Kompaniyalar', href: paths.dashboard.company.root },
@@ -100,7 +101,7 @@ export function CompanyEditView({ id }: Props) {
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <Card sx={{ p: 3, maxWidth: 600 }}>
+      <Card sx={{ p: 3, maxWidth: 600, width: '100%', mx: 'auto' }}>
         <Form methods={methods} onSubmit={onSubmit}>
           <Stack spacing={3}>
             <Field.Text name="name" label="Kompaniya nomi" slotProps={{ inputLabel: { shrink: true } }} />

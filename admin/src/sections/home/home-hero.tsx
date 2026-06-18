@@ -6,20 +6,11 @@ import { useRef, useState } from 'react';
 import { m, useScroll, useSpring, useTransform, useMotionValueEvent } from 'framer-motion';
 
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
-import AvatarGroup from '@mui/material/AvatarGroup';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import Avatar, { avatarClasses } from '@mui/material/Avatar';
-
-import { paths } from 'src/routes/paths';
-import { RouterLink } from 'src/routes/components';
-
-import { _mock } from 'src/_mock';
-import { CONFIG } from 'src/global-config';
 
 import { Iconify } from 'src/components/iconify';
 import { varFade, MotionContainer } from 'src/components/animate';
@@ -77,9 +68,8 @@ export function HomeHero({ sx, ...other }: BoxProps) {
         ]}
       >
         <Box component="span" sx={{ width: 1, opacity: 0.24 }}>
-          Boost your building
+          Ovqat boshqaruvi
         </Box>
-        process with
         <Box
           component={m.span}
           animate={{ backgroundPosition: '200% center' }}
@@ -99,7 +89,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
             }),
           ]}
         >
-          Minimal
+          Lunch Drop bilan
         </Box>
       </Box>
     </m.div>
@@ -117,7 +107,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           }),
         ]}
       >
-        {`The starting point for your next project is based on MUI. \nEasy customization helps you build apps faster and better.`}
+        {`Kompaniyalar, oshxonalar va xodimlarni yagona tizimda bog‘laymiz. \nBuyurtmadan yetkazib berishgacha bo‘lgan jarayon to‘liq nazoratda.`}
       </Typography>
     </m.div>
   );
@@ -134,23 +124,8 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           justifyContent: 'center',
         }}
       >
-        <AvatarGroup
-          sx={{
-            [`& .${avatarClasses.root}`]: {
-              width: 32,
-              height: 32,
-            },
-          }}
-        >
-          {Array.from({ length: 3 }, (_, index) => (
-            <Avatar
-              key={_mock.fullName(index + 1)}
-              alt={_mock.fullName(index + 1)}
-              src={_mock.image.avatar(index + 1)}
-            />
-          ))}
-        </AvatarGroup>
-        160+ Happy customers
+        <Iconify width={24} icon="solar:verified-check-bold" color="primary.main" />
+        Kompaniya, oshxona va xodim uchun yagona platforma
       </Box>
     </m.div>
   );
@@ -165,49 +140,33 @@ export function HomeHero({ sx, ...other }: BoxProps) {
       }}
     >
       <m.div {...motionProps}>
-        <Stack spacing={2.5} sx={{ alignItems: 'center' }}>
-          <Button
-            component={RouterLink}
-            href={paths.dashboard.root}
-            color="inherit"
-            size="large"
-            variant="contained"
-            startIcon={<Iconify width={24} icon="custom:flash-outline" />}
-            sx={{ height: 52 }}
-          >
-            <span>
-              Live preview
-              <Box
-                component="small"
-                sx={[
-                  (theme) => ({
-                    mt: '-4px',
-                    opacity: 0.64,
-                    display: 'flex',
-                    lineHeight: '18px',
-                    fontSize: theme.typography.pxToRem(10),
-                    fontWeight: theme.typography.fontWeightMedium,
-                  }),
-                ]}
-              >
-                v{CONFIG.appVersion}
-              </Box>
-            </span>
-          </Button>
-
-          <Link
-            color="inherit"
-            variant="body2"
-            target="_blank"
-            rel="noopener noreferrer"
-            href={paths.freeUI}
-            underline="always"
-            sx={{ gap: 0.75, alignItems: 'center', display: 'inline-flex' }}
-          >
-            <Iconify width={16} icon="eva:external-link-fill" />
-            Try free version
-          </Link>
-        </Stack>
+        <Button
+          color="inherit"
+          size="large"
+          variant="contained"
+          href="#mobile-ilova"
+          startIcon={<Iconify width={24} icon="mingcute:android-2-fill" />}
+          sx={{ height: 52, minWidth: 200 }}
+        >
+          <span>
+            Android uchun
+            <Box
+              component="small"
+              sx={[
+                (theme) => ({
+                  mt: '-4px',
+                  opacity: 0.64,
+                  display: 'flex',
+                  lineHeight: '18px',
+                  fontSize: theme.typography.pxToRem(10),
+                  fontWeight: theme.typography.fontWeightMedium,
+                }),
+              ]}
+            >
+              Yuklab olish
+            </Box>
+          </span>
+        </Button>
       </m.div>
 
       <m.div {...motionProps}>
@@ -215,13 +174,28 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           color="inherit"
           size="large"
           variant="outlined"
-          target="_blank"
-          rel="noopener noreferrer"
-          href={paths.figmaUrl}
-          startIcon={<Iconify width={24} icon="solar:figma-outline" />}
-          sx={{ height: 52, borderColor: 'currentColor' }}
+          href="#mobile-ilova"
+          startIcon={<Iconify width={24} icon="mingcute:apple-fill" />}
+          sx={{ height: 52, minWidth: 200, borderColor: 'currentColor' }}
         >
-          Figma preview
+          <span>
+            iOS uchun
+            <Box
+              component="small"
+              sx={[
+                (theme) => ({
+                  mt: '-4px',
+                  opacity: 0.64,
+                  display: 'flex',
+                  lineHeight: '18px',
+                  fontSize: theme.typography.pxToRem(10),
+                  fontWeight: theme.typography.fontWeightMedium,
+                }),
+              ]}
+            >
+              Yuklab olish
+            </Box>
+          </span>
         </Button>
       </m.div>
     </Box>
@@ -231,27 +205,34 @@ export function HomeHero({ sx, ...other }: BoxProps) {
     <Stack spacing={3} sx={{ textAlign: 'center' }}>
       <m.div {...motionProps}>
         <Typography variant="overline" sx={{ opacity: 0.4 }}>
-          Available For
+          Kimlar uchun?
         </Typography>
       </m.div>
 
-      <Box sx={{ gap: 2.5, display: 'flex' }}>
-        {['js', 'ts', 'nextjs', 'vite', 'figma'].map((platform) => (
-          <m.div {...motionProps} key={platform}>
-            <Box
-              component="img"
-              alt={platform}
-              src={`${CONFIG.assetsDir}/assets/icons/platforms/ic-${platform}.svg`}
-              sx={[
-                (theme) => ({
-                  width: 24,
-                  height: 24,
-                  ...theme.applyStyles('dark', {
-                    ...(platform === 'nextjs' && { filter: 'invert(1)' }),
-                  }),
-                }),
-              ]}
-            />
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: { xs: 1.5, sm: 2.5 },
+        }}
+      >
+        {(
+          [
+            { label: 'Kompaniyalar', icon: 'solar:case-minimalistic-bold' },
+            { label: 'Oshxonalar', icon: 'solar:tea-cup-bold' },
+            { label: 'Xodimlar', icon: 'solar:users-group-rounded-bold-duotone' },
+          ] as const
+        ).map((item) => (
+          <m.div {...motionProps} key={item.label}>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{ alignItems: 'center', typography: 'caption' }}
+            >
+              <Iconify width={22} icon={item.icon} color="primary.main" />
+              <Box component="span">{item.label}</Box>
+            </Stack>
           </m.div>
         ))}
       </Box>

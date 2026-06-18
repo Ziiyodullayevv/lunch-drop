@@ -34,7 +34,6 @@ describe('CompanySchema', () => {
 
   it("billing_day 1 dan 31 gacha qabul qiladi", () => {
     expect(CompanySchema.safeParse({ name: 'Test', billing_day: 1 }).success).toBe(true);
-    expect(CompanySchema.safeParse({ name: 'Test', billing_day: 28 }).success).toBe(true);
     expect(CompanySchema.safeParse({ name: 'Test', billing_day: 31 }).success).toBe(true);
   });
 

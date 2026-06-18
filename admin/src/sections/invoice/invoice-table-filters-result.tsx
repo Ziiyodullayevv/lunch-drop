@@ -25,16 +25,6 @@ export function InvoiceTableFiltersResult({ filters, totalResults, onResetPage, 
     updateFilters({ name: '' });
   }, [onResetPage, updateFilters]);
 
-  const handleRemoveService = useCallback(
-    (inputValue: string) => {
-      const newValue = currentFilters.service.filter((item) => item !== inputValue);
-
-      onResetPage();
-      updateFilters({ service: newValue });
-    },
-    [onResetPage, updateFilters, currentFilters.service]
-  );
-
   const handleRemoveStatus = useCallback(() => {
     onResetPage();
     updateFilters({ status: 'all' });
@@ -47,13 +37,7 @@ export function InvoiceTableFiltersResult({ filters, totalResults, onResetPage, 
 
   return (
     <FiltersResult totalResults={totalResults} onReset={() => resetFilters()} sx={sx}>
-      <FiltersBlock label="Service:" isShow={!!currentFilters.service.length}>
-        {currentFilters.service.map((item) => (
-          <Chip {...chipProps} key={item} label={item} onDelete={() => handleRemoveService(item)} />
-        ))}
-      </FiltersBlock>
-
-      <FiltersBlock label="Status:" isShow={currentFilters.status !== 'all'}>
+      <FiltersBlock label="Holat:" isShow={currentFilters.status !== 'all'}>
         <Chip
           {...chipProps}
           label={currentFilters.status}
@@ -63,7 +47,7 @@ export function InvoiceTableFiltersResult({ filters, totalResults, onResetPage, 
       </FiltersBlock>
 
       <FiltersBlock
-        label="Date:"
+        label="Sana:"
         isShow={Boolean(currentFilters.startDate && currentFilters.endDate)}
       >
         <Chip
@@ -73,7 +57,7 @@ export function InvoiceTableFiltersResult({ filters, totalResults, onResetPage, 
         />
       </FiltersBlock>
 
-      <FiltersBlock label="Keyword:" isShow={!!currentFilters.name}>
+      <FiltersBlock label="Qidiruv:" isShow={!!currentFilters.name}>
         <Chip {...chipProps} label={currentFilters.name} onDelete={handleRemoveKeyword} />
       </FiltersBlock>
     </FiltersResult>

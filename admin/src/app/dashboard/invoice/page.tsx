@@ -4,10 +4,16 @@ import { CONFIG } from 'src/global-config';
 
 import { InvoiceListView } from 'src/sections/invoice/view';
 
+import { PageRoleGuard } from 'src/auth/guard/page-role-guard';
+
 // ----------------------------------------------------------------------
 
-export const metadata: Metadata = { title: `Invoice list | Dashboard - ${CONFIG.appName}` };
+export const metadata: Metadata = { title: `Hisob-fakturalar | Dashboard - ${CONFIG.appName}` };
 
 export default function Page() {
-  return <InvoiceListView />;
+  return (
+    <PageRoleGuard allowedRoles={['company_admin']}>
+      <InvoiceListView />
+    </PageRoleGuard>
+  );
 }

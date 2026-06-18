@@ -7,6 +7,7 @@ export type KitchenRead = {
   name: string;
   description: string | null;
   phone: string | null;
+  image_url: string | null;
   lat: number;
   lng: number;
   order_cutoff_time: string;
@@ -22,6 +23,7 @@ export type KitchenCreate = {
   lng: number;
   description?: string | null;
   phone?: string | null;
+  image_url?: string | null;
   order_cutoff_time?: string;
   delivery_start_time?: string;
   delivery_end_time?: string;

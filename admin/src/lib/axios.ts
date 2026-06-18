@@ -27,6 +27,12 @@ axiosInstance.interceptors.request.use((config) => {
 // 401 → try refresh → retry; otherwise reject with readable message
 let _isRefreshing = false;
 let _failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+const PUBLIC_AUTH_ENDPOINTS = [
+  '/auth/admin-login',
+  '/auth/send-otp',
+  '/auth/verify-otp',
+  '/auth/admin-register',
+];
 
 function processQueue(error: unknown, token: string | null) {
   _failedQueue.forEach(({ resolve, reject }) => {
@@ -46,7 +52,7 @@ axiosInstance.interceptors.response.use(
       error?.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh-token') &&
-      !originalRequest.url?.includes('/auth/admin-login')
+      !PUBLIC_AUTH_ENDPOINTS.some((endpoint) => originalRequest.url?.includes(endpoint))
     ) {
       if (_isRefreshing) {
         // Queue this request until refresh completes
@@ -170,6 +176,7 @@ export const endpoints = {
     kitchen:        (id: string) => `/api/v1/super-admin/kitchens/${id}`,
     branches:       '/api/v1/super-admin/branches',
     branch:         (id: string) => `/api/v1/super-admin/branches/${id}`,
+    branchKitchens: (id: string) => `/api/v1/super-admin/branches/${id}/kitchens`,
     assignKitchens: (id: string) => `/api/v1/super-admin/branches/${id}/assign-kitchens`,
     pendingAdmins:  '/api/v1/super-admin/pending-admins',
     approveAdmin:   (id: string) => `/api/v1/super-admin/admins/${id}/approve`,
@@ -177,6 +184,8 @@ export const endpoints = {
     users:          '/api/v1/super-admin/users',
     user:           (id: string) => `/api/v1/super-admin/users/${id}`,
     blockUser:      (id: string) => `/api/v1/super-admin/users/${id}/block`,
+    orders:         '/api/v1/super-admin/orders',
+    order:          (id: string) => `/api/v1/super-admin/orders/${id}`,
   },
   // ----------------------------------------------------------------------
   // Kitchen Admin
@@ -192,6 +201,7 @@ export const endpoints = {
     schedules:    '/api/v1/kitchen/schedules',
     schedule:     (id: string) => `/api/v1/kitchen/schedules/${id}`,
     orders:       '/api/v1/kitchen/orders',
+    order:        (id: string) => `/api/v1/kitchen/orders/${id}`,
     orderStatus:  (id: string) => `/api/v1/kitchen/orders/${id}/status`,
   },
   // ----------------------------------------------------------------------

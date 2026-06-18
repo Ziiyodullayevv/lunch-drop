@@ -1,21 +1,25 @@
 'use client';
 
-import type { GeolocateResultEvent, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { FormEvent } from 'react';
+import type { MapRef, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
 
 import * as z from 'zod';
-import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useBoolean } from 'minimal-shared/hooks';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
+import Step from '@mui/material/Step';
 import Link from '@mui/material/Link';
 import Tabs from '@mui/material/Tabs';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
+import Stepper from '@mui/material/Stepper';
+import StepLabel from '@mui/material/StepLabel';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -25,9 +29,17 @@ import { RouterLink } from 'src/routes/components';
 
 import axios, { endpoints } from 'src/lib/axios';
 
-import { Map, MapMarker, MapControls } from 'src/components/map';
-import { Iconify } from 'src/components/iconify';
 import { Form, Field } from 'src/components/hook-form';
+import { Iconify, type IconifyName } from 'src/components/iconify';
+import {
+  Map,
+  MapMarker,
+  MapControls,
+  MapLocateButton,
+  type GeolocateCoords,
+  MapAddressAutocomplete,
+  type MapAddressSuggestion,
+} from 'src/components/map';
 
 import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
@@ -44,44 +56,70 @@ const Step1Schema = z.object({
 
 // Step 2: OTP verify
 const Step2Schema = z.object({
-  code: z.string().min(4, { message: 'Kod kamida 4 ta raqam' }),
+  code: z.string().length(6, { message: '6 xonali kodni kiriting' }),
 });
 
 // Step 3: Register details
-const Step3Schema = z.object({
-  full_name:         z.string().min(1, { message: 'Ism majburiy' }),
-  password:          z.string().min(6, { message: 'Parol kamida 6 ta belgi' }),
-  name:              z.string().min(1, { message: 'Tashkilot nomi majburiy' }),
-  description:       z.string().optional(),
-  institution_phone: z.string().optional(),
-  lat:               z.number().optional(),
-  lng:               z.number().optional(),
-});
+const Step3Schema = z
+  .object({
+    full_name:         z.string().min(1, { message: 'Ism majburiy' }),
+    password:          z.string().min(6, { message: 'Parol kamida 6 ta belgi' }),
+    confirm_password:  z.string().min(1, { message: 'Parolni tasdiqlang' }),
+    name:              z.string().min(1, { message: 'Tashkilot nomi majburiy' }),
+    description:       z.string().optional(),
+    institution_phone: z.string().optional(),
+    lat:               z.number().optional(),
+    lng:               z.number().optional(),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    path: ['confirm_password'],
+    message: 'Parollar mos emas',
+  });
 
 type Step1Values = z.infer<typeof Step1Schema>;
 type Step2Values = z.infer<typeof Step2Schema>;
 type Step3Values = z.infer<typeof Step3Schema>;
+type RegisterStep = 'phone' | 'otp' | 'personal' | 'organization' | 'location';
 
 // ----------------------------------------------------------------------
 
-function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
-  const [step, setStep]   = useState<1 | 2 | 3>(1);
+function RegisterFlow({
+  role,
+  onLockChange,
+}: {
+  role: 'kitchen_admin' | 'company_admin';
+  onLockChange: (locked: boolean) => void;
+}) {
+  const mapRef = useRef<MapRef | null>(null);
+  const submittedOtpRef = useRef('');
+  const [activeStep, setActiveStep] = useState<RegisterStep>('phone');
   const [phone, setPhone] = useState('');
   const [regToken, setRegToken] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [done, setDone]   = useState(false);
+  const [isOtpVerifying, setIsOtpVerifying] = useState(false);
   const showPassword = useBoolean();
 
   // Map state — only used when role === 'kitchen_admin'
   const [marker, setMarker]       = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [viewState, setViewState] = useState<Partial<ViewState>>({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG, zoom: 12 });
   const [hasLocation, setHasLocation] = useState(false);
+  const [addressSearch, setAddressSearch] = useState('');
 
   const step1 = useForm<Step1Values>({ resolver: zodResolver(Step1Schema), defaultValues: { phone: '' } });
   const step2 = useForm<Step2Values>({ resolver: zodResolver(Step2Schema), defaultValues: { code: '' } });
   const step3 = useForm<Step3Values>({
     resolver: zodResolver(Step3Schema),
-    defaultValues: { full_name: '', password: '', name: '', description: '', institution_phone: '', lat: undefined, lng: undefined },
+    defaultValues: {
+      full_name: '',
+      password: '',
+      confirm_password: '',
+      name: '',
+      description: '',
+      institution_phone: '',
+      lat: undefined,
+      lng: undefined,
+    },
   });
 
   const { setValue: setStep3Value } = step3;
@@ -97,16 +135,28 @@ function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
     [setStep3Value]
   );
 
-  const handleGeolocate = useCallback(
-    (e: GeolocateResultEvent) => {
-      const { latitude, longitude } = e.coords;
+  const handleLocate = useCallback(
+    ({ latitude, longitude }: GeolocateCoords) => {
       setMarker({ latitude, longitude });
       setViewState((prev) => ({ ...prev, latitude, longitude, zoom: 15 }));
-      setStep3Value('lat', latitude);
-      setStep3Value('lng', longitude);
+      setStep3Value('lat', latitude, { shouldDirty: true, shouldValidate: true });
+      setStep3Value('lng', longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
     },
     [setStep3Value]
+  );
+
+  const handleAddressSelect = useCallback(
+    (suggestion: MapAddressSuggestion) => {
+      setAddressSearch(suggestion.label);
+      handleLocate({ latitude: suggestion.lat, longitude: suggestion.lng });
+      mapRef.current?.flyTo({
+        center: [suggestion.lng, suggestion.lat],
+        zoom: 16,
+        duration: 900,
+      });
+    },
+    [handleLocate]
   );
 
   const onStep1 = step1.handleSubmit(async (data) => {
@@ -114,20 +164,57 @@ function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
       setError(null);
       await axios.post(endpoints.auth.sendOtp, { phone: data.phone });
       setPhone(data.phone);
-      setStep(2);
+      setActiveStep('otp');
     } catch (err) { setError(getErrorMessage(err)); }
   });
+
+  const verifyOtp = useCallback(
+    async (code: string) => {
+      if (!phone || isOtpVerifying) {
+        return;
+      }
+
+      try {
+        setError(null);
+        setIsOtpVerifying(true);
+        const res = await axios.post(endpoints.auth.verifyOtp, { phone, code });
+        setRegToken(res.data.registration_token);
+        setActiveStep('personal');
+      } catch (err) {
+        const status = typeof err === 'object' && err !== null ? (err as { status?: number }).status : undefined;
+        setError(status === 401 ? 'Tasdiqlash kodi noto‘g‘ri. Qayta urinib ko‘ring.' : getErrorMessage(err));
+      } finally {
+        setIsOtpVerifying(false);
+      }
+    },
+    [isOtpVerifying, phone]
+  );
 
   const onStep2 = step2.handleSubmit(async (data) => {
-    try {
-      setError(null);
-      const res = await axios.post(endpoints.auth.verifyOtp, { phone, code: data.code });
-      setRegToken(res.data.registration_token);
-      setStep(3);
-    } catch (err) { setError(getErrorMessage(err)); }
+    await verifyOtp(data.code);
   });
 
+  const otpCode = step2.watch('code');
+
+  useEffect(() => {
+    onLockChange(activeStep !== 'phone');
+  }, [activeStep, onLockChange]);
+
+  useEffect(() => {
+    if (activeStep !== 'otp' || otpCode.length !== 6 || submittedOtpRef.current === otpCode) {
+      return;
+    }
+
+    submittedOtpRef.current = otpCode;
+    void verifyOtp(otpCode);
+  }, [activeStep, otpCode, verifyOtp]);
+
   const onStep3 = step3.handleSubmit(async (data) => {
+    if (role === 'kitchen_admin' && (!hasLocation || data.lat == null || data.lng == null)) {
+      setError('Oshxona joylashuvini xaritada belgilang.');
+      return;
+    }
+
     try {
       setError(null);
       await axios.post(endpoints.auth.adminRegister, {
@@ -138,37 +225,161 @@ function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
         name:              data.name,
         description:       data.description        || undefined,
         institution_phone: data.institution_phone  || undefined,
-        ...(role === 'kitchen_admin' && {
-          lat: data.lat ?? 0,
-          lng: data.lng ?? 0,
-        }),
+        ...(role === 'kitchen_admin' && { lat: data.lat, lng: data.lng }),
       });
       setDone(true);
     } catch (err) { setError(getErrorMessage(err)); }
   });
 
+  const flowSteps: { key: RegisterStep; label: string; icon: IconifyName }[] = [
+    { key: 'phone', label: 'Telefon', icon: 'solar:phone-bold' },
+    { key: 'otp', label: 'SMS', icon: 'solar:shield-check-bold' },
+    { key: 'personal', label: 'Profil', icon: 'solar:user-rounded-bold' },
+    {
+      key: 'organization',
+      label: role === 'kitchen_admin' ? 'Oshxona' : 'Kompaniya',
+      icon: role === 'kitchen_admin' ? 'solar:cup-star-bold' : 'solar:home-angle-bold-duotone',
+    },
+  ];
+
+  if (role === 'kitchen_admin') {
+    flowSteps.push({ key: 'location', label: 'Joylashuv', icon: 'mingcute:location-fill' });
+  }
+
+  const activeStepIndex = flowSteps.findIndex((item) => item.key === activeStep);
+
+  const handleBack = () => {
+    setError(null);
+
+    const prevStep = flowSteps[activeStepIndex - 1]?.key;
+
+    if (prevStep) {
+      setActiveStep(prevStep);
+    }
+  };
+
+  const handleDetailsNext = async () => {
+    setError(null);
+
+    const fieldsByStep: Partial<Record<RegisterStep, (keyof Step3Values)[]>> = {
+      personal: ['full_name', 'password', 'confirm_password'],
+      organization: ['name', 'description', 'institution_phone'],
+    };
+
+    const fields = fieldsByStep[activeStep];
+    const isValid = fields ? await step3.trigger(fields) : true;
+
+    if (!isValid) {
+      return;
+    }
+
+    const nextStep = flowSteps[activeStepIndex + 1]?.key;
+
+    if (nextStep) {
+      setActiveStep(nextStep);
+    }
+  };
+
   if (done) {
     return (
-      <Alert severity="success">
-        Arizangiz qabul qilindi. Super admin ko'rib chiqib tasdiqlaydi.
-      </Alert>
+      <Stack spacing={2.5}>
+        <Alert severity="success">
+          Arizangiz qabul qilindi. Ma&apos;lumotlar tekshirilib, akkauntingiz tasdiqlangach
+          tizimga kirishingiz mumkin bo&apos;ladi.
+        </Alert>
+
+        <Button
+          fullWidth
+          size="large"
+          variant="contained"
+          component={RouterLink}
+          href={paths.auth.jwt.signIn}
+        >
+          Login qismiga qaytish
+        </Button>
+      </Stack>
     );
   }
 
-  const stepLabel  = { 1: 'Telefon raqam', 2: 'SMS kodni tasdiqlash', 3: "Ma'lumotlar" };
   const entityLabel = role === 'kitchen_admin' ? 'Oshxona nomi' : 'Kompaniya nomi';
-  const latVal = step3.watch('lat');
-  const lngVal = step3.watch('lng');
+  const isDetailsStep = activeStep === 'personal' || activeStep === 'organization' || activeStep === 'location';
+  const isFinalStep = (activeStep === 'organization' && role === 'company_admin') || activeStep === 'location';
+  const isLocationSubmitDisabled = role === 'kitchen_admin' && activeStep === 'location' && !hasLocation;
+
+  const handleDetailsSubmit = (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+
+    if (isFinalStep) {
+      void onStep3();
+      return;
+    }
+
+    void handleDetailsNext();
+  };
 
   return (
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Typography variant="caption" color="text.secondary">
-        {step}-qadam: {stepLabel[step]}
-      </Typography>
+      <Stack spacing={1.5}>
+        <Stepper
+          activeStep={activeStepIndex}
+          alternativeLabel
+          sx={{
+            mx: -1,
+            '& .MuiStepConnector-line': { borderColor: 'divider' },
+            '& .MuiStepLabel-label': {
+              mt: 0.75,
+              typography: 'caption',
+              color: 'text.disabled',
+              whiteSpace: 'nowrap',
+            },
+            '& .Mui-active .MuiStepLabel-label': { color: 'text.primary', fontWeight: 700 },
+            '& .Mui-completed .MuiStepLabel-label': { color: 'text.secondary' },
+          }}
+        >
+          {flowSteps.map((item) => (
+            <Step key={item.key}>
+              <StepLabel
+                slots={{
+                  stepIcon: ({ active, completed }) => (
+                    <Box
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        display: 'flex',
+                        borderRadius: '50%',
+                        alignItems: 'center',
+                        color: 'text.disabled',
+                        bgcolor: 'action.hover',
+                        justifyContent: 'center',
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        ...(active && {
+                          color: 'primary.contrastText',
+                          bgcolor: 'primary.main',
+                          borderColor: 'primary.main',
+                          boxShadow: (theme) => `0 8px 16px ${theme.palette.primary.main}29`,
+                        }),
+                        ...(completed && {
+                          color: 'primary.main',
+                          bgcolor: 'primary.lighter',
+                          borderColor: 'primary.light',
+                        }),
+                      }}
+                    >
+                      <Iconify width={16} icon={completed ? 'eva:checkmark-fill' : item.icon} />
+                    </Box>
+                  ),
+                }}
+              >
+                {item.label}
+              </StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Stack>
 
-      {step === 1 && (
+      {activeStep === 'phone' && (
         <Form methods={step1} onSubmit={onStep1}>
           <Stack spacing={2.5}>
             <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
@@ -179,78 +390,123 @@ function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
         </Form>
       )}
 
-      {step === 2 && (
+      {activeStep === 'otp' && (
         <Form methods={step2} onSubmit={onStep2}>
           <Stack spacing={2.5}>
             <Typography variant="body2" color="text.secondary">
-              {phone} raqamiga kod yuborildi
+              Tasdiqlash kodi{' '}
+              <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
+                {phone}
+              </Box>{' '}
+              raqamiga yuborildi
             </Typography>
-            <Field.Text name="code" label="SMS kod" placeholder="123456" slotProps={{ inputLabel: { shrink: true } }} />
-            <Button fullWidth size="large" type="submit" variant="contained" loading={step2.formState.isSubmitting}>
-              Tasdiqlash
-            </Button>
-            <Button size="small" color="inherit" onClick={() => setStep(1)}>
+            <Field.Code
+              name="code"
+              placeholder=""
+              slotProps={{
+                wrapper: { sx: { width: 1 } },
+                textField: {
+                  type: 'tel',
+                  disabled: isOtpVerifying,
+                },
+              }}
+              sx={{
+                gap: 1,
+                justifyContent: 'center',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1.25,
+                },
+              }}
+            />
+            <Button
+              fullWidth
+              size="large"
+              color="inherit"
+              variant="soft"
+              onClick={handleBack}
+              sx={{
+                bgcolor: 'action.hover',
+                '&:hover': { bgcolor: 'action.selected' },
+              }}
+            >
               Orqaga
             </Button>
           </Stack>
         </Form>
       )}
 
-      {step === 3 && (
-        <Form methods={step3} onSubmit={onStep3}>
+      {isDetailsStep && (
+        <Form methods={step3} onSubmit={handleDetailsSubmit}>
           <Stack spacing={2.5}>
-            <Divider><Typography variant="caption" color="text.secondary">Shaxsiy ma'lumotlar</Typography></Divider>
-
-            <Field.Text name="full_name" label="Ism Familiya" slotProps={{ inputLabel: { shrink: true } }} />
-
-            <Field.Text
-              name="password"
-              label="Parol"
-              type={showPassword.value ? 'text' : 'password'}
-              slotProps={{
-                inputLabel: { shrink: true },
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={showPassword.onToggle} edge="end">
-                        <Iconify icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-
-            <Divider><Typography variant="caption" color="text.secondary">Tashkilot ma'lumotlari</Typography></Divider>
-
-            <Field.Text name="name" label={entityLabel} slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.Text name="description" label="Tavsif (ixtiyoriy)" multiline rows={2} slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.Phone name="institution_phone" label="Tashkilot telefoni (ixtiyoriy)" country="UZ" />
-
-            {role === 'kitchen_admin' && (
+            {activeStep === 'personal' && (
               <>
-                <Divider>
-                  <Typography variant="caption" color="text.secondary">Joylashuv</Typography>
-                </Divider>
+                <Field.Text name="full_name" label="Ism Familiya" slotProps={{ inputLabel: { shrink: true } }} />
 
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Xaritadagi joylashuv — markerni sudrab o'rnating *
-                  </Typography>
+                <Field.Text
+                  name="password"
+                  label="Parol"
+                  type={showPassword.value ? 'text' : 'password'}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={showPassword.onToggle} edge="end">
+                            <Iconify icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
 
+                <Field.Text
+                  name="confirm_password"
+                  label="Parolni tasdiqlash"
+                  type={showPassword.value ? 'text' : 'password'}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={showPassword.onToggle} edge="end">
+                            <Iconify icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </>
+            )}
+
+            {activeStep === 'organization' && (
+              <>
+                <Field.Text name="name" label={entityLabel} slotProps={{ inputLabel: { shrink: true } }} />
+                <Field.Text name="description" label="Tavsif (ixtiyoriy)" multiline rows={2} slotProps={{ inputLabel: { shrink: true } }} />
+                <Field.Phone name="institution_phone" label="Tashkilot telefoni (ixtiyoriy)" country="UZ" />
+              </>
+            )}
+
+            {activeStep === 'location' && role === 'kitchen_admin' && (
+              <Stack spacing={1}>
+                <MapAddressAutocomplete
+                  value={addressSearch}
+                  onChange={setAddressSearch}
+                  onSelect={handleAddressSelect}
+                  latitude={marker.latitude}
+                  longitude={marker.longitude}
+                  label="Manzil qidirish"
+                />
+
+                <Box sx={{ position: 'relative' }}>
                   <Map
+                    ref={mapRef}
                     {...viewState}
                     onMove={(evt) => setViewState(evt.viewState)}
                     sx={{ height: 280, borderRadius: 2, overflow: 'hidden' }}
                   >
-                    <MapControls
-                      slotProps={{
-                        geolocate: {
-                          onGeolocate: handleGeolocate,
-                          positionOptions: { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
-                        },
-                      }}
-                    />
+                    <MapControls hideGeolocate />
                     <MapMarker
                       latitude={marker.latitude}
                       longitude={marker.longitude}
@@ -261,25 +517,43 @@ function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
                     />
                   </Map>
 
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    {hasLocation ? (
-                      <>
-                        <Typography variant="caption" color="text.secondary">Lat: {latVal?.toFixed(6)}</Typography>
-                        <Typography variant="caption" color="text.secondary">Lng: {lngVal?.toFixed(6)}</Typography>
-                      </>
-                    ) : (
-                      <Typography variant="caption" color="warning.main">
-                        Markerni sudrab oshxona joylashuvini belgilang
-                      </Typography>
-                    )}
+                  <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
+                </Box>
+
+                {!hasLocation && (
+                  <Box>
+                    <Typography variant="caption" color="warning.main">
+                      Markerni sudrab oshxona joylashuvini belgilang
+                    </Typography>
                   </Box>
-                </Stack>
-              </>
+                )}
+              </Stack>
             )}
 
-            <Button fullWidth size="large" type="submit" variant="contained" loading={step3.formState.isSubmitting}>
-              Ro'yxatdan o'tish
-            </Button>
+            <Divider sx={{ borderStyle: 'dashed' }} />
+
+            <Stack direction="row" spacing={1.5}>
+              <Button fullWidth size="large" color="inherit" variant="outlined" onClick={handleBack}>
+                Orqaga
+              </Button>
+
+              {isFinalStep ? (
+                <Button
+                  fullWidth
+                  size="large"
+                  type="submit"
+                  variant="contained"
+                  disabled={isLocationSubmitDisabled}
+                  loading={step3.formState.isSubmitting}
+                >
+                  Ariza yuborish
+                </Button>
+              ) : (
+                <Button fullWidth size="large" type="button" variant="contained" onClick={handleDetailsNext}>
+                  Davom etish
+                </Button>
+              )}
+            </Stack>
           </Stack>
         </Form>
       )}
@@ -291,11 +565,15 @@ function RegisterFlow({ role }: { role: 'kitchen_admin' | 'company_admin' }) {
 
 export function JwtSignUpView() {
   const [tab, setTab] = useState<'kitchen' | 'company'>('kitchen');
+  const [roleLocked, setRoleLocked] = useState(false);
+  const handleRoleLockChange = useCallback((locked: boolean) => {
+    setRoleLocked(locked);
+  }, []);
 
   return (
     <>
       <FormHead
-        title="Ro'yxatdan o'tish"
+        title="Ro‘yxatdan o‘tish"
         description={
           <>
             Akkauntingiz bormi?{' '}
@@ -307,27 +585,35 @@ export function JwtSignUpView() {
         sx={{ textAlign: { xs: 'center', md: 'left' } }}
       />
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Ro'yxatdan o'tgach akkauntingiz <strong>super admin tomonidan tekshiriladi</strong>.
-      </Alert>
-
       <Box sx={{ mb: 3 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
+        <Tabs
+          value={tab}
+          onChange={(_, v) => {
+            if (!roleLocked) {
+              setTab(v);
+            }
+          }}
+          variant="fullWidth"
+        >
           <Tab value="kitchen" label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Iconify icon="solar:cup-star-bold" /> Oshxona admin
             </Box>
-          } />
+          } disabled={roleLocked && tab !== 'kitchen'} />
           <Tab value="company" label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Iconify icon="solar:home-angle-bold-duotone" /> Kompaniya admin
             </Box>
-          } />
+          } disabled={roleLocked && tab !== 'company'} />
         </Tabs>
       </Box>
 
-      {tab === 'kitchen' && <RegisterFlow key="kitchen" role="kitchen_admin" />}
-      {tab === 'company' && <RegisterFlow key="company" role="company_admin" />}
+      {tab === 'kitchen' && (
+        <RegisterFlow key="kitchen" role="kitchen_admin" onLockChange={handleRoleLockChange} />
+      )}
+      {tab === 'company' && (
+        <RegisterFlow key="company" role="company_admin" onLockChange={handleRoleLockChange} />
+      )}
     </>
   );
 }

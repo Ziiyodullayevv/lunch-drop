@@ -32,8 +32,8 @@ export * from './rhf-number-input';
 
 export * from './rhf-autocomplete';
 
+export * from './rhf-image-upload';
+
 export * from './rhf-country-select';
 
 export * from './rhf-billing-day-picker';
-
-export * from './rhf-image-upload';

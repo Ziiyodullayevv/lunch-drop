@@ -6,10 +6,11 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
 
 import { CONFIG } from 'src/global-config';
 
-import { varScale, MotionViewport } from 'src/components/animate';
+import { varFade, varScale, MotionViewport } from 'src/components/animate';
 
 import { SectionTitle } from './components/section-title';
 import { FloatLine, FloatDotIcon } from './components/svg-elements';
@@ -44,50 +45,77 @@ const renderLines = () => (
 
 export function HomeIntegrations({ sx, ...other }: BoxProps) {
   const renderDescription = () => (
-    <SectionTitle
-      caption="Integrations"
-      title="Robust integration"
-      txtGradient="framework"
-      description={
-        <>
-          <Box component="span" sx={{ mb: 1, display: 'block' }}>
-            A comprehensive suite of integrations offers diverse functionalities.
-          </Box>
+    <Stack spacing={5}>
+      <SectionTitle
+        caption="Oddiy va boshqariladigan"
+        title="Buyurtmadan"
+        txtGradient="yetkazishgacha"
+        description="Har bir bosqich aniq rol va statuslar asosida ishlaydi. Kompaniya, oshxona va xodim bir xil yangilangan ma’lumotni ko‘radi."
+        sx={{ textAlign: { xs: 'center', md: 'left' } }}
+      />
 
-          <Box
-            component="span"
-            sx={{ fontStyle: 'italic', color: 'text.disabled', typography: 'caption' }}
+      <Stack spacing={3}>
+        {STEPS.map((step, index) => (
+          <Stack
+            key={step.title}
+            component={m.div}
+            variants={varFade('inUp', { distance: 24 })}
+            direction="row"
+            spacing={2}
           >
-            * Only includes authentication methods.
-            <br />* Database not included.
-          </Box>
-        </>
-      }
-      sx={{ textAlign: { xs: 'center', md: 'left' } }}
-    />
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                flexShrink: 0,
+                display: 'flex',
+                borderRadius: '50%',
+                alignItems: 'center',
+                color: 'primary.contrastText',
+                bgcolor: 'primary.main',
+                justifyContent: 'center',
+                typography: 'subtitle2',
+              }}
+            >
+              {index + 1}
+            </Box>
+
+            <Box>
+              <Typography variant="h6">{step.title}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
+                {step.description}
+              </Typography>
+            </Box>
+          </Stack>
+        ))}
+      </Stack>
+    </Stack>
   );
 
   const renderImage = () => (
-    <Box
-      component={m.img}
-      variants={{ ...varScale('in'), initial: { scale: 0.8, opacity: 0 } }}
-      alt="Integration"
-      src={`${CONFIG.assetsDir}/assets/illustrations/illustration-integration.webp`}
-      sx={{ width: 720, objectFit: 'cover', aspectRatio: '1/1' }}
-    />
+    <Box sx={{ position: 'relative' }}>
+      <Box
+        component={m.img}
+        variants={{ ...varScale('in'), initial: { scale: 0.8, opacity: 0 } }}
+        alt="Lunch Drop ish jarayoni"
+        src={`${CONFIG.assetsDir}/assets/illustrations/illustration-integration.webp`}
+        sx={{ width: 720, objectFit: 'cover', aspectRatio: '1/1' }}
+      />
+
+    </Box>
   );
 
   return (
     <Box
       component="section"
-      sx={[{ pt: 10, position: 'relative' }, ...(Array.isArray(sx) ? sx : [sx])]}
+      sx={[{ py: { xs: 10, md: 15 }, position: 'relative' }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...other}
     >
       <MotionViewport>
         {renderLines()}
 
         <Container>
-          <Grid container spacing={{ xs: 5, md: 8 }}>
+          <Grid container spacing={{ xs: 8, md: 10 }} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, md: 6, lg: 5 }}>{renderDescription()}</Grid>
 
             <Grid sx={{ textAlign: { xs: 'center', md: 'right' } }} size={{ xs: 12, md: 6, lg: 7 }}>
@@ -99,3 +127,21 @@ export function HomeIntegrations({ sx, ...other }: BoxProps) {
     </Box>
   );
 }
+
+// ----------------------------------------------------------------------
+
+const STEPS = [
+  {
+    title: 'Kompaniya tizimni sozlaydi',
+    description: 'Filiallar, xodimlar va ularga xizmat ko‘rsatuvchi oshxonalar biriktiriladi.',
+  },
+  {
+    title: 'Xodim mobil ilovada buyurtma beradi',
+    description: 'Mavjud menyudan taom tanlanadi va buyurtma belgilangan vaqtgacha yuboriladi.',
+  },
+  {
+    title: 'Oshxona tayyorlaydi va yetkazadi',
+    description:
+      'Buyurtmalar jamlanadi, tayyorlash holati yangilanadi va kompaniyaga yetkazib beriladi.',
+  },
+];

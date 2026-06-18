@@ -5,19 +5,19 @@ import type { OrderStatus } from 'src/lib/api/orders';
 import dayjs from 'dayjs';
 import { useState, useCallback } from 'react';
 
-import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
-import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
@@ -26,8 +26,8 @@ import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
 import { DashboardContent } from 'src/layouts/dashboard';
+import { emptyOrderAnalytics } from 'src/lib/order-analytics';
 
-import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
@@ -39,17 +39,20 @@ import {
   TablePaginationCustom,
 } from 'src/components/table';
 
+import { OrderAnalytics } from './order-analytics';
+import { OrderStatusTabs } from './order-status-tabs';
+import { buildCompanyOrdersParams } from './company-orders-data';
 import { useBulkConfirm, useCompanyOrders } from '../hooks/use-orders';
 
 // ----------------------------------------------------------------------
 
-const STATUS_TABS: { value: OrderStatus | 'all'; label: string }[] = [
-  { value: 'all',        label: 'Barchasi'       },
-  { value: 'created',    label: 'Yangi'          },
-  { value: 'preparing',  label: 'Tayyorlanmoqda' },
-  { value: 'on_the_way', label: "Yo'lda"         },
-  { value: 'delivered',  label: 'Yetkazildi'     },
-  { value: 'cancelled',  label: 'Bekor'          },
+const STATUS_TABS = [
+  { value: 'all',        label: 'Barchasi',       color: 'default' as const },
+  { value: 'created',    label: 'Yangi',          color: 'default' as const },
+  { value: 'preparing',  label: 'Tayyorlanmoqda', color: 'warning' as const },
+  { value: 'on_the_way', label: "Yo'lda",         color: 'info' as const },
+  { value: 'delivered',  label: 'Yetkazildi',     color: 'success' as const },
+  { value: 'cancelled',  label: 'Bekor',          color: 'error' as const },
 ];
 
 const STATUS_COLOR: Record<string, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
@@ -81,26 +84,33 @@ const TABLE_HEAD = [
 export function CompanyOrdersView() {
   const table = useTable({ defaultRowsPerPage: 10 });
   const [tabStatus, setTabStatus] = useState<OrderStatus | 'all'>('all');
+  const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(dayjs());
+  const dateError = Boolean(startDate && endDate && startDate.isAfter(endDate, 'day'));
 
-  const today = dayjs().format('YYYY-MM-DD');
-
-  const queryParams = {
-    target_date:  today,
-    order_status: tabStatus === 'all' ? undefined : tabStatus,
-    limit:        table.rowsPerPage,
-    offset:       table.page * table.rowsPerPage,
-  };
+  const queryParams = buildCompanyOrdersParams({
+    startDate: startDate?.isValid() ? startDate.format('YYYY-MM-DD') : '',
+    endDate: endDate?.isValid() ? endDate.format('YYYY-MM-DD') : '',
+    status: tabStatus,
+    limit: table.rowsPerPage,
+    offset: table.page * table.rowsPerPage,
+  });
 
   const { data, isLoading, isError, error } = useCompanyOrders(queryParams);
   const bulkConfirm = useBulkConfirm();
 
   const orders    = data?.items ?? [];
   const total     = data?.total ?? 0;
+  const statusCounts = data?.status_counts ?? {
+    all: tabStatus === 'all' ? total : 0,
+    created: tabStatus === 'created' ? total : 0,
+    preparing: tabStatus === 'preparing' ? total : 0,
+    on_the_way: tabStatus === 'on_the_way' ? total : 0,
+    delivered: tabStatus === 'delivered' ? total : 0,
+    cancelled: tabStatus === 'cancelled' ? total : 0,
+  };
 
-  // on_the_way buyurtmalar soni — faqat barcha statuslar ko'rsatilganda
-  const onTheWayCount = tabStatus === 'all' || tabStatus === 'on_the_way'
-    ? orders.filter((o) => o.status === 'on_the_way').length
-    : 0;
+  const onTheWayCount = statusCounts.on_the_way ?? 0;
 
   const handleBulkConfirm = useCallback(async () => {
     try {
@@ -141,30 +151,75 @@ export function CompanyOrdersView() {
         </Alert>
       )}
 
+      <OrderAnalytics data={data?.analytics ?? emptyOrderAnalytics()} />
+
       <Card>
-        <Tabs
+        <OrderStatusTabs
           value={tabStatus}
-          onChange={(_, val) => { setTabStatus(val); table.onResetPage(); }}
-          sx={{ px: 2.5, borderBottom: 1, borderColor: 'divider' }}
+          tabs={STATUS_TABS}
+          counts={statusCounts}
+          onChange={(value) => {
+            setTabStatus(value as OrderStatus | 'all');
+            table.onResetPage();
+          }}
+        />
+
+        <Box
+          sx={{
+            p: 2.5,
+            gap: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            flexDirection: { xs: 'column', sm: 'row' },
+          }}
         >
-          {STATUS_TABS.map((tab) => (
-            <Tab
-              key={tab.value}
-              value={tab.value}
-              label={tab.label}
-              iconPosition="end"
-              icon={
-                <Label
-                  variant={tabStatus === tab.value ? 'filled' : 'soft'}
-                  color={STATUS_COLOR[tab.value] ?? 'default'}
-                  sx={{ ml: 0.5 }}
-                >
-                  {tabStatus === tab.value ? total : ''}
-                </Label>
-              }
-            />
-          ))}
-        </Tabs>
+          <DatePicker
+            label="Boshlanish sanasi"
+            value={startDate}
+            maxDate={endDate ?? dayjs()}
+            onChange={(value) => {
+              setStartDate(value);
+              table.onResetPage();
+            }}
+            slotProps={{ textField: { fullWidth: true } }}
+            sx={{ width: { xs: 1, sm: 240 } }}
+          />
+
+          <DatePicker
+            label="Tugash sanasi"
+            value={endDate}
+            minDate={startDate ?? undefined}
+            maxDate={dayjs()}
+            onChange={(value) => {
+              setEndDate(value);
+              table.onResetPage();
+            }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                error: dateError,
+                helperText: dateError
+                  ? "Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas"
+                  : undefined,
+              },
+            }}
+            sx={{ width: { xs: 1, sm: 240 } }}
+          />
+
+          {(startDate || !endDate || !endDate.isSame(dayjs(), 'day')) && (
+            <Button
+              color="inherit"
+              startIcon={<Iconify icon="solar:restart-bold" />}
+              onClick={() => {
+                setStartDate(null);
+                setEndDate(dayjs());
+                table.onResetPage();
+              }}
+            >
+              Tozalash
+            </Button>
+          )}
+        </Box>
 
         <Scrollbar sx={{ minHeight: 444 }}>
           <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 700 }}>

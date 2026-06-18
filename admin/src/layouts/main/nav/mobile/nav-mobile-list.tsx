@@ -2,7 +2,7 @@ import type { NavListProps } from '../types';
 
 import { useRef, useCallback } from 'react';
 import { useBoolean } from 'minimal-shared/hooks';
-import { varAlpha, isActiveLink, isExternalLink } from 'minimal-shared/utils';
+import { varAlpha, isExternalLink } from 'minimal-shared/utils';
 
 import Collapse from '@mui/material/Collapse';
 
@@ -15,6 +15,7 @@ import { navSectionClasses, NavSectionVertical } from 'src/components/nav-sectio
 
 import { NavLi } from '../components';
 import { NavItem } from './nav-mobile-item';
+import { useMainNavActive } from '../use-main-nav-active';
 
 // ----------------------------------------------------------------------
 
@@ -26,7 +27,7 @@ export function NavList({ data, sx, ...other }: NavListProps) {
   const isNotComponentsPath = !pathname.startsWith(paths.components);
   const isOpenPath = !!data.children && isNotRootOrDocs && isNotComponentsPath;
 
-  const isActive = isActiveLink(pathname, data.path, data.deepMatch ?? !!data.children);
+  const isActive = useMainNavActive(pathname, data.path, data.deepMatch ?? !!data.children);
 
   const { value: open, onToggle } = useBoolean(isOpenPath);
 

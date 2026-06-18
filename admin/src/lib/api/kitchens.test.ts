@@ -26,6 +26,7 @@ const mockFetcher = vi.mocked(fetcher);
 
 const mockKitchen = {
   id: 'k-1', name: "Ali's Kitchen", description: null, phone: null,
+  image_url: null,
   lat: 41.2995, lng: 69.2401,
   order_cutoff_time: '10:30:00', delivery_start_time: '12:30:00', delivery_end_time: '13:00:00',
   is_active: true, created_at: '2024-01-01T00:00:00Z',

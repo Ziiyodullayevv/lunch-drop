@@ -133,7 +133,7 @@ export function MenuCreateView() {
                 Bekor qilish
               </Button>
               <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
-                Qo'shish
+                Qo&apos;shish
               </LoadingButton>
             </Box>
           </Stack>

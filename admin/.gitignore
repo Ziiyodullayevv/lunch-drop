@@ -28,6 +28,10 @@ yarn-error.log*
 # environment variables
 .env*
 
+# server-only secrets
+/.secrets/*
+!/.secrets/README.md
+
 # deployment
 .vercel
 .netlify

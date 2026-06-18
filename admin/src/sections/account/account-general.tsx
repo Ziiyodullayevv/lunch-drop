@@ -2,96 +2,237 @@
 
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useBoolean } from 'minimal-shared/hooks';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
 
-import axios from 'src/lib/axios';
+import { uploadImage } from 'src/lib/api/uploads';
+import { getImagePreviewUrl } from 'src/lib/image-url';
+import {
+  type AccountUser,
+  fetchAccountProfile,
+  type AccountProfile,
+  updateAccountProfile,
+} from 'src/lib/api/account';
 
 import { toast } from 'src/components/snackbar';
+import { Iconify } from 'src/components/iconify';
+import { UploadAvatar } from 'src/components/upload';
 import { Form, Field } from 'src/components/hook-form';
 
 import { useAuthContext } from 'src/auth/hooks';
 
 // ----------------------------------------------------------------------
 
-const Schema = z.object({
-  name: z.string().min(1, { message: 'Name is required' }),
-  phone: z.string().min(1, { message: 'Phone is required' }),
-});
+const Schema = z
+  .object({
+    name: z.string().min(1, { message: 'Ism kiritilishi shart' }),
+    password: z.string(),
+    confirmPassword: z.string(),
+  })
+  .refine((value) => !value.password || value.password.length >= 6, {
+    message: "Parol kamida 6 ta belgidan iborat bo'lishi kerak",
+    path: ['password'],
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: 'Parollar bir xil emas',
+    path: ['confirmPassword'],
+  });
 
 type FormValues = z.infer<typeof Schema>;
+
+const ROLE_LABELS: Record<AccountUser['role'], string> = {
+  super_admin: 'Super admin',
+  company_admin: 'Company admin',
+  kitchen_admin: 'Kitchen admin',
+  employee: 'Employee',
+};
+
+const ROLE_COLORS: Record<
+  AccountUser['role'],
+  'error' | 'info' | 'success' | 'warning'
+> = {
+  super_admin: 'error',
+  company_admin: 'info',
+  kitchen_admin: 'warning',
+  employee: 'success',
+};
 
 // ----------------------------------------------------------------------
 
 export function AccountGeneral() {
   const { user, checkUserSession } = useAuthContext();
+  const [profile, setProfile] = useState<AccountProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const showPassword = useBoolean();
+  const accountUser = user as AccountUser | null;
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(Schema),
     values: {
-      name: user?.name ?? '',
-      phone: user?.phone ?? '',
+      name: profile?.name ?? '',
+      password: '',
+      confirmPassword: '',
     },
   });
 
-  const { handleSubmit, formState: { isSubmitting } } = methods;
+  const {
+    handleSubmit,
+    formState: { isSubmitting },
+  } = methods;
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProfile() {
+      if (!accountUser) {
+        if (active) setProfileLoading(false);
+        return;
+      }
+
+      setProfileLoading(true);
+      try {
+        const nextProfile = await fetchAccountProfile();
+        if (active) setProfile(nextProfile);
+      } catch (err: unknown) {
+        if (active) {
+          toast.error(err instanceof Error ? err.message : 'Profil yuklanmadi');
+        }
+      } finally {
+        if (active) setProfileLoading(false);
+      }
+    }
+
+    loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [accountUser]);
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      await axios.patch(`/api/v1/auth/me`, {
-        name: data.name,
-        phone: data.phone,
+      const updatedProfile = await updateAccountProfile({
+        name: data.name.trim(),
+        ...(data.password ? { password: data.password } : {}),
+      });
+      setProfile(updatedProfile);
+      methods.reset({
+        name: updatedProfile.name,
+        password: '',
+        confirmPassword: '',
       });
       await checkUserSession?.();
       toast.success('Profil yangilandi!');
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xatolik yuz berdi');
     }
   });
 
-  const initials = (user?.name ?? user?.phone ?? '?')
-    .split(' ')
-    .map((w: string) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const handleAvatarDrop = async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    setAvatarUploading(true);
+    try {
+      const { url } = await uploadImage(file, 'avatars');
+      const updatedProfile = await updateAccountProfile({ avatar_url: url });
+      setProfile(updatedProfile);
+      await checkUserSession?.();
+      toast.success('Profil rasmi yangilandi!');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Profil rasmi yangilanmadi');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  if (profileLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Form methods={methods} onSubmit={onSubmit}>
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ pt: 6, pb: 5, px: 3, textAlign: 'center' }}>
-            <Avatar
+          <Card
+            sx={{
+              pt: 4,
+              pb: 3,
+              px: 3,
+              textAlign: 'center',
+              position: 'relative',
+            }}
+          >
+            <Chip
+              label={profile?.accountStatus === 'approved' ? 'Faol' : 'Kutilmoqda'}
+              color={profile?.accountStatus === 'approved' ? 'success' : 'warning'}
+              variant="soft"
               sx={{
-                mx: 'auto',
-                width: 96,
-                height: 96,
-                fontSize: 32,
+                top: 24,
+                right: 24,
+                height: 28,
+                fontSize: 12,
                 fontWeight: 700,
-                bgcolor: 'primary.main',
-                mb: 2,
+                position: 'absolute',
+                '& .MuiChip-label': { px: 1.25 },
               }}
-            >
-              {initials}
-            </Avatar>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {user?.name ?? '—'}
+            />
+
+            <Box sx={{ mt: 6 }}>
+              <UploadAvatar
+                value={profile?.avatarUrl ? getImagePreviewUrl(profile.avatarUrl) : null}
+                loading={avatarUploading}
+                onDrop={handleAvatarDrop}
+                maxSize={3 * 1024 * 1024}
+              />
+            </Box>
+
+            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 2 }}>
+              Ruxsat etilgan *.jpeg, *.jpg, *.png, *.gif
+              <br />
+              Maksimal hajm: 3 MB
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {user?.role?.replace('_', ' ')}
-            </Typography>
+
+            <Stack spacing={1.25} sx={{ mt: 3.5, alignItems: 'center' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                {profile?.name || accountUser?.name || '—'}
+              </Typography>
+              {profile?.role && (
+                <Chip
+                  label={ROLE_LABELS[profile.role]}
+                  color={ROLE_COLORS[profile.role]}
+                  variant="soft"
+                  sx={{
+                    height: 28,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    '& .MuiChip-label': { px: 1.25 },
+                  }}
+                />
+              )}
+            </Stack>
           </Card>
         </Grid>
 
         <Grid size={{ xs: 12, md: 8 }}>
-          <Card sx={{ p: 3 }}>
+          <Card sx={{ p: { xs: 2.5, md: 4 } }}>
             <Box
               sx={{
                 rowGap: 3,
@@ -100,13 +241,63 @@ export function AccountGeneral() {
                 gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' },
               }}
             >
-              <Field.Text name="name" label="To'liq ism" slotProps={{ inputLabel: { shrink: true } }} />
-              <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
+              <Field.Text
+                name="name"
+                label="To'liq ism"
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Telefon raqam"
+                value={profile?.phone ?? accountUser?.phone ?? ''}
+                disabled
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Rol"
+                value={profile?.role.replace(/_/g, ' ') ?? ''}
+                disabled
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Account holati"
+                value={profile?.isActive ? 'Faol' : 'Faol emas'}
+                disabled
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <Field.Text
+                name="password"
+                label="Yangi parol"
+                type={showPassword.value ? 'text' : 'password'}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={showPassword.onToggle} edge="end">
+                          <Iconify
+                            icon={
+                              showPassword.value
+                                ? 'solar:eye-bold'
+                                : 'solar:eye-closed-bold'
+                            }
+                          />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <Field.Text
+                name="confirmPassword"
+                label="Yangi parolni tasdiqlang"
+                type={showPassword.value ? 'text' : 'password'}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
             </Box>
 
-            <Stack sx={{ mt: 3, alignItems: 'flex-end' }}>
-              <Button type="submit" variant="contained" loading={isSubmitting}>
-                Saqlash
+            <Stack sx={{ mt: 4, alignItems: 'flex-end' }}>
+              <Button type="submit" variant="contained" size="large" loading={isSubmitting}>
+                O&apos;zgarishlarni saqlash
               </Button>
             </Stack>
           </Card>

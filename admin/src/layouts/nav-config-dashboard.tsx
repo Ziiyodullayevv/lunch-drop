@@ -28,7 +28,7 @@ const ICONS = {
 
 // Role → visible pages:
 //   super_admin   — Dashboard, Companies, Branches, Kitchens, Orders, Grouped Orders, Users, Analytics
-//   company_admin — Dashboard, Branches, Kitchens, Orders, Grouped Orders, Users
+//   company_admin — Dashboard, Branches, Kitchens, Orders, Grouped Orders, Users, Invoices
 //   kitchen_admin — Dashboard, Menu, Grouped Orders
 //   employee      — Dashboard, Orders
 
@@ -37,6 +37,12 @@ export const navData: NavSectionProps['data'] = [
     subheader: 'Umumiy',
     items: [
       { title: 'Dashboard', path: paths.dashboard.root, icon: ICONS.dashboard },
+      {
+        title: 'Xarita',
+        path: paths.dashboard.map,
+        icon: ICONS.map,
+        allowedRoles: ['super_admin', 'company_admin', 'kitchen_admin'],
+      },
     ],
   },
   {
@@ -57,6 +63,30 @@ export const navData: NavSectionProps['data'] = [
         path: paths.dashboard.branch.root,
         icon: ICONS.booking,
         allowedRoles: ['company_admin'],
+        children: [
+          { title: 'Barchasi', path: paths.dashboard.branch.root },
+          { title: "Qo'shish", path: paths.dashboard.branch.new },
+        ],
+      },
+      {
+        title: 'Xodimlar',
+        path: paths.dashboard.employee.list,
+        icon: ICONS.user,
+        allowedRoles: ['company_admin'],
+        children: [
+          { title: 'Barchasi', path: paths.dashboard.employee.list },
+          { title: 'Yaratish', path: paths.dashboard.employee.new },
+        ],
+      },
+      {
+        title: 'Foydalanuvchilar',
+        path: paths.dashboard.user.list,
+        icon: ICONS.user,
+        allowedRoles: ['super_admin'],
+        children: [
+          { title: 'Barchasi', path: paths.dashboard.user.list },
+          { title: "Qo'shish", path: paths.dashboard.user.new },
+        ],
       },
       {
         title: 'Oshxonalar',
@@ -79,31 +109,15 @@ export const navData: NavSectionProps['data'] = [
         ],
       },
       {
-        title: 'Sozlamalar',
-        path: paths.dashboard.kitchen.settings,
-        icon: ICONS.lock,
-        allowedRoles: ['kitchen_admin'],
-      },
-      {
         title: 'Buyurtmalar',
         path: paths.dashboard.order.root,
         icon: ICONS.order,
         allowedRoles: ['super_admin', 'company_admin', 'kitchen_admin', 'employee'],
       },
       {
-        title: 'Foydalanuvchilar',
-        path: paths.dashboard.user.list,
-        icon: ICONS.user,
-        allowedRoles: ['super_admin'],
-        children: [
-          { title: 'Barchasi', path: paths.dashboard.user.list },
-          { title: "Qo'shish", path: paths.dashboard.user.new },
-        ],
-      },
-      {
-        title: 'Xodimlar',
-        path: paths.dashboard.employee.list,
-        icon: ICONS.user,
+        title: 'Hisob-fakturalar',
+        path: paths.dashboard.invoice.root,
+        icon: ICONS.banking,
         allowedRoles: ['company_admin'],
       },
     ],
@@ -112,10 +126,10 @@ export const navData: NavSectionProps['data'] = [
     subheader: 'Tizim',
     items: [
       {
-        title: 'Xarita',
-        path: paths.dashboard.map,
-        icon: ICONS.map,
-        allowedRoles: ['super_admin'],
+        title: 'Sozlamalar',
+        path: paths.dashboard.kitchen.settings,
+        icon: ICONS.lock,
+        allowedRoles: ['kitchen_admin'],
       },
     ],
   },

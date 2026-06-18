@@ -64,9 +64,15 @@ function Group({
 }: NavGroupProps) {
   const groupOpen = useBoolean(true);
 
+  const visibleItems = checkPermissions
+    ? items.filter((item) => !item.allowedRoles || !checkPermissions(item.allowedRoles))
+    : items;
+
+  if (visibleItems.length === 0) return null;
+
   const renderContent = () => (
     <NavUl sx={{ gap: 'var(--nav-item-gap)' }}>
-      {items.map((list) => (
+      {visibleItems.map((list) => (
         <NavList
           key={list.title}
           data={list}

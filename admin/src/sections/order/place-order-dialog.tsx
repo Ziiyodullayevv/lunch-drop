@@ -26,7 +26,7 @@ import { fCurrency } from 'src/utils/format-number';
 import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
 
-import { useEmployeeStatus, useEmployeeMenu, usePlaceOrder } from './hooks/use-orders';
+import { usePlaceOrder, useEmployeeMenu, useEmployeeStatus } from './hooks/use-orders';
 
 // ----------------------------------------------------------------------
 
@@ -90,10 +90,6 @@ export function PlaceOrderDialog({ open, onClose, onSuccess }: Props) {
   };
 
   const isLoading = statusLoading || menuLoading;
-
-  const currentStepLabel = needsBranchStep
-    ? step === 0 ? 'Filial tanlash' : 'Taom tanlash'
-    : 'Taom tanlash';
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">

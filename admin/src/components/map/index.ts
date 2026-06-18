@@ -13,3 +13,5 @@ export * from './use-geolocate';
 export * from './map-locate-button';
 
 export * from './use-map-marker-popup';
+
+export * from './map-address-autocomplete';

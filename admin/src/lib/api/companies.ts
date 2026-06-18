@@ -104,6 +104,47 @@ export function fetchBranches(params?: { limit?: number; offset?: number; compan
   return fetcher<PageBranch>([endpoints.superAdmin.branches, { params }]);
 }
 
+async function fetchBranchKitchenIds(branchId: string): Promise<string[]> {
+  const candidates = [
+    endpoints.superAdmin.branchKitchens(branchId),
+    endpoints.company.branchKitchens(branchId),
+  ];
+
+  for (const endpoint of candidates) {
+    try {
+      const response = await axiosInstance.get<Array<{ id: string }>>(endpoint);
+      return response.data.map((kitchen) => kitchen.id);
+    } catch {
+      // Some roles/backends do not expose both endpoints. Try the next read path.
+    }
+  }
+
+  return [];
+}
+
+export async function fetchBranchesWithKitchenIds(params?: {
+  limit?: number;
+  offset?: number;
+  company_id?: string;
+}) {
+  const page = await fetchBranches(params);
+  const items = await Promise.all(
+    page.items.map(async (branch) => {
+      try {
+        const detail = await fetchBranch(branch.id);
+        const kitchenIds =
+          detail.kitchen_ids ?? branch.kitchen_ids ?? (await fetchBranchKitchenIds(branch.id));
+
+        return { ...branch, kitchen_ids: kitchenIds };
+      } catch {
+        return branch;
+      }
+    })
+  );
+
+  return { ...page, items };
+}
+
 export function fetchBranch(id: string) {
   return fetcher<BranchRead>(endpoints.superAdmin.branch(id));
 }
@@ -125,7 +166,9 @@ export function deleteBranch(id: string) {
 }
 
 export function assignKitchens(branchId: string, kitchen_ids: string[]) {
-  return axiosInstance.post(endpoints.superAdmin.assignKitchens(branchId), { kitchen_ids });
+  return axiosInstance
+    .post<CompanyKitchenRead[]>(endpoints.superAdmin.assignKitchens(branchId), { kitchen_ids })
+    .then((r) => r.data);
 }
 
 // ------------------ company_admin ------------------
@@ -165,11 +208,18 @@ export type CompanyKitchenRead = {
   name: string;
   description: string | null;
   phone: string | null;
+  image_url: string | null;
+  lat: number;
+  lng: number;
   is_active: boolean;
   order_cutoff_time: string;
   delivery_start_time: string;
   delivery_end_time: string;
   created_at: string;
+};
+
+export type CompanyKitchenCatalogRead = CompanyKitchenRead & {
+  connected_branch_ids: string[];
 };
 
 export type PageCompanyKitchen = {
@@ -179,12 +229,65 @@ export type PageCompanyKitchen = {
   offset: number;
 };
 
-export function fetchCompanyKitchens() {
-  return fetcher<CompanyKitchenRead[]>(endpoints.company.kitchens);
+async function fetchAllPageItems<T>(endpoint: string): Promise<T[]> {
+  const limit = 100;
+  const firstPage = await fetcher<{ items: T[]; total: number }>([
+    endpoint,
+    { params: { limit, offset: 0 } },
+  ]);
+  const remainingPageCount = Math.max(0, Math.ceil(firstPage.total / limit) - 1);
+  const remainingPages = await Promise.all(
+    Array.from({ length: remainingPageCount }, (_, index) =>
+      fetcher<{ items: T[]; total: number }>([
+        endpoint,
+        { params: { limit, offset: (index + 1) * limit } },
+      ])
+    )
+  );
+
+  return [firstPage, ...remainingPages].flatMap((page) => page.items);
+}
+
+export async function fetchCompanyKitchens(): Promise<CompanyKitchenRead[]> {
+  return fetchAllPageItems<CompanyKitchenRead>(endpoints.company.kitchens);
 }
 
 export function fetchCompanyBranchKitchens(branchId: string) {
   return fetcher<CompanyKitchenRead[]>(endpoints.company.branchKitchens(branchId));
+}
+
+export async function fetchCompanyKitchenCatalog(): Promise<{
+  kitchens: CompanyKitchenCatalogRead[];
+  branches: BranchRead[];
+}> {
+  const [kitchens, branches] = await Promise.all([
+    fetchCompanyKitchens(),
+    fetchAllPageItems<BranchRead>(endpoints.company.branches),
+  ]);
+  const branchKitchenLists = await Promise.all(
+    branches.map(async (branch) => ({
+      branchId: branch.id,
+      kitchens: await fetchCompanyBranchKitchens(branch.id),
+    }))
+  );
+  const kitchensById = new Map(kitchens.map((kitchen) => [kitchen.id, kitchen]));
+  const connectedBranchesByKitchen = new Map<string, string[]>();
+
+  branchKitchenLists.forEach(({ branchId, kitchens: branchKitchens }) => {
+    branchKitchens.forEach((kitchen) => {
+      kitchensById.set(kitchen.id, kitchen);
+      const branchIds = connectedBranchesByKitchen.get(kitchen.id) ?? [];
+      connectedBranchesByKitchen.set(kitchen.id, [...branchIds, branchId]);
+    });
+  });
+
+  return {
+    kitchens: Array.from(kitchensById.values()).map((kitchen) => ({
+      ...kitchen,
+      connected_branch_ids: connectedBranchesByKitchen.get(kitchen.id) ?? [],
+    })),
+    branches,
+  };
 }
 
 export function assignCompanyBranchKitchens(branchId: string, kitchen_ids: string[]) {

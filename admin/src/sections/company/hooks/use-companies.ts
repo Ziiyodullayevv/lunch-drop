@@ -20,10 +20,11 @@ export const companyKeys = {
 
 // ----------------------------------------------------------------------
 
-export function useCompanies(params?: { limit?: number; offset?: number }) {
+export function useCompanies(params?: { limit?: number; offset?: number }, enabled = true) {
   return useQuery({
     queryKey: companyKeys.list(params),
     queryFn:  () => fetchCompanies(params),
+    enabled,
   });
 }
 

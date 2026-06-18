@@ -14,12 +14,13 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
 
   const headers = new Headers();
-  headers.set('Content-Type', 'application/json');
+  const contentType = req.headers.get('content-type');
+  if (contentType) headers.set('Content-Type', contentType);
   const auth = req.headers.get('authorization');
   if (auth) headers.set('Authorization', auth);
 
   const body = req.method !== 'GET' && req.method !== 'HEAD'
-    ? await req.text()
+    ? await req.arrayBuffer()
     : undefined;
 
   const res = await fetch(url.toString(), {
@@ -32,7 +33,7 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
 
   return new NextResponse(data, {
     status:  res.status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
   });
 }
 

@@ -4,15 +4,26 @@ Barcha endpoint 🔐 — `Authorization: Bearer <access_token>` (role: `kitchen_
 
 Base: `http://164.90.210.222:8000/api/v1/kitchen`
 
+2026-06-11 live tekshiruv holati:
+[live-verification.md](./live-verification.md#kitchen-admin).
+
 ---
 
 ## Dashboard
 
-### `GET /kitchen/dashboard`
+### `GET /kitchen/dashboard?year=2026`
 
-Oshxona statistikasi (tarkib aniqlanmagan — dynamic object).
+Token egasining oshxonasi bo'yicha statistika va tanlangan yilning oylik
+analytics ma'lumotlari.
 
-**Response `200`:** — statistika ob'ekti
+| Query | Shart | Ma'no |
+|---|---|---|
+| `year` | ixtiyoriy | Oylik chart yili. Berilmasa joriy yil olinadi. |
+
+OpenAPI response'i `DashboardResponse` modeliga ulangan. 2026-06-14 live
+tekshiruvda 6 ta summary karta, har biri uchun 8 ta history nuqtasi, barcha
+statuslar va 12 oylik qatorlar qaytdi:
+[live-verification.md](./live-verification.md#dashboard-analytics-openapi).
 
 ---
 
@@ -95,6 +106,8 @@ Oshxonaning barcha kategoriyalari.
 | `name` | ✅ | min: 1, max: 255 |
 
 **Response `201`:** — `MenuCategoryRead`
+
+> Category uchun alohida update/delete endpoint mavjud emas.
 
 ---
 
@@ -189,7 +202,7 @@ Soft delete — taom o'chiriladi.
 
 Rasm yuklash (S3). `multipart/form-data` formatida.
 
-**Request:** `file` — binary fayl
+**Request:** `file` — image MIME turidagi binary fayl (`image/png`, `image/jpeg`, ...)
 
 **Response `200`:** — yangilangan `MealRead` (`image_url` to'ldirilgan holda)
 
@@ -225,9 +238,13 @@ Taomni hafta kuniga yoki aniq sanaga qo'yish.
   "id": "uuid",
   "meal_id": "uuid",
   "day_of_week": 1,
-  "specific_date": null
+  "specific_date": null,
+  "effective_day_of_week": 1
 }
 ```
+
+`effective_day_of_week` — frontend uchun hisoblangan hafta kuni (Dushanba = 1,
+Yakshanba = 7). `day_of_week` bo'lmasa, qiymat `specific_date` dan olinadi.
 
 ---
 
@@ -242,7 +259,8 @@ Taomni hafta kuniga yoki aniq sanaga qo'yish.
     "id": "uuid",
     "meal_id": "uuid",
     "day_of_week": 1,
-    "specific_date": null
+    "specific_date": null,
+    "effective_day_of_week": 1
   }
 ]
 ```
@@ -275,12 +293,27 @@ Jadvaldan olib tashlash.
     "historical_price": "25000.00",
     "system_fee": "1250.00",
     "status": "created",
-    "created_at": "2024-01-15T09:00:00Z"
+    "created_at": "2024-01-15T09:00:00Z",
+    "employee_name": "Jasur Toshmatov",
+    "branch_id": "uuid",
+    "branch_name": "Chilonzor filiali",
+    "company_id": "uuid",
+    "company_name": "Karimov Holding",
+    "kitchen_name": "Ali's Kitchen",
+    "meal_name": "Osh"
   }
 ]
 ```
 
 **`OrderStatus` qiymatlari:** `created` → `preparing` → `on_the_way` → `delivered` (↘ `cancelled`)
+
+---
+
+### `GET /kitchen/orders/{order_id}`
+
+Oshxonaga tegishli bitta buyurtma tafsilotlarini qaytaradi.
+
+**Response `200`:** — `OrderRead` (yuqoridagi ro'yxat elementi bilan bir xil)
 
 ---
 
@@ -318,6 +351,7 @@ export const endpoints = {
     schedules:      '/kitchen/schedules',
     schedule:       (id: string) => `/kitchen/schedules/${id}`,
     orders:         '/kitchen/orders',
+    order:          (id: string) => `/kitchen/orders/${id}`,
     orderStatus:    (id: string) => `/kitchen/orders/${id}/status`,
   },
 } as const;

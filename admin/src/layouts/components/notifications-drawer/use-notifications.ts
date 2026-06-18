@@ -14,10 +14,12 @@ export type NotificationData = {
   id: string;
   type: string;
   title: string;
+  subject: string;
   body: string | null;
   entity_id: string;
   is_read: boolean;
   created_at: string;
+  action_status: 'pending' | 'approved' | 'rejected';
   // Admin arizasi uchun
   phone?: string;
   full_name?: string | null;
@@ -62,6 +64,7 @@ export function useNotifications() {
   const [loading, setLoading]             = useState(true);
 
   const readIds = useRef<Set<string>>(new Set());
+  const actedNotifications = useRef<Map<string, NotificationData>>(new Map());
 
   // ── super_admin: admin arizalari ──────────────────────────────────────
 
@@ -75,10 +78,12 @@ export function useNotifications() {
           id:         p.id,
           type,
           title:      `${p.full_name ?? p.phone}${entityPart} (${roleLabel}) tasdiqlash kutilmoqda`,
+          subject:    p.entity_name ?? p.full_name ?? p.phone,
           body:       p.phone,
           entity_id:  p.id,
           is_read:    readIds.current.has(p.id),
           created_at: p.created_at,
+          action_status: 'pending',
           phone:      p.phone,
           full_name:  p.full_name,
           entity_name: p.entity_name ?? null,
@@ -96,10 +101,12 @@ export function useNotifications() {
         id:         e.id,
         type:       'employee_pending',
         title:      `${e.name ?? e.phone} filialga qo'shilish so'rovi yubordi`,
+        subject:    e.name ?? e.phone,
         body:       e.phone,
         entity_id:  e.id,
         is_read:    readIds.current.has(e.id),
         created_at: e.created_at,
+        action_status: 'pending',
         phone:      e.phone,
         full_name:  e.name,
         branch_id:  e.branch_id,
@@ -119,13 +126,25 @@ export function useNotifications() {
       if (isSuperAdmin) {
         const res  = await axiosInstance.get<PendingAdminRaw[]>(endpoints.superAdmin.pendingAdmins);
         const built = buildAdminNotifications(res.data ?? []);
-        setNotifications(built);
-        setUnreadCount(built.filter((n) => !n.is_read).length);
+        const merged = [
+          ...built.map((item) => actedNotifications.current.get(item.id) ?? item),
+          ...Array.from(actedNotifications.current.values()).filter(
+            (acted) => !built.some((item) => item.id === acted.id)
+          ),
+        ];
+        setNotifications(merged);
+        setUnreadCount(merged.filter((n) => !n.is_read).length);
       } else {
         const res  = await axiosInstance.get<PendingEmployeeRaw[]>(endpoints.company.pendingEmployees);
         const built = buildEmployeeNotifications(res.data ?? []);
-        setNotifications(built);
-        setUnreadCount(built.filter((n) => !n.is_read).length);
+        const merged = [
+          ...built.map((item) => actedNotifications.current.get(item.id) ?? item),
+          ...Array.from(actedNotifications.current.values()).filter(
+            (acted) => !built.some((item) => item.id === acted.id)
+          ),
+        ];
+        setNotifications(merged);
+        setUnreadCount(merged.filter((n) => !n.is_read).length);
       }
     } catch {
       // jim turish
@@ -157,11 +176,12 @@ export function useNotifications() {
       await axiosInstance.patch(endpoints.superAdmin.approveAdmin(id));
       readIds.current.add(id);
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, is_read: true, title: n.title.replace('tasdiqlash kutilmoqda', 'tasdiqlandi') }
-            : n
-        )
+        prev.map((n) => {
+          if (n.id !== id) return n;
+          const updated = { ...n, is_read: true, action_status: 'approved' as const };
+          actedNotifications.current.set(id, updated);
+          return updated;
+        })
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
       toast.success('Admin tasdiqlandi');
@@ -175,11 +195,12 @@ export function useNotifications() {
       await axiosInstance.patch(endpoints.superAdmin.rejectAdmin(id));
       readIds.current.add(id);
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, is_read: true, title: n.title.replace('tasdiqlash kutilmoqda', 'rad etildi') }
-            : n
-        )
+        prev.map((n) => {
+          if (n.id !== id) return n;
+          const updated = { ...n, is_read: true, action_status: 'rejected' as const };
+          actedNotifications.current.set(id, updated);
+          return updated;
+        })
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
       toast.success('Admin rad etildi');
@@ -195,11 +216,12 @@ export function useNotifications() {
       await axiosInstance.patch(endpoints.company.employeeStatus(id), { status: 'approved' });
       readIds.current.add(id);
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, is_read: true, title: n.title.replace("qo'shilish so'rovi yubordi", 'tasdiqlandi ✓') }
-            : n
-        )
+        prev.map((n) => {
+          if (n.id !== id) return n;
+          const updated = { ...n, is_read: true, action_status: 'approved' as const };
+          actedNotifications.current.set(id, updated);
+          return updated;
+        })
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
       toast.success('Xodim tasdiqlandi');
@@ -213,11 +235,12 @@ export function useNotifications() {
       await axiosInstance.patch(endpoints.company.employeeStatus(id), { status: 'rejected' });
       readIds.current.add(id);
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, is_read: true, title: n.title.replace("qo'shilish so'rovi yubordi", 'rad etildi ✗') }
-            : n
-        )
+        prev.map((n) => {
+          if (n.id !== id) return n;
+          const updated = { ...n, is_read: true, action_status: 'rejected' as const };
+          actedNotifications.current.set(id, updated);
+          return updated;
+        })
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
       toast.success('Xodim rad etildi');

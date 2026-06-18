@@ -73,7 +73,7 @@ export function CompanyCreateView() {
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <Card sx={{ p: 3, maxWidth: 900, width: '100%', mx: 'auto' }}>
+      <Card sx={{ p: 3, maxWidth: 600, width: '100%', mx: 'auto' }}>
         <Form methods={methods} onSubmit={onSubmit}>
           <Stack spacing={3}>
             <Field.Text name="name" label="Kompaniya nomi" slotProps={{ inputLabel: { shrink: true } }} />

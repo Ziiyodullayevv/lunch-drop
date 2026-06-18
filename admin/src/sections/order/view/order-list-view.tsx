@@ -2,13 +2,11 @@
 
 import type { IOrderTableFilters } from 'src/types/order';
 
-import { useBoolean, useSetState } from 'minimal-shared/hooks';
 import { useState, useEffect, useCallback } from 'react';
+import { useBoolean, useSetState } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
-import Tab from '@mui/material/Tab';
 import Chip from '@mui/material/Chip';
-import Tabs from '@mui/material/Tabs';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -26,8 +24,13 @@ import { fCurrency } from 'src/utils/format-number';
 
 import axios, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
+import {
+  emptyOrderAnalytics,
+  calculateOrderAnalytics,
+} from 'src/lib/order-analytics';
 
 import { toast } from 'src/components/snackbar';
+import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
@@ -39,8 +42,8 @@ import {
 
 import { useAuthContext } from 'src/auth/hooks';
 
-import { Iconify } from 'src/components/iconify';
-
+import { OrderAnalytics } from './order-analytics';
+import { OrderStatusTabs } from './order-status-tabs';
 import { PlaceOrderDialog } from '../place-order-dialog';
 import { OrderTableToolbar } from '../order-table-toolbar';
 import { OrderTableFiltersResult } from '../order-table-filters-result';
@@ -87,13 +90,13 @@ const TABLE_HEAD = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Barchasi' },
-  { value: 'pending', label: 'Kutilmoqda' },
-  { value: 'grouped', label: 'Guruhlangan' },
-  { value: 'cooking', label: 'Tayyorlanmoqda' },
-  { value: 'ready', label: 'Tayyor' },
-  { value: 'delivered', label: 'Yetkazildi' },
-  { value: 'cancelled', label: 'Bekor' },
+  { value: 'all',       label: 'Barchasi',       color: 'default' as const },
+  { value: 'pending',   label: 'Kutilmoqda',     color: 'default' as const },
+  { value: 'grouped',   label: 'Guruhlangan',    color: 'secondary' as const },
+  { value: 'cooking',   label: 'Tayyorlanmoqda', color: 'warning' as const },
+  { value: 'ready',     label: 'Tayyor',         color: 'info' as const },
+  { value: 'delivered', label: 'Yetkazildi',     color: 'success' as const },
+  { value: 'cancelled', label: 'Bekor',          color: 'error' as const },
 ];
 
 const statusColor = (s: string) => {
@@ -138,6 +141,7 @@ export function OrderListView() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tabStatus, setTabStatus] = useState('all');
+  const [analytics, setAnalytics] = useState(emptyOrderAnalytics);
 
   const [companies, setCompanies] = useState<SelectOption[]>([]);
   const [branches, setBranches] = useState<SelectOption[]>([]);
@@ -188,10 +192,66 @@ export function OrderListView() {
     fetchOrders();
   }, [fetchOrders]);
 
+  const fetchAnalytics = useCallback(async () => {
+    const pageSize = 100;
+    const params: Record<string, string | number> = {
+      page: 1,
+      page_size: pageSize,
+      sort: '-created_at',
+    };
+
+    if (filters.state.company_id) params.company_id = filters.state.company_id;
+    if (filters.state.branch_id) params.branch_id = filters.state.branch_id;
+    if (filters.state.name) params.search = filters.state.name;
+
+    try {
+      const firstResponse = await axios.get<PaginatedResponse>(endpoints.orders.create, {
+        params,
+      });
+      const effectivePageSize = firstResponse.data.page_size || pageSize;
+      const pageCount = Math.max(1, Math.ceil(firstResponse.data.total / effectivePageSize));
+      const remainingResponses = await Promise.all(
+        Array.from({ length: pageCount - 1 }, (_, index) =>
+          axios.get<PaginatedResponse>(endpoints.orders.create, {
+            params: { ...params, page: index + 2 },
+          })
+        )
+      );
+      const orders = [
+        ...firstResponse.data.items,
+        ...remainingResponses.flatMap((response) => response.data.items),
+      ];
+
+      setAnalytics(
+        calculateOrderAnalytics(
+          orders.map((order) => ({
+            status: order.status,
+            amount: order.total_price,
+          })),
+          ['pending', 'grouped', 'cooking', 'ready', 'created', 'preparing']
+        )
+      );
+    } catch {
+      setAnalytics(emptyOrderAnalytics());
+    }
+  }, [filters.state.branch_id, filters.state.company_id, filters.state.name]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const handleOrderCreated = useCallback(() => {
+    fetchOrders();
+    fetchAnalytics();
+  }, [fetchAnalytics, fetchOrders]);
+
   const canReset =
     !!filters.state.name ||
     !!filters.state.company_id ||
     !!filters.state.branch_id;
+  const statusCounts = Object.fromEntries(
+    STATUS_OPTIONS.map((option) => [option.value, option.value === tabStatus ? total : 0])
+  );
 
   return (
     <DashboardContent>
@@ -218,19 +278,21 @@ export function OrderListView() {
       <PlaceOrderDialog
         open={placeOrderDialog.value}
         onClose={placeOrderDialog.onFalse}
-        onSuccess={fetchOrders}
+        onSuccess={handleOrderCreated}
       />
 
+      <OrderAnalytics data={analytics} />
+
       <Card>
-        <Tabs
+        <OrderStatusTabs
           value={tabStatus}
-          onChange={(_, val) => { setTabStatus(val); table.onResetPage(); }}
-          sx={{ px: 2.5, borderBottom: 1, borderColor: 'divider' }}
-        >
-          {STATUS_OPTIONS.map((tab) => (
-            <Tab key={tab.value} value={tab.value} label={tab.label} />
-          ))}
-        </Tabs>
+          tabs={STATUS_OPTIONS}
+          counts={statusCounts}
+          onChange={(value) => {
+            setTabStatus(value);
+            table.onResetPage();
+          }}
+        />
 
         <OrderTableToolbar
           filters={filters}

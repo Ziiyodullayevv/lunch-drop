@@ -1,15 +1,19 @@
 'use client';
 
+import type { MenuScheduleRead } from 'src/lib/api/meals';
+
 import * as z from 'zod';
+import { useForm } from 'react-hook-form';
 import { usePopover } from 'minimal-shared/hooks';
 import { useMemo, useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
 
 import Box from '@mui/material/Box';
+import Tab from '@mui/material/Tab';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
+import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -23,24 +27,26 @@ import MenuList from '@mui/material/MenuList';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import LoadingButton from '@mui/lab/LoadingButton';
 import FormControl from '@mui/material/FormControl';
 import DialogTitle from '@mui/material/DialogTitle';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
+import { useRouter } from 'src/routes/hooks';
 
 import { fDate } from 'src/utils/format-time';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 
+import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
@@ -58,9 +64,7 @@ import {
 
 import { useAuthContext } from 'src/auth/hooks';
 
-import type { MenuScheduleRead } from 'src/lib/api/meals';
-
-import { useMeals, useCategories, useCreateMeal, useDeleteMeal, useUpdateMeal, useSchedules, useScheduleMenu } from '../hooks/use-meals';
+import { useMeals, useSchedules, useCategories, useCreateMeal, useDeleteMeal, useUpdateMeal, useScheduleMenu } from '../hooks/use-meals';
 
 // ----------------------------------------------------------------------
 
@@ -127,11 +131,17 @@ type FoodItem = {
 const TABLE_HEAD = [
   { id: 'name', label: 'Mahsulot' },
   { id: 'category', label: 'Kategoriya', width: 160 },
-  { id: 'days', label: 'Kunlar', width: 200 },
+  { id: 'days', label: 'Kunlar', width: 260 },
   { id: 'price', label: 'Narxi', width: 120 },
   { id: 'available', label: 'Holat', width: 110 },
   { id: 'created_at', label: "Qo'shilgan", width: 130 },
   { id: 'actions', label: '', width: 60 },
+];
+
+const MENU_STATUS_TABS = [
+  { value: 'all', label: 'Barchasi' },
+  { value: 'available', label: 'Mavjud' },
+  { value: 'unavailable', label: 'Mavjud emas' },
 ];
 
 // ----------------------------------------------------------------------
@@ -192,7 +202,7 @@ function FoodFormFields({ categories }: { categories: FoodCategory[] }) {
 
 // ----------------------------------------------------------------------
 
-function EditFoodDialog({
+export function EditFoodDialog({
   open, onClose, item, onSuccess, categories,
 }: {
   open: boolean; onClose: () => void;
@@ -291,14 +301,14 @@ function AddFoodDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" sx={{ '& .MuiDialog-paper': { maxHeight: '90vh' } }}>
-      <DialogTitle sx={{ py: 2, px: 3 }}>Ovqat qo'shish</DialogTitle>
+      <DialogTitle sx={{ py: 2, px: 3 }}>Ovqat qo&apos;shish</DialogTitle>
       <Form methods={methods} onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
         <DialogContent dividers sx={{ px: 3, py: 2.5 }}>
           <Stack spacing={2.5}><FoodFormFields categories={categories} /></Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={onClose} color="inherit">Bekor qilish</Button>
-          <LoadingButton type="submit" variant="contained" loading={isSubmitting}>Qo'shish</LoadingButton>
+          <LoadingButton type="submit" variant="contained" loading={isSubmitting}>Qo&apos;shish</LoadingButton>
         </DialogActions>
       </Form>
     </Dialog>
@@ -313,15 +323,26 @@ function DaysCell({ days }: { days: number[] }) {
   }
   const sorted = [...days].sort((a, b) => a - b);
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, maxWidth: 236 }}>
       {sorted.map((d) => (
         <Chip
           key={d}
           label={getDayLabel(d)}
           size="small"
-          color="primary"
-          variant="soft"
-          sx={{ minWidth: 36, fontWeight: 600 }}
+          variant="outlined"
+          sx={(theme) => ({
+            minWidth: 44,
+            fontWeight: 700,
+            color: 'info.darker',
+            borderColor: 'info.lighter',
+            bgcolor: 'info.lighter',
+            '& .MuiChip-label': { px: 1.25 },
+            ...theme.applyStyles('dark', {
+              color: 'info.lighter',
+              borderColor: 'info.dark',
+              bgcolor: 'rgba(0, 184, 217, 0.16)',
+            }),
+          })}
         />
       ))}
     </Box>
@@ -331,14 +352,14 @@ function DaysCell({ days }: { days: number[] }) {
 // ----------------------------------------------------------------------
 
 function FoodTableRow({
-  item, onRefresh, categories, selected, onSelect,
+  item, categories, selected, onSelect,
 }: {
   item: FoodItem;
-  onRefresh: () => void; categories: FoodCategory[];
+  categories: FoodCategory[];
   selected: boolean; onSelect: () => void;
 }) {
   const popover = usePopover();
-  const [editOpen, setEditOpen] = useState(false);
+  const router = useRouter();
   const deleteMeal = useDeleteMeal();
 
   const categoryName = categories.find((c) => c.id === item.category_id)?.name ?? '—';
@@ -373,12 +394,22 @@ function FoodTableRow({
             >
               <Iconify icon="solar:cup-star-bold" sx={{ color: 'text.disabled' }} />
             </Avatar>
-            <Box>
+            <Box sx={{ minWidth: 0, maxWidth: 220 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
                 {item.name}
               </Typography>
               {item.description && (
-                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.3, display: 'block', maxWidth: 260 }} noWrap>
+                <Typography
+                  variant="caption"
+                  color="text.disabled"
+                  sx={{
+                    mt: 0.3,
+                    display: '-webkit-box',
+                    overflow: 'hidden',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                  }}
+                >
                   {item.description}
                 </Typography>
               )}
@@ -397,7 +428,7 @@ function FoodTableRow({
 
         <TableCell>
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {item.price.toLocaleString('uz-UZ')} so'm
+            {item.price.toLocaleString('uz-UZ')} so&apos;m
           </Typography>
         </TableCell>
 
@@ -425,7 +456,11 @@ function FoodTableRow({
 
       <CustomPopover open={popover.open} anchorEl={popover.anchorEl} onClose={popover.onClose}>
         <MenuList>
-          <MenuItem onClick={() => { popover.onClose(); setEditOpen(true); }}>
+          <MenuItem onClick={() => { popover.onClose(); router.push(paths.dashboard.menu.details(item.id)); }}>
+            <Iconify icon="solar:eye-bold" sx={{ color: 'text.secondary' }} />
+            Ko&apos;rish
+          </MenuItem>
+          <MenuItem onClick={() => { popover.onClose(); router.push(paths.dashboard.menu.edit(item.id)); }}>
             <Iconify icon="solar:pen-bold" sx={{ color: 'text.secondary' }} />
             Tahrirlash
           </MenuItem>
@@ -438,18 +473,11 @@ function FoodTableRow({
           </MenuItem>
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <Iconify icon="solar:trash-bin-trash-bold" />
-            O'chirish
+            O&apos;chirish
           </MenuItem>
         </MenuList>
       </CustomPopover>
 
-      <EditFoodDialog
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        item={item}
-        onSuccess={onRefresh}
-        categories={categories}
-      />
     </>
   );
 }
@@ -472,6 +500,7 @@ export function MenuView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterDay, setFilterDay] = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const { data: mealsData, isLoading: loading } = useMeals();
   const { data: categoriesData } = useCategories();
@@ -541,8 +570,14 @@ export function MenuView() {
         (i) => i.available_days.length > 0 && i.available_days.includes(filterDay)
       );
     }
+    if (filterStatus === 'available') {
+      result = result.filter((i) => i.available);
+    }
+    if (filterStatus === 'unavailable') {
+      result = result.filter((i) => !i.available);
+    }
     return result;
-  }, [items, searchQuery, filterCategory, filterDay]);
+  }, [items, searchQuery, filterCategory, filterDay, filterStatus]);
 
   const paginatedItems = filteredItems.slice(
     table.page * table.rowsPerPage,
@@ -596,9 +631,10 @@ export function MenuView() {
     setSearchQuery('');
     setFilterCategory('');
     setFilterDay(null);
+    setFilterStatus('all');
   };
 
-  const hasFilters = searchQuery || filterCategory || filterDay !== null;
+  const hasFilters = searchQuery || filterCategory || filterDay !== null || filterStatus !== 'all';
 
   if (!kitchenId) {
     return (
@@ -610,7 +646,7 @@ export function MenuView() {
         />
         <Card sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            Hisobingiz oshxonaga bog'lanmagan. Admin bilan bog'laning.
+            Hisobingiz oshxonaga bog&apos;lanmagan. Admin bilan bog&apos;laning.
           </Typography>
         </Card>
       </DashboardContent>
@@ -631,34 +667,91 @@ export function MenuView() {
             onClick={() => setAddOpen(true)}
             disabled={false}
           >
-            Ovqat qo'shish
+            Ovqat qo&apos;shish
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
       <Card>
-        {/* Toolbar: search + filters */}
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ p: 2.5, borderBottom: 1, borderColor: 'divider' }}
+        <Tabs
+          value={filterStatus}
+          onChange={(_, value) => {
+            setFilterStatus(value);
+            table.onResetPage();
+          }}
+          sx={{ px: 2.5, borderBottom: 1, borderColor: 'divider' }}
         >
-          <OutlinedInput
+          {MENU_STATUS_TABS.map((tab) => {
+            const count =
+              tab.value === 'available'
+                ? items.filter((item) => item.available).length
+                : tab.value === 'unavailable'
+                  ? items.filter((item) => !item.available).length
+                  : items.length;
+
+            return (
+              <Tab
+                key={tab.value}
+                value={tab.value}
+                label={tab.label}
+                iconPosition="end"
+                icon={
+                  <Label
+                    variant={filterStatus === tab.value ? 'filled' : 'soft'}
+                    color={
+                      tab.value === 'available'
+                        ? 'success'
+                        : tab.value === 'unavailable'
+                          ? 'error'
+                          : 'default'
+                    }
+                    sx={{ ml: 0.5 }}
+                  >
+                    {count}
+                  </Label>
+                }
+              />
+            );
+          })}
+        </Tabs>
+
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          sx={{ p: 2.5, alignItems: { xs: 'stretch', md: 'center' } }}
+        >
+          <TextField
             fullWidth
-            size="small"
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); table.onResetPage(); }}
             placeholder="Ovqat nomini qidirish..."
-            startAdornment={
-              <InputAdornment position="start">
-                <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-              </InputAdornment>
-            }
-            sx={{ maxWidth: { sm: 260 } }}
+            sx={{ width: { xs: 1, md: 360 } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSearchQuery('');
+                        table.onResetPage();
+                      }}
+                    >
+                      <Iconify icon="solar:close-circle-bold" width={16} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              },
+            }}
           />
 
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <FormControl sx={{ width: { xs: 1, md: 220 }, flexShrink: 0 }}>
             <InputLabel>Kategoriya</InputLabel>
             <Select
               value={filterCategory}
@@ -672,11 +765,20 @@ export function MenuView() {
             </Select>
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 130 }}>
+          <FormControl sx={{ width: { xs: 1, md: 220 }, flexShrink: 0 }}>
             <InputLabel>Kun</InputLabel>
             <Select
               value={filterDay ?? ''}
               label="Kun"
+              renderValue={(selected) => {
+                const value = String(selected);
+                if (value === '') return 'Barchasi';
+                const selectedDay = WEEK_DAYS.find((day) => day.value === Number(value));
+                if (!selectedDay) return '';
+                return selectedDay.value === todayWeekday
+                  ? `${selectedDay.fullLabel} (bugun)`
+                  : selectedDay.fullLabel;
+              }}
               onChange={(e) => {
                 const v = String(e.target.value);
                 setFilterDay(v === '' ? null : Number(v));
@@ -686,7 +788,7 @@ export function MenuView() {
               <MenuItem value="">Barchasi</MenuItem>
               {WEEK_DAYS.map((d) => (
                 <MenuItem key={d.value} value={d.value}>
-                  {d.label}
+                  {d.fullLabel}
                   {d.value === todayWeekday && (
                     <Typography component="span" variant="caption" color="primary.main" sx={{ ml: 1 }}>
                       (bugun)
@@ -703,7 +805,7 @@ export function MenuView() {
               color="error"
               startIcon={<Iconify icon="solar:restart-bold" />}
               onClick={handleResetFilters}
-              sx={{ flexShrink: 0 }}
+              sx={{ minHeight: 54, flexShrink: 0 }}
             >
               Tozalash
             </Button>
@@ -770,7 +872,6 @@ export function MenuView() {
                       <FoodTableRow
                         key={item.id}
                         item={item}
-                        onRefresh={() => {}}
                         categories={categories}
                         selected={table.selected.includes(item.id)}
                         onSelect={() => table.onSelectRow(item.id)}

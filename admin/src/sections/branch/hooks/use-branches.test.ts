@@ -120,14 +120,14 @@ describe('useDeleteBranch', () => {
 
 describe('useAssignKitchens', () => {
   it("oshxonalarni filiallga biriktiradi", async () => {
-    mockAssignKitchens.mockResolvedValueOnce({ status: 204, data: null, headers: {}, config: {} as any, statusText: '' });
+    mockAssignKitchens.mockResolvedValueOnce([]);
     const { result } = renderHook(() => useAssignKitchens('b-1'), { wrapper });
     await result.current.mutateAsync(['k-1', 'k-2']);
     expect(mockAssignKitchens).toHaveBeenCalledWith('b-1', ['k-1', 'k-2']);
   });
 
   it("bo'sh array bilan ham ishlaydi", async () => {
-    mockAssignKitchens.mockResolvedValueOnce({ status: 204, data: null, headers: {}, config: {} as any, statusText: '' });
+    mockAssignKitchens.mockResolvedValueOnce([]);
     const { result } = renderHook(() => useAssignKitchens('b-1'), { wrapper });
     await result.current.mutateAsync([]);
     expect(mockAssignKitchens).toHaveBeenCalledWith('b-1', []);

@@ -5,6 +5,7 @@ import type { NavItemProps, NavSectionProps } from 'src/components/nav-section';
 import type { MainSectionProps, HeaderSectionProps, LayoutSectionProps } from '../core';
 
 import { merge } from 'es-toolkit';
+import { useQuery } from '@tanstack/react-query';
 import { useBoolean } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
@@ -12,16 +13,14 @@ import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { iconButtonClasses } from '@mui/material/IconButton';
 
-import { useQuery } from '@tanstack/react-query';
-
 import { allLangs } from 'src/locales';
+import { fetchKitchenMe } from 'src/lib/api/kitchens';
+import { fetchCompanyMe } from 'src/lib/api/companies';
 
 import { Logo } from 'src/components/logo';
 import { useSettingsContext } from 'src/components/settings';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { fetchCompanyMe } from 'src/lib/api/companies';
-import { fetchKitchenMe } from 'src/lib/api/kitchens';
 
 import { NavMobile } from './nav-mobile';
 import { VerticalDivider } from './content';
@@ -29,6 +28,7 @@ import { NavVertical } from './nav-vertical';
 import { NavHorizontal } from './nav-horizontal';
 import { _account } from '../nav-config-account';
 import { Searchbar } from '../components/searchbar';
+import { NavUpgrade } from '../components/nav-upgrade';
 import { MenuButton } from '../components/menu-button';
 import { AccountDrawer } from '../components/account-drawer';
 import { SettingsButton } from '../components/settings-button';
@@ -108,6 +108,22 @@ export function DashboardLayout({
 
   const navData = slotProps?.nav?.data ?? dashboardNavData;
 
+  const userRole = user?.role ?? '';
+  const allowedForRole = (roles?: string | string[]) => {
+    if (!roles || (Array.isArray(roles) && roles.length === 0)) return true;
+    return Array.isArray(roles) ? roles.includes(userRole) : roles === userRole;
+  };
+
+  const filteredNavData = navData.map((section) => ({
+    ...section,
+    items: section.items
+      .filter((item) => allowedForRole(item.allowedRoles))
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((child) => allowedForRole(child.allowedRoles)),
+      })),
+  }));
+
   const isNavMini = settings.state.navLayout === 'mini';
   const isNavHorizontal = settings.state.navLayout === 'horizontal';
   const isNavVertical = isNavMini || settings.state.navLayout === 'vertical';
@@ -186,7 +202,7 @@ export function DashboardLayout({
       rightArea: (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0, sm: 0.75 } }}>
           {/** @slot Searchbar */}
-          <Searchbar data={navData} />
+          <Searchbar data={filteredNavData} />
 
           {/** @slot Language popover */}
           <LanguagePopover data={allLangs} />
@@ -222,6 +238,7 @@ export function DashboardLayout({
       layoutQuery={layoutQuery}
       cssVars={navVars.section}
       checkPermissions={canDisplayItemByRole}
+      slots={{ bottomArea: !isNavMini ? <NavUpgrade /> : undefined }}
       onToggleNav={() =>
         settings.setField(
           'navLayout',

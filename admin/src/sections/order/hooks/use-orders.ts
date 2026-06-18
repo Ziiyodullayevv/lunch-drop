@@ -1,19 +1,26 @@
-import type { OrderStatus } from 'src/lib/api/orders';
+import type {
+  OrderStatus,
+  CompanyOrdersParams,
+  SuperAdminOrdersParams,
+} from 'src/lib/api/orders';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
+  placeOrder,
   cancelOrder,
-  bulkConfirmOrders,
+  fetchKitchenMe,
   confirmDelivery,
   fetchOrderDetail,
+  fetchKitchenOrder,
+  bulkConfirmOrders,
   updateOrderStatus,
+  fetchEmployeeMenu,
   fetchCompanyOrders,
   fetchKitchenOrders,
-  fetchKitchenMe,
   fetchEmployeeStatus,
-  fetchEmployeeMenu,
-  placeOrder,
+  fetchSuperAdminOrder,
+  fetchSuperAdminOrders,
 } from 'src/lib/api/orders';
 
 // ----------------------------------------------------------------------
@@ -23,6 +30,7 @@ export const orderKeys = {
   detail:  (id: string) => [...orderKeys.all, id] as const,
   kitchen: (params?: object) => [...orderKeys.all, 'kitchen', params] as const,
   company: (params?: object) => [...orderKeys.all, 'company', params] as const,
+  superAdmin: (params?: object) => [...orderKeys.all, 'super-admin', params] as const,
 };
 
 export const kitchenKeys = {
@@ -43,6 +51,14 @@ export function useKitchenOrders(params?: { target_date?: string }) {
   return useQuery({
     queryKey: orderKeys.kitchen(params),
     queryFn:  () => fetchKitchenOrders(params),
+  });
+}
+
+export function useKitchenOrder(id: string, enabled = true) {
+  return useQuery({
+    queryKey: [...orderKeys.kitchen(), 'detail', id],
+    queryFn: () => fetchKitchenOrder(id),
+    enabled: enabled && !!id,
   });
 }
 
@@ -67,23 +83,33 @@ export function useBulkConfirm() {
   });
 }
 
-export function useCompanyOrders(params?: {
-  target_date?: string;
-  order_status?: OrderStatus;
-  limit?: number;
-  offset?: number;
-}) {
+export function useCompanyOrders(params?: CompanyOrdersParams) {
   return useQuery({
     queryKey: orderKeys.company(params),
     queryFn:  () => fetchCompanyOrders(params),
   });
 }
 
-export function useOrderDetail(id: string) {
+export function useSuperAdminOrders(params?: SuperAdminOrdersParams) {
+  return useQuery({
+    queryKey: orderKeys.superAdmin(params),
+    queryFn:  () => fetchSuperAdminOrders(params),
+  });
+}
+
+export function useSuperAdminOrder(id: string, enabled = true) {
+  return useQuery({
+    queryKey: [...orderKeys.superAdmin(), 'detail', id],
+    queryFn: () => fetchSuperAdminOrder(id),
+    enabled: enabled && !!id,
+  });
+}
+
+export function useOrderDetail(id: string, enabled = true) {
   return useQuery({
     queryKey: orderKeys.detail(id),
     queryFn:  () => fetchOrderDetail(id),
-    enabled:  !!id,
+    enabled:  enabled && !!id,
   });
 }
 

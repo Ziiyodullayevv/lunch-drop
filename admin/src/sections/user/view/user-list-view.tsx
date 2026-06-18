@@ -13,6 +13,7 @@ import Tab from '@mui/material/Tab';
 import Card from '@mui/material/Card';
 import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
+import Badge from '@mui/material/Badge';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
@@ -34,8 +35,10 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import { useRouter, useSearchParams } from 'src/routes/hooks';
 
 import axios, { endpoints } from 'src/lib/axios';
+import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
@@ -72,6 +75,7 @@ type UserItem = {
   branch_id: string | null;
   company_name: string | null;
   kitchen_name: string | null;
+  avatar_url: string | null;
 };
 
 type UserApiResponse = {
@@ -83,7 +87,11 @@ type UserApiResponse = {
   account_status: string | null;
   company_id: string | null;
   kitchen_id: string | null;
+  branch_id?: string | null;
+  company_name?: string | null;
+  kitchen_name?: string | null;
   created_at: string;
+  avatar_url?: string | null;
 };
 
 type PageUserApiResponse = {
@@ -93,7 +101,13 @@ type PageUserApiResponse = {
   offset: number;
 };
 
-function mapUser(u: UserApiResponse): UserItem {
+function mapUser(
+  u: UserApiResponse,
+  entityNames?: {
+    companiesById: Map<string, string>;
+    kitchensById: Map<string, string>;
+  }
+): UserItem {
   return {
     id: u.id,
     phone: u.phone,
@@ -102,9 +116,12 @@ function mapUser(u: UserApiResponse): UserItem {
     status: u.account_status ?? (u.is_active ? 'approved' : 'inactive'),
     company_id: u.company_id,
     kitchen_id: u.kitchen_id,
-    branch_id: null,
-    company_name: null,
-    kitchen_name: null,
+    branch_id: u.branch_id ?? null,
+    company_name:
+      u.company_name ?? (u.company_id ? entityNames?.companiesById.get(u.company_id) : null) ?? null,
+    kitchen_name:
+      u.kitchen_name ?? (u.kitchen_id ? entityNames?.kitchensById.get(u.kitchen_id) : null) ?? null,
+    avatar_url: u.avatar_url ?? null,
   };
 }
 
@@ -135,7 +152,7 @@ const TABLE_HEAD = [
   { id: 'phone', label: 'Telefon', width: 180 },
   { id: 'role', label: 'Rol', width: 140 },
   { id: 'status', label: 'Holat', width: 120 },
-  { id: 'actions', label: '', width: 160 },
+  { id: 'actions', label: '', width: 72 },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -171,6 +188,15 @@ function avatarInitials(name: string | null, phone: string) {
   return phone.charAt(phone.length - 1);
 }
 
+function getUserEntityLabel(row: UserItem) {
+  if (row.role === 'super_admin') return 'Lunch Drop';
+  if (row.role === 'kitchen_admin') return row.kitchen_name ?? 'Oshxona biriktirilmagan';
+  if (row.role === 'company_admin' || row.role === 'employee') {
+    return row.company_name ?? 'Kompaniya biriktirilmagan';
+  }
+  return '—';
+}
+
 // ----------------------------------------------------------------------
 
 const EditSchema = z.object({
@@ -188,7 +214,7 @@ type Company = { id: string; name: string };
 type Kitchen = { id: string; name: string };
 type Branch = { id: string; name: string };
 
-function EditUserDialog({
+export function EditUserDialog({
   user, open, onClose, onSaved,
 }: {
   user: UserItem; open: boolean; onClose: () => void; onSaved: () => void;
@@ -291,8 +317,8 @@ function UserRow({
 }: {
   row: UserItem; selected: boolean; isSelf: boolean; onSelectRow: () => void; onRefresh: () => void;
 }) {
+  const router = useRouter();
   const popover = usePopover();
-  const editDialog = useBoolean();
   const confirmDialog = useBoolean();
 
   const handleBlock = async () => {
@@ -305,6 +331,7 @@ function UserRow({
   };
 
   const handleApprove = async () => {
+    popover.onClose();
     try {
       await axios.patch(endpoints.superAdmin.approveAdmin(row.id));
       toast.success('Foydalanuvchi tasdiqlandi');
@@ -334,7 +361,11 @@ function UserRow({
 
         <TableCell>
           <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
-            <Avatar sx={{ width: 40, height: 40 }}>
+            <Avatar
+              alt={row.name ?? row.phone}
+              src={row.avatar_url ? getImagePreviewUrl(row.avatar_url) : undefined}
+              sx={{ width: 40, height: 40 }}
+            >
               {avatarInitials(row.name, row.phone)}
             </Avatar>
             <Stack sx={{ flex: '1 1 auto', alignItems: 'flex-start' }}>
@@ -342,7 +373,7 @@ function UserRow({
                 {row.name ?? '—'}
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                {row.phone}
+                {getUserEntityLabel(row)}
               </Typography>
             </Stack>
           </Box>
@@ -365,15 +396,17 @@ function UserRow({
         </TableCell>
 
         <TableCell align="right">
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-            {row.status === 'pending_approval' && (
-              <Button size="small" variant="contained" color="success" onClick={handleApprove}>
-                Tasdiqlash
-              </Button>
-            )}
-            <IconButton color={popover.open ? 'inherit' : 'default'} onClick={popover.onOpen}>
-              <Iconify icon="eva:more-vertical-fill" />
-            </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            <Badge
+              color="warning"
+              variant="dot"
+              overlap="circular"
+              invisible={row.status !== 'pending_approval'}
+            >
+              <IconButton color={popover.open ? 'inherit' : 'default'} onClick={popover.onOpen}>
+                <Iconify icon="eva:more-vertical-fill" />
+              </IconButton>
+            </Badge>
           </Box>
         </TableCell>
       </TableRow>
@@ -385,7 +418,13 @@ function UserRow({
         slotProps={{ arrow: { placement: 'right-top' } }}
       >
         <MenuList>
-          <MenuItem onClick={() => { popover.onClose(); editDialog.onTrue(); }}>
+          {row.status === 'pending_approval' && (
+            <MenuItem onClick={handleApprove} sx={{ color: 'success.main' }}>
+              <Iconify icon="solar:check-circle-bold" />
+              Tasdiqlash
+            </MenuItem>
+          )}
+          <MenuItem onClick={() => { popover.onClose(); router.push(paths.dashboard.user.edit(row.id)); }}>
             <Iconify icon="solar:pen-bold" />
             Tahrirlash
           </MenuItem>
@@ -398,18 +437,11 @@ function UserRow({
           {!isSelf && (
             <MenuItem onClick={() => { popover.onClose(); confirmDialog.onTrue(); }} sx={{ color: 'error.main' }}>
               <Iconify icon="solar:trash-bin-trash-bold" />
-              O'chirish
+              O&apos;chirish
             </MenuItem>
           )}
         </MenuList>
       </CustomPopover>
-
-      <EditUserDialog
-        user={row}
-        open={editDialog.value}
-        onClose={editDialog.onFalse}
-        onSaved={onRefresh}
-      />
 
       <ConfirmDialog
         open={confirmDialog.value}
@@ -418,7 +450,7 @@ function UserRow({
         content="Ushbu foydalanuvchini o'chirmoqchimisiz?"
         action={
           <Button variant="contained" color="error" onClick={handleDelete}>
-            O'chirish
+            O&apos;chirish
           </Button>
         }
       />
@@ -455,21 +487,47 @@ function applyFilter(data: UserItem[], filters: IUserTableFilters, tabStatus: st
 
 export function UserListView() {
   const { user: authUser } = useAuthContext();
+  const searchParams = useSearchParams();
   const table = useTable({ defaultRowsPerPage: 10 });
   const filters = useSetState<IUserTableFilters>({ name: '', role: [], status: 'all' });
   const bulkConfirm = useBoolean();
 
   const [allData, setAllData] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tabStatus, setTabStatus] = useState('all');
+  const requestedStatus = searchParams.get('status');
+  const initialStatus = STATUS_OPTIONS.some((option) => option.value === requestedStatus)
+    ? requestedStatus!
+    : 'all';
+  const [tabStatus, setTabStatus] = useState(initialStatus);
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get<PageUserApiResponse>(endpoints.superAdmin.users, {
-        params: { limit: 100, offset: 0 },
-      });
-      setAllData(res.data.items.map(mapUser));
+      const [usersRes, companiesRes, kitchensRes] = await Promise.all([
+        axios.get<PageUserApiResponse>(endpoints.superAdmin.users, {
+          params: { limit: 100, offset: 0 },
+        }),
+        axios.get(endpoints.superAdmin.companies, { params: { limit: 100, offset: 0 } }).catch(() => null),
+        axios.get(endpoints.superAdmin.kitchens, { params: { limit: 100, offset: 0 } }).catch(() => null),
+      ]);
+      const companies = companiesRes
+        ? Array.isArray(companiesRes.data)
+          ? companiesRes.data
+          : companiesRes.data?.items ?? []
+        : [];
+      const kitchens = kitchensRes
+        ? Array.isArray(kitchensRes.data)
+          ? kitchensRes.data
+          : kitchensRes.data?.items ?? []
+        : [];
+      const companiesById = new Map<string, string>(
+        companies.map((company: { id: string; name: string }) => [company.id, company.name])
+      );
+      const kitchensById = new Map<string, string>(
+        kitchens.map((kitchen: { id: string; name: string }) => [kitchen.id, kitchen.name])
+      );
+
+      setAllData(usersRes.data.items.map((user) => mapUser(user, { companiesById, kitchensById })));
     } catch {
       toast.error('Foydalanuvchilarni yuklashda xatolik');
     } finally {
@@ -518,7 +576,7 @@ export function UserListView() {
             variant="contained"
             startIcon={<Iconify icon="mingcute:add-line" />}
           >
-            Yangi foydalanuvchi
+            Admin qo&apos;shish
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -589,7 +647,7 @@ export function UserListView() {
             }
           />
 
-          <Scrollbar sx={{ minHeight: 444 }}>
+          <Scrollbar sx={{ minHeight: loading || dataFiltered.length === 0 ? 240 : 0 }}>
             <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 800 }}>
               <TableHeadCustom
                 order={table.order}
@@ -645,12 +703,12 @@ export function UserListView() {
         title="O'chirish"
         content={
           <>
-            <strong>{table.selected.length} ta</strong> foydalanuvchini o'chirmoqchimisiz?
+            <strong>{table.selected.length} ta</strong> foydalanuvchini o&apos;chirmoqchimisiz?
           </>
         }
         action={
           <Button variant="contained" color="error" onClick={handleBulkDelete}>
-            O'chirish
+            O&apos;chirish
           </Button>
         }
       />

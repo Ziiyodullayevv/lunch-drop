@@ -8,7 +8,7 @@ export const metadata = { title: `Xarita | Dashboard - ${CONFIG.appName}` };
 
 export default function Page() {
   return (
-    <PageRoleGuard allowedRoles={['super_admin']}>
+    <PageRoleGuard allowedRoles={['super_admin', 'company_admin', 'kitchen_admin']}>
       <MapOverviewView />
     </PageRoleGuard>
   );

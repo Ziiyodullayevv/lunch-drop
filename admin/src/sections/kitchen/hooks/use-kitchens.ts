@@ -1,4 +1,4 @@
-import type { KitchenCreate, KitchenSettingsUpdate, KitchenUpdate } from 'src/lib/api/kitchens';
+import type { KitchenCreate, KitchenUpdate, KitchenSettingsUpdate } from 'src/lib/api/kitchens';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -6,13 +6,13 @@ import {
   rejectAdmin,
   approveAdmin,
   fetchKitchen,
-  fetchKitchenMe,
   createKitchen,
   deleteKitchen,
   fetchKitchens,
   updateKitchen,
-  updateKitchenSettings,
+  fetchKitchenMe,
   fetchPendingAdmins,
+  updateKitchenSettings,
 } from 'src/lib/api/kitchens';
 
 // ----------------------------------------------------------------------

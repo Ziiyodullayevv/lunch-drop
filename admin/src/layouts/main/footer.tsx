@@ -176,9 +176,8 @@ export function HomeFooter({ sx, ...other }: FooterProps) {
       <Container>
         <Logo />
         <Box sx={{ mt: 1, typography: 'caption' }}>
-          © All rights reserved.
-          <br /> made by
-          <Link href="https://minimals.cc/"> minimals.cc </Link>
+          © {new Date().getFullYear()} Lunch Drop. Barcha huquqlar himoyalangan.
+          <br /> Korporativ ovqatlanish uchun yagona raqamli platforma.
         </Box>
       </Container>
     </FooterRoot>

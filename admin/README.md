@@ -1,4 +1,4 @@
-# Launch Drop — Admin Panel
+# Lunch Drop — Admin Panel
 
 Next.js 16 asosidagi boshqaruv paneli. Super admin, kompaniya adminlari va oshxona adminlari uchun.
 

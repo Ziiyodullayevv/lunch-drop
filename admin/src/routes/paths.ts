@@ -104,11 +104,13 @@ export const paths = {
       root: `${ROOTS.DASHBOARD}/branch`,
       new: `${ROOTS.DASHBOARD}/branch/new`,
       details: (id: string) => `${ROOTS.DASHBOARD}/branch/${id}`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/branch/${id}/edit`,
     },
     kitchen: {
       root: `${ROOTS.DASHBOARD}/kitchen`,
       new: `${ROOTS.DASHBOARD}/kitchen/new`,
       details: (id: string) => `${ROOTS.DASHBOARD}/kitchen/${id}`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/kitchen/${id}/edit`,
       settings: `${ROOTS.DASHBOARD}/kitchen/settings`,
     },
     order: {
@@ -123,6 +125,8 @@ export const paths = {
     menu: {
       root: `${ROOTS.DASHBOARD}/menu`,
       new: `${ROOTS.DASHBOARD}/menu/new`,
+      details: (id: string) => `${ROOTS.DASHBOARD}/menu/${id}`,
+      edit: (id: string) => `${ROOTS.DASHBOARD}/menu/${id}/edit`,
       categories: `${ROOTS.DASHBOARD}/menu/categories`,
     },
     user: {

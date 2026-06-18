@@ -8,8 +8,11 @@ import { UserEditView } from 'src/sections/user/view';
 
 export const metadata: Metadata = { title: `User edit | Dashboard - ${CONFIG.appName}` };
 
-export default function Page() {
-  return <UserEditView />;
+type Props = { params: Promise<{ id: string }> };
+
+export default async function Page({ params }: Props) {
+  const { id } = await params;
+  return <UserEditView id={id} />;
 }
 
 export const dynamic = 'force-dynamic';

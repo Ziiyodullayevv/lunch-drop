@@ -8,7 +8,7 @@ import { PageRoleGuard } from 'src/auth/guard/page-role-guard';
 
 // ----------------------------------------------------------------------
 
-export const metadata: Metadata = { title: `Create a new user | Dashboard - ${CONFIG.appName}` };
+export const metadata: Metadata = { title: `Yangi admin qo'shish | Dashboard - ${CONFIG.appName}` };
 
 export default function Page() {
   return (

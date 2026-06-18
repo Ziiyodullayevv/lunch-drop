@@ -2,8 +2,8 @@
 
 import type { AccountStatus } from 'src/lib/api/orders';
 
-import { usePopover } from 'minimal-shared/hooks';
 import { useState } from 'react';
+import { usePopover } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';

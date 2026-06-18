@@ -9,7 +9,7 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 
-import axios from 'src/lib/axios';
+import { updateAccountProfile } from 'src/lib/api/account';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
@@ -21,19 +21,14 @@ export type ChangePassWordSchemaType = z.infer<typeof ChangePassWordSchema>;
 
 export const ChangePassWordSchema = z
   .object({
-    oldPassword: z
+    newPassword: z
       .string()
-      .min(1, { error: 'Password is required!' })
-      .min(6, { error: 'Password must be at least 6 characters!' }),
-    newPassword: z.string().min(1, { error: 'New password is required!' }),
-    confirmNewPassword: z.string().min(1, { error: 'Confirm password is required!' }),
-  })
-  .refine((val) => val.oldPassword !== val.newPassword, {
-    error: 'New password must be different than old password',
-    path: ['newPassword'],
+      .min(1, { error: 'Yangi parol kiritilishi shart' })
+      .min(6, { error: "Parol kamida 6 ta belgidan iborat bo'lishi kerak" }),
+    confirmNewPassword: z.string().min(1, { error: 'Parolni tasdiqlang' }),
   })
   .refine((val) => val.newPassword === val.confirmNewPassword, {
-    error: 'Passwords do not match!',
+    error: 'Parollar bir xil emas',
     path: ['confirmNewPassword'],
   });
 
@@ -43,7 +38,6 @@ export function AccountChangePassword() {
   const showPassword = useBoolean();
 
   const defaultValues: ChangePassWordSchemaType = {
-    oldPassword: '',
     newPassword: '',
     confirmNewPassword: '',
   };
@@ -62,10 +56,7 @@ export function AccountChangePassword() {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      await axios.post(`/api/v1/auth/me/password`, {
-        old_password: data.oldPassword,
-        new_password: data.newPassword,
-      });
+      await updateAccountProfile({ password: data.newPassword });
       reset();
       toast.success('Parol yangilandi!');
     } catch (err: any) {
@@ -84,27 +75,8 @@ export function AccountChangePassword() {
         }}
       >
         <Field.Text
-          name="oldPassword"
-          type={showPassword.value ? 'text' : 'password'}
-          label="Old password"
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={showPassword.onToggle} edge="end">
-                    <Iconify
-                      icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'}
-                    />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
-
-        <Field.Text
           name="newPassword"
-          label="New password"
+          label="Yangi parol"
           type={showPassword.value ? 'text' : 'password'}
           slotProps={{
             input: {
@@ -121,7 +93,7 @@ export function AccountChangePassword() {
           }}
           helperText={
             <Box component="span" sx={{ gap: 0.5, display: 'flex', alignItems: 'center' }}>
-              <Iconify icon="solar:info-circle-bold" width={16} /> Password must be minimum 6+
+              <Iconify icon="solar:info-circle-bold" width={16} /> Kamida 6 ta belgi
             </Box>
           }
         />
@@ -129,7 +101,7 @@ export function AccountChangePassword() {
         <Field.Text
           name="confirmNewPassword"
           type={showPassword.value ? 'text' : 'password'}
-          label="Confirm new password"
+          label="Yangi parolni tasdiqlang"
           slotProps={{
             input: {
               endAdornment: (
@@ -146,7 +118,7 @@ export function AccountChangePassword() {
         />
 
         <Button type="submit" variant="contained" loading={isSubmitting} sx={{ ml: 'auto' }}>
-          Save changes
+          Saqlash
         </Button>
       </Card>
     </Form>

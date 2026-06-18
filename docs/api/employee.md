@@ -23,6 +23,8 @@ GET /employee/status           →  so'rov holatini kuzatish
 
 Mavjud barcha kompaniyalar va ularning filiallari.
 
+**Query params:** `?search=Karimov` (`search` ixtiyoriy, kompaniya nomi bo'yicha qidiradi)
+
 **Response `200`:**
 ```json
 [
@@ -91,13 +93,57 @@ O'z tasdiq holatini tekshirish.
 
 ---
 
+## Xodim profili
+
+### `GET /employee/me`
+
+Xodimning o'z profilini qaytaradi. Bu endpoint `GET /auth/me` dagi `{ "user": ... }`
+wrapperidan farqli ravishda to'g'ridan-to'g'ri `UserRead` qaytaradi.
+
+**Response `200`:**
+```json
+{
+  "id": "uuid",
+  "phone": "+998901234567",
+  "name": "Jasur Toshmatov",
+  "role": "employee",
+  "is_active": true,
+  "account_status": "approved",
+  "company_id": "uuid",
+  "kitchen_id": null
+}
+```
+
+---
+
+### `PATCH /employee/me`
+
+Xodim o'z ismini yangilaydi. Telefon login identifikatori bo'lgani uchun bu endpoint
+orqali o'zgartirilmaydi.
+
+**Request:**
+```json
+{ "name": "Jasur Toshmatov" }
+```
+
+`name` ixtiyoriy (`null` yoki 1-255 belgi).
+
+**Response `200`:** — yangilangan `UserRead`
+
+---
+
 ## Menyu
 
 ### `GET /employee/menu`
 
-Sana bo'yicha bugungi yoki kelgusi kun menyusi.
+Sana va filial bo'yicha bugungi yoki kelgusi kun menyusi.
 
-**Query params:** `?target_date=2024-01-15` (ixtiyoriy, default: bugun, `YYYY-MM-DD`)
+**Query params:**
+
+| Param | Shart | Ma'no |
+|---|---|---|
+| `target_date` | ❌ | `YYYY-MM-DD`; berilmasa bugun |
+| `branch_id` | ❌ | Aniq filial; berilmasa xodim a'zo bo'lgan barcha filiallar |
 
 **Response `200`:**
 ```json
@@ -111,7 +157,10 @@ Sana bo'yicha bugungi yoki kelgusi kun menyusi.
       "name": "Osh",
       "description": null,
       "price": "25000.00",
-      "image_url": "https://..."
+      "image_url": "https://...",
+      "kitchen_name": "Ali's Kitchen",
+      "delivery_start_time": "12:30:00",
+      "delivery_end_time": "13:00:00"
     }
   ]
 }
@@ -160,6 +209,7 @@ Yangi buyurtma berish.
   "branch_name": "Chilonzor filiali",
   "company_id": "uuid",
   "company_name": "Karimov Holding",
+  "kitchen_name": "Ali's Kitchen",
   "meal_name": "Osh"
 }
 ```
@@ -293,7 +343,7 @@ O'qilmagan bildirishnomalar soni.
 
 ---
 
-### `PATCH /notifications/{id}/read`
+### `PATCH /notifications/{notification_id}/read`
 
 Bitta bildirishnomani o'qildi deb belgilash.
 
@@ -318,6 +368,12 @@ Barcha bildirishnomalarni o'qildi deb belgilash.
 
 Rasm faylini yuklash (`multipart/form-data`).
 
+**Query params:** `?prefix=misc`
+
+| Param | Shart | Ma'no |
+|---|---|---|
+| `prefix` | ❌ | Saqlash prefiksi: `meals`, `logos` yoki `misc`; default: `misc` |
+
 **Request:** `Content-Type: multipart/form-data`
 
 | Maydon | Shart | Tur |
@@ -339,6 +395,7 @@ export const endpoints = {
     companies:       '/employee/companies',
     joinBranch:      '/employee/join-branch',
     status:          '/employee/status',
+    me:              '/employee/me',
     menu:            '/employee/menu',
   },
   orders: {

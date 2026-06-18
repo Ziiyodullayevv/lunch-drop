@@ -2,7 +2,6 @@
 
 import type { Dayjs } from 'dayjs';
 import type { MapRef, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
-import type { GeolocateCoords } from 'src/components/map';
 
 import dayjs from 'dayjs';
 import { useRef, useState, useEffect, useCallback } from 'react';
@@ -24,7 +23,15 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
-import { Map, MapMarker, MapControls, MapLocateButton } from 'src/components/map';
+import {
+  Map,
+  MapMarker,
+  MapControls,
+  MapLocateButton,
+  type GeolocateCoords,
+  MapAddressAutocomplete,
+  type MapAddressSuggestion,
+} from 'src/components/map';
 
 import { useKitchenMe, useUpdateKitchenSettings } from 'src/sections/kitchen/hooks/use-kitchens';
 
@@ -35,7 +42,10 @@ const DEFAULT_LNG = 69.2401;
 
 function timeToDayjs(t: string | undefined | null): Dayjs {
   const [h, m] = (t ?? '00:00').split(':');
-  return dayjs().hour(parseInt(h, 10)).minute(parseInt(m ?? '0', 10)).second(0);
+  return dayjs()
+    .hour(parseInt(h, 10))
+    .minute(parseInt(m ?? '0', 10))
+    .second(0);
 }
 
 function dayjsToTime(d: Dayjs | null): string {
@@ -57,6 +67,7 @@ export function KitchenSettingsView() {
   } | null>(null);
 
   const [locationDirty, setLocationDirty] = useState(false);
+  const [addressSearch, setAddressSearch] = useState('');
   const [marker, setMarker] = useState({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
   const [viewState, setViewState] = useState<Partial<ViewState>>({
     latitude: DEFAULT_LAT,
@@ -75,23 +86,29 @@ export function KitchenSettingsView() {
   }, [kitchen]);
 
   // kitchen data kelganda form state ni bir marta init qilamiz
-  const resolved = times ?? (kitchen
-    ? {
-        order_cutoff_time:   timeToDayjs(kitchen.order_cutoff_time),
-        delivery_start_time: timeToDayjs(kitchen.delivery_start_time),
-        delivery_end_time:   timeToDayjs(kitchen.delivery_end_time),
-      }
-    : null);
+  const resolved =
+    times ??
+    (kitchen
+      ? {
+          order_cutoff_time: timeToDayjs(kitchen.order_cutoff_time),
+          delivery_start_time: timeToDayjs(kitchen.delivery_start_time),
+          delivery_end_time: timeToDayjs(kitchen.delivery_end_time),
+        }
+      : null);
 
-  const form = times ?? (resolved ? {
-    order_cutoff_time:   resolved.order_cutoff_time,
-    delivery_start_time: resolved.delivery_start_time,
-    delivery_end_time:   resolved.delivery_end_time,
-  } : {
-    order_cutoff_time:   timeToDayjs('11:00'),
-    delivery_start_time: timeToDayjs('12:30'),
-    delivery_end_time:   timeToDayjs('13:00'),
-  });
+  const form =
+    times ??
+    (resolved
+      ? {
+          order_cutoff_time: resolved.order_cutoff_time,
+          delivery_start_time: resolved.delivery_start_time,
+          delivery_end_time: resolved.delivery_end_time,
+        }
+      : {
+          order_cutoff_time: timeToDayjs('11:00'),
+          delivery_start_time: timeToDayjs('12:30'),
+          delivery_end_time: timeToDayjs('13:00'),
+        });
 
   const handleTimeChange = (field: keyof typeof form) => (value: Dayjs | null) => {
     setTimes((prev) => ({
@@ -103,9 +120,9 @@ export function KitchenSettingsView() {
   const handleSaveTimes = async () => {
     try {
       await updateMutation.mutateAsync({
-        order_cutoff_time:   dayjsToTime(form.order_cutoff_time),
+        order_cutoff_time: dayjsToTime(form.order_cutoff_time),
         delivery_start_time: dayjsToTime(form.delivery_start_time),
-        delivery_end_time:   dayjsToTime(form.delivery_end_time),
+        delivery_end_time: dayjsToTime(form.delivery_end_time),
       });
       toast.success('Vaqt sozlamalari saqlandi');
     } catch (err) {
@@ -123,6 +140,17 @@ export function KitchenSettingsView() {
   const handleLocate = useCallback(({ latitude, longitude }: GeolocateCoords) => {
     setMarker({ lat: latitude, lng: longitude });
     setLocationDirty(true);
+  }, []);
+
+  const handleAddressSelect = useCallback((suggestion: MapAddressSuggestion) => {
+    setAddressSearch(suggestion.label);
+    setMarker({ lat: suggestion.lat, lng: suggestion.lng });
+    setLocationDirty(true);
+    mapRef.current?.flyTo({
+      center: [suggestion.lng, suggestion.lat],
+      zoom: 16,
+      duration: 900,
+    });
   }, []);
 
   const handleSaveLocation = () => {
@@ -150,14 +178,11 @@ export function KitchenSettingsView() {
     <DashboardContent>
       <CustomBreadcrumbs
         heading="Oshxona sozlamalari"
-        links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Sozlamalar' },
-        ]}
+        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Sozlamalar' }]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <Stack spacing={3} sx={{ maxWidth: 900, mx: 'auto', width: '100%' }}>
+      <Stack spacing={3} sx={{ maxWidth: 600, mx: 'auto', width: '100%' }}>
         {/* Vaqt sozlamalari */}
         <Card>
           <Box sx={{ px: 3, pt: 3, pb: 1 }}>
@@ -171,7 +196,10 @@ export function KitchenSettingsView() {
 
           <Stack spacing={3} sx={{ px: 3, py: 3 }}>
             <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <Iconify icon="solar:clock-circle-bold" width={18} />
                 Buyurtma qabul qilish tugashi
               </Typography>
@@ -192,7 +220,10 @@ export function KitchenSettingsView() {
             <Divider />
 
             <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <Iconify icon="solar:forward-bold" width={18} />
                 Yetkazish vaqt oralig&apos;i
               </Typography>
@@ -205,7 +236,9 @@ export function KitchenSettingsView() {
                   label="Boshlanishi"
                   slotProps={{ textField: { fullWidth: true } }}
                 />
-                <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>—</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+                  —
+                </Typography>
                 <TimePicker
                   value={form.delivery_end_time}
                   onChange={handleTimeChange('delivery_end_time')}
@@ -236,8 +269,7 @@ export function KitchenSettingsView() {
                 <strong>
                   {dayjsToTime(form.delivery_start_time).slice(0, 5)}
                   {' — '}
-                  {dayjsToTime(form.delivery_end_time).slice(0, 5)}
-                  {' '}oralig&apos;ida
+                  {dayjsToTime(form.delivery_end_time).slice(0, 5)} oralig&apos;ida
                 </strong>
               </Typography>
             </Box>
@@ -268,13 +300,22 @@ export function KitchenSettingsView() {
 
           <Divider sx={{ mt: 2 }} />
 
-          <Box sx={{ px: 3, py: 3 }}>
+          <Stack spacing={2} sx={{ px: 3, py: 3 }}>
+            <MapAddressAutocomplete
+              value={addressSearch}
+              onChange={setAddressSearch}
+              onSelect={handleAddressSelect}
+              latitude={marker.lat}
+              longitude={marker.lng}
+              label="Manzil qidirish"
+            />
+
             <Box sx={{ position: 'relative' }}>
               <Map
                 ref={mapRef}
                 {...viewState}
                 onMove={(evt) => setViewState(evt.viewState)}
-                sx={{ height: 340, borderRadius: 2, overflow: 'hidden' }}
+                sx={{ height: 300, borderRadius: 2, overflow: 'hidden' }}
               >
                 <MapControls hideGeolocate />
                 <MapMarker
@@ -298,7 +339,7 @@ export function KitchenSettingsView() {
                 Lng: {marker.lng.toFixed(6)}
               </Typography>
             </Box>
-          </Box>
+          </Stack>
 
           <Divider />
 
@@ -307,7 +348,7 @@ export function KitchenSettingsView() {
               variant="contained"
               disabled={!locationDirty}
               onClick={handleSaveLocation}
-              startIcon={<Iconify icon={"solar:map-point-bold" as any} />}
+              startIcon={<Iconify icon={'solar:map-point-bold' as any} />}
             >
               Joylashuvni saqlash
             </LoadingButton>

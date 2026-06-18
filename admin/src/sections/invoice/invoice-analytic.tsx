@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-
 import type { IconifyName } from 'src/components/iconify';
 
 import { varAlpha } from 'minimal-shared/utils';

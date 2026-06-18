@@ -1,22 +1,22 @@
 import type { BranchCreate, BranchUpdate, CompanyBranchCreate } from 'src/lib/api/companies';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
-  assignCompanyBranchKitchens,
-  assignKitchens,
-  createBranch,
-  createCompanyBranch,
-  deleteBranch,
-  deleteCompanyBranch,
   fetchBranch,
-  fetchBranches,
-  fetchCompanyBranch,
-  fetchCompanyBranchKitchens,
-  fetchCompanyBranchesList,
-  fetchCompanyKitchens,
+  createBranch,
+  deleteBranch,
   updateBranch,
+  fetchBranches,
+  assignKitchens,
+  fetchCompanyBranch,
+  createCompanyBranch,
+  deleteCompanyBranch,
   updateCompanyBranch,
+  fetchCompanyKitchens,
+  fetchCompanyBranchesList,
+  fetchCompanyBranchKitchens,
+  assignCompanyBranchKitchens,
 } from 'src/lib/api/companies';
 
 // ----------------------------------------------------------------------
@@ -30,18 +30,22 @@ export const branchKeys = {
 
 // ------------------ super_admin ------------------
 
-export function useBranches(params?: { limit?: number; offset?: number; company_id?: string }) {
+export function useBranches(
+  params?: { limit?: number; offset?: number; company_id?: string },
+  enabled = true
+) {
   return useQuery({
     queryKey: branchKeys.list(params),
     queryFn:  () => fetchBranches(params),
+    enabled,
   });
 }
 
-export function useBranch(id: string) {
+export function useBranch(id: string, enabled = true) {
   return useQuery({
     queryKey: branchKeys.detail(id),
     queryFn:  () => fetchBranch(id),
-    enabled:  !!id,
+    enabled:  enabled && !!id,
   });
 }
 
@@ -89,18 +93,22 @@ export function useAssignKitchens(branchId: string) {
 
 // ------------------ company_admin ------------------
 
-export function useCompanyBranches(params?: { limit?: number; offset?: number }) {
+export function useCompanyBranches(
+  params?: { limit?: number; offset?: number },
+  enabled = true
+) {
   return useQuery({
     queryKey: branchKeys.companyList(params),
     queryFn:  () => fetchCompanyBranchesList(params),
+    enabled,
   });
 }
 
-export function useCompanyBranch(id: string) {
+export function useCompanyBranch(id: string, enabled = true) {
   return useQuery({
     queryKey: branchKeys.detail(id),
     queryFn:  () => fetchCompanyBranch(id),
-    enabled:  !!id,
+    enabled:  enabled && !!id,
   });
 }
 
@@ -136,19 +144,20 @@ export function useDeleteCompanyBranch() {
   });
 }
 
-export function useCompanyKitchens() {
+export function useCompanyKitchens(enabled = true) {
   return useQuery({
     queryKey: ['company-kitchens'],
     queryFn:  () => fetchCompanyKitchens(),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 }
 
-export function useCompanyBranchKitchens(branchId: string) {
+export function useCompanyBranchKitchens(branchId: string, enabled = true) {
   return useQuery({
     queryKey: ['company-branch-kitchens', branchId],
     queryFn:  () => fetchCompanyBranchKitchens(branchId),
-    enabled:  !!branchId,
+    enabled:  enabled && !!branchId,
   });
 }
 

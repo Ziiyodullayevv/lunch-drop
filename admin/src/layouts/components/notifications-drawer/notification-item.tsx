@@ -2,26 +2,24 @@
 
 import type { NotificationData } from './use-notifications';
 
+import dayjs from 'dayjs';
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
 import Dialog from '@mui/material/Dialog';
 import Divider from '@mui/material/Divider';
 import SvgIcon from '@mui/material/SvgIcon';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
 import DialogTitle from '@mui/material/DialogTitle';
-import ListItemText from '@mui/material/ListItemText';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemButton from '@mui/material/ListItemButton';
 
-import { fToNow, fDateTime } from 'src/utils/format-time';
+import { fDateTime } from 'src/utils/format-time';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -52,6 +50,23 @@ const ROLE_LABEL: Record<string, string> = {
   company_admin: 'Kompaniya admini',
 };
 
+export function formatNotificationTime(createdAt: string, now = dayjs()) {
+  const created = dayjs(createdAt);
+  if (!created.isValid()) return 'Vaqt noma’lum';
+
+  const minutes = Math.max(0, now.diff(created, 'minute'));
+  if (minutes < 1) return 'Hozirgina';
+  if (minutes < 60) return `${minutes} daqiqa`;
+
+  const hours = now.diff(created, 'hour');
+  if (hours < 24) return `${hours} soat`;
+
+  const days = now.diff(created, 'day');
+  if (days < 7) return `${days} kun`;
+
+  return created.format('DD MMM YYYY, HH:mm');
+}
+
 // ----------------------------------------------------------------------
 
 function PendingDetailDialog({
@@ -69,14 +84,13 @@ function PendingDetailDialog({
 }) {
   const [busy, setBusy] = useState<'approve' | 'decline' | null>(null);
 
-  const isActed = !notification.isUnRead;
+  const isActed = notification.action_status !== 'pending';
 
   const handleApprove = async () => {
     if (!onApprove) return;
     setBusy('approve');
     await onApprove(notification.id);
     setBusy(null);
-    onClose();
   };
 
   const handleDecline = async () => {
@@ -84,7 +98,6 @@ function PendingDetailDialog({
     setBusy('decline');
     await onDecline(notification.id);
     setBusy(null);
-    onClose();
   };
 
   const isEmployee = notification.type === 'employee_pending';
@@ -248,6 +261,25 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
     notification.type === 'kitchen_pending' ||
     notification.type === 'company_pending' ||
     notification.type === 'employee_pending';
+  const isAwaitingAction = notification.action_status === 'pending';
+  const entityLabel =
+    notification.type === 'kitchen_pending'
+      ? 'Oshxona'
+      : notification.type === 'company_pending'
+        ? 'Kompaniya'
+        : 'Xodim';
+  const icon =
+    notification.type === 'kitchen_pending'
+      ? 'custom:fast-food-fill'
+      : notification.type === 'company_pending'
+        ? 'solar:buildings-bold'
+        : 'solar:user-plus-bold';
+  const iconColor =
+    notification.type === 'kitchen_pending'
+      ? 'success'
+      : notification.type === 'company_pending'
+        ? 'warning'
+        : 'info';
 
   const handleItemClick = () => {
     if (isPending) {
@@ -296,44 +328,47 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
           />
         )}
 
-        {/* Avatar */}
-        <ListItemAvatar>
-          {notification.avatarUrl ? (
-            <Avatar src={notification.avatarUrl} sx={{ bgcolor: 'background.neutral' }} />
-          ) : (
-            <Box
-              sx={{
-                width: 40, height: 40, display: 'flex', borderRadius: '50%',
-                alignItems: 'center', justifyContent: 'center', bgcolor: 'background.neutral',
-              }}
-            >
-              <SvgIcon sx={{ width: 24, height: 24 }}>{renderIcon(notification.type)}</SvgIcon>
-            </Box>
-          )}
-        </ListItemAvatar>
+        <Box
+          sx={{
+            mr: 2,
+            width: 44,
+            height: 44,
+            display: 'grid',
+            flexShrink: 0,
+            borderRadius: 1.5,
+            placeItems: 'center',
+            color: `${iconColor}.main`,
+            bgcolor: `${iconColor}.lighter`,
+          }}
+        >
+          <Iconify icon={icon as any} width={24} />
+        </Box>
 
         {/* Content */}
         <Box sx={{ minWidth: 0, flex: '1 1 auto' }}>
-          <ListItemText
-            primary={notification.title}
-            slotProps={{
-              primary: { sx: { mb: 0.5, typography: 'subtitle2' } },
-              secondary: { sx: { typography: 'caption', color: 'text.disabled' } },
-            }}
-          />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+          <Typography variant="body2" sx={{ pr: notification.isUnRead ? 2 : 0 }}>
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              {notification.subject}
+            </Box>{' '}
+            <Box component="span">qo&apos;shilish so&apos;rovini yubordi.</Box>
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
             <Typography variant="caption" color="text.disabled">
-              {fToNow(notification.created_at)}
+              <Box
+                component="span"
+                title={dayjs(notification.created_at).format('DD MMM YYYY, HH:mm:ss')}
+              >
+                {formatNotificationTime(notification.created_at)}
+              </Box>
             </Typography>
-            {isPending && (
-              <Typography variant="caption" color="primary.main">
-                · Batafsil
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.disabled">·</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {entityLabel}
+            </Typography>
           </Box>
 
-          {/* Approve/Decline — faqat unread va pending bo'lsa */}
-          {isPending && notification.isUnRead && (
+          {isPending && isAwaitingAction && (
             <Box sx={{ gap: 1, mt: 1, display: 'flex' }} onClick={(e) => e.stopPropagation()}>
               <Button
                 size="small"
@@ -354,6 +389,16 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
                 {busy === 'decline' ? '...' : 'Rad etish'}
               </Button>
             </Box>
+          )}
+
+          {!isAwaitingAction && (
+            <Chip
+              size="small"
+              variant="soft"
+              sx={{ mt: 1 }}
+              color={notification.action_status === 'approved' ? 'success' : 'error'}
+              label={notification.action_status === 'approved' ? 'Tasdiqlandi' : 'Rad etildi'}
+            />
           )}
         </Box>
       </ListItemButton>

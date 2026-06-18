@@ -16,21 +16,22 @@ function nowUzb(): dayjs.Dayjs {
   return dayjs(Date.now() + UZB_OFFSET_MS);
 }
 
-/**
- * Given a stored billing day number (1–31), resolves the next upcoming
- * calendar date using Uzbekistan time:
- *   - If today's UZB day has already passed the stored day → next month
- *   - Otherwise → current month
- * The day is clamped to the target month's actual length (handles 29–31).
- */
 function resolveCalendarValue(dayNum: number | null): dayjs.Dayjs | null {
   if (!dayNum) return null;
 
   const uzb = nowUzb();
-  const base = uzb.date() > dayNum ? uzb.add(1, 'month') : uzb;
-  const clamped = Math.min(dayNum, base.daysInMonth());
+  const currentMonth = uzb.startOf('month');
+  const nextMonth = currentMonth.add(1, 'month');
 
-  return base.date(clamped).startOf('day');
+  if (dayNum <= currentMonth.daysInMonth()) {
+    return currentMonth.date(dayNum).startOf('day');
+  }
+
+  if (dayNum <= nextMonth.daysInMonth()) {
+    return nextMonth.date(dayNum).startOf('day');
+  }
+
+  return null;
 }
 
 // ----------------------------------------------------------------------
@@ -46,8 +47,8 @@ type Props = {
 export function RHFBillingDayPicker({ name, label, sx }: Props) {
   const { control } = useFormContext();
 
-  // Minimum selectable date = today in UZB time
-  const minDate = nowUzb().startOf('day');
+  const minDate = nowUzb().startOf('month');
+  const maxDate = minDate.add(1, 'month').endOf('month');
 
   return (
     <Controller
@@ -56,10 +57,6 @@ export function RHFBillingDayPicker({ name, label, sx }: Props) {
       render={({ field, fieldState: { error } }) => {
         const dayNum = field.value != null ? Number(field.value) : null;
         const calendarValue = resolveCalendarValue(dayNum);
-
-        const helperText =
-          error?.message ??
-          (dayNum && dayNum >= 29 ? "* Ba'zi oylarda oy oxirgi kunida to'lanadi" : undefined);
 
         return (
           <DatePicker
@@ -74,12 +71,13 @@ export function RHFBillingDayPicker({ name, label, sx }: Props) {
               field.onChange(date.date());
             }}
             minDate={minDate}
+            maxDate={maxDate}
             sx={sx}
             slotProps={{
               textField: {
                 fullWidth: true,
                 error: !!error,
-                helperText,
+                helperText: error?.message,
                 inputRef: field.ref,
                 onBlur: field.onBlur,
               },

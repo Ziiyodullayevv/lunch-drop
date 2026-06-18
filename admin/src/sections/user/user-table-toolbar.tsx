@@ -126,18 +126,16 @@ export function UserTableToolbar({ filters, options, onResetPage }: Props) {
 
         <Box
           sx={{
-            gap: 2,
-            width: 1,
             flexGrow: 1,
             display: 'flex',
             alignItems: 'center',
           }}
         >
           <TextField
-            fullWidth
             value={currentFilters.name}
             onChange={handleFilterName}
-            placeholder="Search..."
+            placeholder="Ism yoki telefon bo'yicha qidirish..."
+            sx={{ width: { xs: 1, md: 320 } }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -149,10 +147,14 @@ export function UserTableToolbar({ filters, options, onResetPage }: Props) {
             }}
           />
 
-          <IconButton onClick={menuActions.onOpen}>
-            <Iconify icon="eva:more-vertical-fill" />
-          </IconButton>
         </Box>
+
+        <IconButton
+          onClick={menuActions.onOpen}
+          sx={{ ml: { xs: 0, md: 'auto' }, flexShrink: 0 }}
+        >
+          <Iconify icon="eva:more-vertical-fill" />
+        </IconButton>
       </Box>
 
       {renderMenuActions()}

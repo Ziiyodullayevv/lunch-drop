@@ -30,11 +30,11 @@ import { signInWithPassword } from '../../context/jwt';
 export type SignInSchemaType = z.infer<typeof SignInSchema>;
 
 export const SignInSchema = z.object({
-  phone: z.string().min(1, { message: 'Phone is required!' }),
+  phone: z.string().min(1, { message: 'Telefon raqam majburiy' }),
   password: z
     .string()
-    .min(1, { message: 'Password is required!' })
-    .min(6, { message: 'Password must be at least 6 characters!' }),
+    .min(1, { message: 'Parol majburiy' })
+    .min(6, { message: 'Parol kamida 6 ta belgidan iborat bo‘lishi kerak' }),
 });
 
 // ----------------------------------------------------------------------
@@ -65,12 +65,12 @@ export function JwtSignInView() {
   return (
     <>
       <FormHead
-        title="Launch Drop Admin"
+        title="Tizimga kirish"
         description={
           <>
-            New kitchen?{' '}
+            Lunch Drop hamkori bo‘lmoqchimisiz?{' '}
             <Link component={RouterLink} href={paths.auth.jwt.signUp} variant="subtitle2">
-              Create account
+              Ro‘yxatdan o‘tish
             </Link>
           </>
         }
@@ -85,12 +85,12 @@ export function JwtSignInView() {
 
       <Form methods={methods} onSubmit={onSubmit}>
         <Box sx={{ gap: 3, display: 'flex', flexDirection: 'column' }}>
-          <Field.Phone name="phone" label="Phone number" country="UZ" />
+          <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
 
           <Field.Text
             name="password"
-            label="Password"
-            placeholder="6+ characters"
+            label="Parol"
+            placeholder="Kamida 6 ta belgi"
             type={showPassword.value ? 'text' : 'password'}
             slotProps={{
               inputLabel: { shrink: true },
@@ -115,9 +115,9 @@ export function JwtSignInView() {
             type="submit"
             variant="contained"
             loading={isSubmitting}
-            loadingIndicator="Sign in..."
+            loadingIndicator="Kirilmoqda..."
           >
-            Sign in
+            Kirish
           </Button>
         </Box>
       </Form>

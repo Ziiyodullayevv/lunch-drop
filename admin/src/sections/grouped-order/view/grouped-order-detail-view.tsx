@@ -20,7 +20,6 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
-import { useRouter } from 'src/routes/hooks';
 
 import { fDateTime } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
@@ -125,7 +124,7 @@ function StatusUpdateButton({
         onClick={popover.onOpen}
         endIcon={<Iconify icon="eva:arrow-ios-downward-fill" width={16} />}
       >
-        Status o'zgartirish
+        Status o&apos;zgartirish
       </Button>
 
       <CustomPopover open={popover.open} anchorEl={popover.anchorEl} onClose={popover.onClose}>
@@ -144,7 +143,6 @@ function StatusUpdateButton({
 // ----------------------------------------------------------------------
 
 export function GroupedOrderDetailView({ id }: { id: string }) {
-  const router = useRouter();
   const [data, setData] = useState<GroupedOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -186,6 +184,7 @@ export function GroupedOrderDetailView({ id }: { id: string }) {
     <DashboardContent>
       <CustomBreadcrumbs
         heading="Guruhli buyurtma"
+        backHref={paths.dashboard.groupedOrder.root}
         links={[
           { name: 'Dashboard', href: paths.dashboard.root },
           { name: 'Grouped Orders', href: paths.dashboard.groupedOrder.root },
@@ -304,7 +303,7 @@ export function GroupedOrderDetailView({ id }: { id: string }) {
               {data.orders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} align="center" sx={{ py: 5, color: 'text.secondary' }}>
-                    Buyurtmalar yo'q
+                    Buyurtmalar yo&apos;q
                   </TableCell>
                 </TableRow>
               )}

@@ -1,4 +1,4 @@
-# Launch Drop
+# Lunch Drop
 
 B2B korporativ tushlik platformasi. Kompaniya xodimlari oshxonalardan ovqat buyurtma qiladi, oshxonalar guruhlab tayyorlaydi va yetkazib beradi.
 

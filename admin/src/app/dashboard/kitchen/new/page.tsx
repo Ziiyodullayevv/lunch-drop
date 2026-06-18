@@ -10,7 +10,7 @@ export const metadata = { title: `New Kitchen | Dashboard - ${CONFIG.appName}` }
 
 export default function Page() {
   return (
-    <PageRoleGuard allowedRoles={['super_admin', 'company_admin']}>
+    <PageRoleGuard allowedRoles={['super_admin']}>
       <KitchenCreateView />
     </PageRoleGuard>
   );

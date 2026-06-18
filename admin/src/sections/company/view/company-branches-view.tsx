@@ -1,21 +1,22 @@
 'use client';
 
-import type { Dayjs } from 'dayjs';
+import type { SelectChangeEvent } from '@mui/material/Select';
 
-import dayjs from 'dayjs';
 import { useMemo, useState, useEffect } from 'react';
-import { useBoolean, usePopover } from 'minimal-shared/hooks';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useBoolean, usePopover, useDebounce } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
 import Dialog from '@mui/material/Dialog';
+import Select from '@mui/material/Select';
+import Tooltip from '@mui/material/Tooltip';
 import Divider from '@mui/material/Divider';
 import Collapse from '@mui/material/Collapse';
 import MenuList from '@mui/material/MenuList';
@@ -27,32 +28,42 @@ import TableCell from '@mui/material/TableCell';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import InputLabel from '@mui/material/InputLabel';
 import LoadingButton from '@mui/lab/LoadingButton';
 import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
 import ListItemText from '@mui/material/ListItemText';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
-import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
 import { fDate, fTime } from 'src/utils/format-time';
 
+import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { getRecentBranches, removeRecentBranches } from 'src/lib/recent-branches';
+import { fetchBranchesWithKitchenIds } from 'src/lib/api/companies';
 
-import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import { ConfirmDialog } from 'src/components/custom-dialog';
 import { CustomPopover } from 'src/components/custom-popover';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
-import { useTable, TableNoData, TableHeadCustom, TablePaginationCustom } from 'src/components/table';
+import {
+  useTable,
+  TableNoData,
+  TableHeadCustom,
+  TableSelectedAction,
+  TablePaginationCustom,
+} from 'src/components/table';
 
 import { useKitchens } from 'src/sections/kitchen/hooks/use-kitchens';
-import { useBranches, useAssignKitchens } from 'src/sections/branch/hooks/use-branches';
+import { branchKeys, useAssignKitchens } from 'src/sections/branch/hooks/use-branches';
 
 import { useCompanies, useDeleteCompany } from '../hooks/use-companies';
 
@@ -75,39 +86,15 @@ type Branch = {
   lat: number;
   lng: number;
   created_at: string;
+  kitchen_ids?: string[];
 };
 
-type Kitchen = { id: string; name: string; is_active: boolean };
-type KitchenMapping = { id: string; kitchen_id: string; active: boolean; kitchen?: Kitchen };
-
 // ----------------------------------------------------------------------
-
-const UZ_MONTHS = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
-const UZ_DAYS_FULL = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
-
-function nextPaymentDate(day: number) {
-  const today = dayjs();
-  const cur = today.date(day);
-  return cur.isAfter(today, 'day') ? cur : today.add(1, 'month').date(day);
-}
-
-const companyStatusColor = (s: string): 'success' | 'error' | 'default' =>
-  s === 'active' ? 'success' : s === 'suspended' ? 'error' : 'default';
-
-const companyStatusLabel = (s: string) =>
-  s === 'active' ? 'Faol' : s === 'suspended' ? 'Bloklangan' : s;
-
-const STATUS_TABS = [
-  { value: 'all',       label: 'Barchasi'  },
-  { value: 'active',    label: 'Faol'      },
-  { value: 'suspended', label: 'Bloklangan'},
-];
 
 const TABLE_HEAD = [
   { id: 'name',       label: 'Kompaniya'                       },
   { id: 'created_at', label: 'Sana',               width: 140 },
-  { id: 'branches',   label: 'Filiallar',          width: 90  },
-  { id: 'billing_day',label: "To'lov kuni",        width: 120 },
+  { id: 'branches',   label: 'Filiallar',          width: 90,  align: 'center' as const },
   { id: 'actions',    label: '',                   width: 88  },
 ];
 
@@ -140,16 +127,21 @@ function ManageKitchensDialog({
 
   const toggle = (id: string) => setAssigned((prev) => {
     const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     return next;
   });
 
   const handleSave = async () => {
     const kitchenIds = Array.from(assigned);
     try {
-      await assignKitchensMutation.mutateAsync(kitchenIds);
+      const savedKitchens = await assignKitchensMutation.mutateAsync(kitchenIds);
+      const savedKitchenIds = savedKitchens.map((kitchen) => kitchen.id);
       toast.success('Oshxonalar saqlandi');
-      onSaved(branch.id, kitchenIds);
+      onSaved(branch.id, savedKitchenIds);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Saqlashda xatolik');
@@ -158,9 +150,9 @@ function ManageKitchensDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>
-        <Typography variant="h6">Oshxonalarni biriktirish</Typography>
-        <Typography variant="body2" color="text.secondary">{branch.name}</Typography>
+      <DialogTitle component="div">
+        <Typography component="div" variant="h6">Oshxonalarni biriktirish</Typography>
+        <Typography component="div" variant="body2" color="text.secondary">{branch.name}</Typography>
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ p: 0 }}>
@@ -195,84 +187,45 @@ function ManageKitchensDialog({
   );
 }
 
-// ── EditBranchDialog ──────────────────────────────────────────────────────────
-
-function EditBranchDialog({ branch, open, onClose, onSaved }: { branch: Branch; open: boolean; onClose: () => void; onSaved: () => void }) {
-  const [pickerValue, setPickerValue] = useState<Dayjs>(dayjs());
-  const updateBranch = useAssignKitchens(branch.id);
-
-  const selectedDay = pickerValue?.date() ?? null;
-
-  const upcomingDates = selectedDay ? (() => {
-    const today = dayjs();
-    const first = today.date(selectedDay).isAfter(today, 'day') ? today.date(selectedDay) : today.add(1, 'month').date(selectedDay);
-    return [first, first.add(1, 'month').date(selectedDay)];
-  })() : [];
-
-  const handleSave = async () => {
-    try {
-      toast.success('Saqlandi');
-      onSaved();
-      onClose();
-    } catch { toast.error('Xatolik'); }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>
-        <Typography variant="h6">Filial sozlamalari</Typography>
-        <Typography variant="body2" color="text.secondary">{branch.name}</Typography>
-      </DialogTitle>
-      <Divider />
-      <DialogContent sx={{ p: 0 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>Har oyning qaysi kunida to'lov amalga oshiriladi</Typography>
-          <StaticDatePicker value={pickerValue} onChange={(v) => { if (v) setPickerValue(v); }} views={['day']} slotProps={{ toolbar: { hidden: true }, actionBar: { actions: [] } }} />
-        </Box>
-        {upcomingDates.length > 0 && (
-          <>
-            <Divider />
-            <Box sx={{ px: 3, py: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Keyingi to'lovlar</Typography>
-              <Stack spacing={1} sx={{ mt: 1.5 }}>
-                {upcomingDates.map((d, i) => (
-                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: i === 0 ? 'primary.main' : 'action.selected', color: i === 0 ? 'primary.contrastText' : 'text.primary', display: 'flex', alignItems: 'center', justifyContent: 'center', typography: 'caption', fontWeight: 700, flexShrink: 0 }}>{d.date()}</Box>
-                    <Typography variant="body2">{d.date()}-{UZ_MONTHS[d.month()]}, {d.year()} ({UZ_DAYS_FULL[d.day()]})</Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-          </>
-        )}
-      </DialogContent>
-      <Divider />
-      <DialogActions>
-        <Button onClick={onClose} color="inherit">Bekor qilish</Button>
-        <LoadingButton variant="contained" loading={updateBranch.isPending} onClick={handleSave}>{selectedDay ? `${selectedDay}-kuni saqlash` : 'Saqlash'}</LoadingButton>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
 // ── CompanyRow ────────────────────────────────────────────────────────────────
 
 type CompanyRowProps = {
   row: Company;
   branches: Branch[];
   selected: boolean;
+  newBranchIds: string[];
   onSelectRow: () => void;
   onSuspend: (id: string) => void;
-  onActivate: (id: string) => void;
+  onDismissNewBranches: (ids: string[]) => void;
   onManageBranch: (b: Branch) => void;
-  onEditBranch: (b: Branch) => void;
+  kitchenAssignMap: Record<string, string[]>;
+  kitchenNameById: Map<string, string>;
 };
 
-function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivate, onManageBranch, onEditBranch }: CompanyRowProps) {
+function CompanyRow({
+  row,
+  branches,
+  selected,
+  newBranchIds,
+  onSelectRow,
+  onSuspend,
+  onDismissNewBranches,
+  onManageBranch,
+  kitchenAssignMap,
+  kitchenNameById,
+}: CompanyRowProps) {
   const collapseRow = useBoolean();
   const menuActions = usePopover();
   const branchMenu = usePopover();
   const [menuBranch, setMenuBranch] = useState<Branch | null>(null);
+  const newBranchIdSet = new Set(newBranchIds);
+
+  const handleCollapseToggle = () => {
+    if (collapseRow.value && newBranchIds.length > 0) {
+      onDismissNewBranches(newBranchIds);
+    }
+    collapseRow.onToggle();
+  };
 
   const renderPrimaryRow = () => (
     <TableRow hover selected={selected}>
@@ -283,7 +236,8 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
       <TableCell>
         <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
           <Avatar
-            src={row.logo_url ?? undefined}
+            src={row.logo_url ? getImagePreviewUrl(row.logo_url) : undefined}
+            alt={row.name}
             variant="rounded"
             sx={{ width: 40, height: 40, bgcolor: 'primary.lighter', color: 'primary.dark', fontSize: 14, fontWeight: 700 }}
           >
@@ -292,9 +246,10 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
           <ListItemText
             primary={row.name}
             secondary={row.description ?? '—'}
+            sx={{ maxWidth: 260, minWidth: 0 }}
             slotProps={{
-              primary: { sx: { typography: 'body2' } },
-              secondary: { sx: { color: 'text.disabled' } },
+              primary: { noWrap: true, sx: { typography: 'body2' } },
+              secondary: { noWrap: true, sx: { color: 'text.disabled' } },
             }}
           />
         </Box>
@@ -312,17 +267,13 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
       </TableCell>
 
       <TableCell align="center">
-        <Typography variant="body2">—</Typography>
-      </TableCell>
-
-      <TableCell>
-        <Typography variant="body2">{row.billing_day ?? '—'}</Typography>
+        <Typography variant="body2">{branches.length}</Typography>
       </TableCell>
 
       <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
         <IconButton
           color={collapseRow.value ? 'inherit' : 'default'}
-          onClick={collapseRow.onToggle}
+          onClick={handleCollapseToggle}
           sx={{ ...(collapseRow.value && { bgcolor: 'action.hover' }) }}
         >
           <Iconify icon="eva:arrow-ios-downward-fill" />
@@ -336,7 +287,7 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
 
   const renderCollapseRow = () => (
     <TableRow>
-      <TableCell sx={{ p: 0, border: 'none' }} colSpan={7}>
+      <TableCell sx={{ p: 0, border: 'none' }} colSpan={6}>
         <Collapse in={collapseRow.value} timeout="auto" unmountOnExit sx={{ bgcolor: 'background.neutral' }}>
           <Paper sx={{ m: 1.5 }}>
             {branches.length === 0 ? (
@@ -345,35 +296,97 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
               </Box>
             ) : (
               branches.map((b) => {
-                const d = null;
+                const assignedKitchenIds = kitchenAssignMap[b.id] ?? b.kitchen_ids ?? [];
+                const assignedKitchenNames = assignedKitchenIds.map(
+                  (id) => kitchenNameById.get(id) ?? id
+                );
+
                 return (
                   <Box
                     key={b.id}
                     sx={(theme) => ({
-                      display: 'flex',
-                      alignItems: 'center',
+                      display: 'grid',
+                      gridTemplateColumns: '40px 210px minmax(24px, 1fr) 340px 240px 40px',
+                      alignItems: 'flex-start',
+                      gap: 2,
                       p: theme.spacing(1.5, 2, 1.5, 1.5),
                       '&:not(:last-of-type)': {
                         borderBottom: `solid 2px ${theme.vars.palette.background.neutral}`,
                       },
                     })}
                   >
-                    <Avatar variant="rounded" sx={{ width: 40, height: 40, mr: 2, bgcolor: 'background.neutral', color: 'text.secondary' }}>
+                    <Avatar variant="rounded" sx={{ width: 40, height: 40, flexShrink: 0, bgcolor: 'background.neutral', color: 'text.secondary' }}>
                       <Iconify icon="solar:home-2-outline" width={20} />
                     </Avatar>
                     <ListItemText
                       primary={b.name ?? '—'}
-                      secondary={b.address ?? '—'}
+                      secondary={row.name}
+                      sx={{ width: 210, flex: '0 0 210px', minWidth: 0 }}
                       slotProps={{
                         primary: { sx: { typography: 'body2' } },
                         secondary: { sx: { color: 'text.disabled' } },
                       }}
                     />
-                    <Typography variant="caption" color="text.secondary" sx={{ mr: 2 }}>
-                      {b.address}
-                    </Typography>
+                    {newBranchIdSet.has(b.id) && (
+                      <Chip
+                        label="Yangi"
+                        size="small"
+                        color="success"
+                        variant="soft"
+                        sx={{ gridColumn: 3, justifySelf: 'start', fontWeight: 700 }}
+                      />
+                    )}
+                    <Box sx={{ gridColumn: 4, minWidth: 0, width: 340, maxWidth: 340 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          overflow: 'hidden',
+                          WebkitBoxOrient: 'vertical',
+                          WebkitLineClamp: 2,
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        {b.address}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ gridColumn: 5, minWidth: 0, width: 240, maxWidth: 240 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ display: 'block', mb: 0.75, color: 'text.disabled', fontWeight: 600 }}
+                      >
+                        Tanlangan oshxonalar
+                      </Typography>
+                      {assignedKitchenNames.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                          {assignedKitchenNames.map((name) => (
+                            <Chip
+                              key={name}
+                              label={name}
+                              size="small"
+                              variant="soft"
+                              color="primary"
+                            />
+                          ))}
+                        </Box>
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">
+                          Oshxona tanlanmagan
+                        </Typography>
+                      )}
+                    </Box>
                     <IconButton
                       size="small"
+                      sx={{
+                        gridColumn: 6,
+                        mt: 0.5,
+                        width: 36,
+                        height: 36,
+                        justifySelf: 'end',
+                        borderRadius: '50%',
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
                       color={branchMenu.open && menuBranch?.id === b.id ? 'inherit' : 'default'}
                       onClick={(e) => { setMenuBranch(b); branchMenu.onOpen(e); }}
                     >
@@ -420,7 +433,7 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
           sx={{ color: 'error.main' }}
         >
           <Iconify icon="solar:trash-bin-trash-bold" />
-          O'chirish
+          O&apos;chirish
         </MenuItem>
       </MenuList>
     </CustomPopover>
@@ -443,9 +456,21 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
             <Iconify icon="solar:cup-star-bold" sx={{ mr: 1 }} />
             Oshxonalar
           </MenuItem>
-          <MenuItem onClick={() => { if (menuBranch) onEditBranch(menuBranch); branchMenu.onClose(); }}>
-            <Iconify icon="solar:settings-bold" sx={{ mr: 1 }} />
-            Sozlash
+          <MenuItem
+            component={RouterLink}
+            href={menuBranch ? paths.dashboard.branch.details(menuBranch.id) : '#'}
+            onClick={branchMenu.onClose}
+          >
+            <Iconify icon="solar:eye-bold" sx={{ mr: 1 }} />
+            Ko&apos;rish
+          </MenuItem>
+          <MenuItem
+            component={RouterLink}
+            href={menuBranch ? paths.dashboard.branch.edit(menuBranch.id) : '#'}
+            onClick={branchMenu.onClose}
+          >
+            <Iconify icon="solar:pen-bold" sx={{ mr: 1 }} />
+            Tahrirlash
           </MenuItem>
         </MenuList>
       </CustomPopover>
@@ -457,21 +482,36 @@ function CompanyRow({ row, branches, selected, onSelectRow, onSuspend, onActivat
 
 export function CompanyBranchesView() {
   const table = useTable({ defaultRowsPerPage: 10 });
+  const confirmDelete = useBoolean();
+  const queryClient = useQueryClient();
 
-  const [tabStatus, setTabStatus] = useState('all');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [searchText, setSearchText] = useState('');
+  const debouncedSearch = useDebounce(searchText, 300).trim().toLowerCase();
   const [manageBranch, setManageBranch] = useState<Branch | null>(null);
-  const [editBranch, setEditBranch] = useState<Branch | null>(null);
+  const [recentBranches, setRecentBranches] = useState<ReturnType<typeof getRecentBranches>>([]);
   // Session uchun: qaysi filialga qaysi oshxonalar biriktirilganini yodlaydi
   const [kitchenAssignMap, setKitchenAssignMap] = useState<Record<string, string[]>>({});
 
-  const { data: companiesData, isLoading: loadingCompanies } = useCompanies();
-  const { data: branchesData, isLoading: loadingBranches } = useBranches();
+  const { data: companiesData, isLoading: loadingCompanies } = useCompanies({ limit: 100 });
+  const { data: kitchensData } = useKitchens({ limit: 100 });
+  const { data: branchesData, isLoading: loadingBranches } = useQuery({
+    queryKey: [...branchKeys.list({ limit: 100 }), 'with-kitchen-ids'],
+    queryFn: () => fetchBranchesWithKitchenIds({ limit: 100 }),
+  });
   const deleteCompany = useDeleteCompany();
 
-  const companies = companiesData?.items ?? [];
-  const branches = branchesData?.items ?? [];
+  const companies = useMemo(() => companiesData?.items ?? [], [companiesData]);
+  const branches = useMemo(() => branchesData?.items ?? [], [branchesData]);
+  const kitchenNameById = useMemo(
+    () => new Map((kitchensData?.items ?? []).map((kitchen) => [kitchen.id, kitchen.name])),
+    [kitchensData]
+  );
   const loading = loadingCompanies || loadingBranches;
+
+  useEffect(() => {
+    setRecentBranches(getRecentBranches());
+  }, []);
 
   const branchesByCompany = useMemo(() => {
     const map: Record<string, Branch[]> = {};
@@ -482,15 +522,28 @@ export function CompanyBranchesView() {
     return map;
   }, [branches]);
 
-  const tabCounts = useMemo(() => ({
-    all: companies.length,
-  }), [companies]);
+  const filtered = useMemo(
+    () => companies.filter((company) => {
+      if (companyFilter && company.id !== companyFilter) return false;
 
-  const filtered = useMemo(() => {
-    if (!searchText) return companies;
-    const q = searchText.toLowerCase();
-    return companies.filter((c) => c.name.toLowerCase().includes(q));
-  }, [companies, searchText]);
+      if (!debouncedSearch) return true;
+
+      const companyBranches = branchesByCompany[company.id] ?? [];
+      const searchableValue = [
+        company.id,
+        company.name,
+        company.description,
+        company.billing_day,
+        ...companyBranches.flatMap((branch) => [branch.id, branch.name, branch.address]),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return debouncedSearch.split(/\s+/).every((term) => searchableValue.includes(term));
+    }),
+    [companyFilter, companies, debouncedSearch, branchesByCompany]
+  );
 
   const paged = filtered.slice(
     table.page * table.rowsPerPage,
@@ -504,8 +557,49 @@ export function CompanyBranchesView() {
     } catch { toast.error('Xatolik'); }
   };
 
-  const handleActivate = (_id: string) => {
-    toast.info("Bu funksiya hali qo'shilmagan");
+  const handleDeleteSelected = async () => {
+    const selectedIds = [...table.selected];
+    const results = await Promise.allSettled(
+      selectedIds.map((id) => deleteCompany.mutateAsync(id))
+    );
+    const deletedCount = results.filter((result) => result.status === 'fulfilled').length;
+    const failedCount = results.length - deletedCount;
+
+    if (deletedCount > 0) {
+      toast.success(`${deletedCount} ta kompaniya o'chirildi`);
+    }
+    if (failedCount > 0) {
+      toast.error(`${failedCount} ta kompaniyani o'chirib bo'lmadi`);
+    }
+
+    table.onSelectAllRows(false, []);
+    confirmDelete.onFalse();
+  };
+
+  const handleDismissNewBranches = (ids: string[]) => {
+    removeRecentBranches(ids);
+    const idSet = new Set(ids);
+    setRecentBranches((current) => current.filter((branch) => !idSet.has(branch.id)));
+  };
+
+  const handleKitchenAssignmentSaved = (branchId: string, kitchenIds: string[]) => {
+    setKitchenAssignMap((prev) => ({ ...prev, [branchId]: kitchenIds }));
+    setManageBranch((current) =>
+      current?.id === branchId ? { ...current, kitchen_ids: kitchenIds } : current
+    );
+    queryClient.setQueriesData<{ items: Branch[] }>(
+      { queryKey: branchKeys.all },
+      (current) => {
+        if (!current?.items) return current;
+
+        return {
+          ...current,
+          items: current.items.map((branch) =>
+            branch.id === branchId ? { ...branch, kitchen_ids: kitchenIds } : branch
+          ),
+        };
+      }
+    );
   };
 
   return (
@@ -527,36 +621,40 @@ export function CompanyBranchesView() {
       />
 
       <Card>
-        <Tabs
-          value={tabStatus}
-          onChange={(_, val) => { setTabStatus(val); table.onResetPage(); }}
-          sx={{ px: 2.5, borderBottom: 1, borderColor: 'divider' }}
+        <Box
+          sx={{
+            p: 2.5,
+            gap: 2,
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            alignItems: { xs: 'flex-end', md: 'center' },
+          }}
         >
-          {STATUS_TABS.map((tab) => (
-            <Tab
-              key={tab.value}
-              value={tab.value}
-              label={tab.label}
-              iconPosition="end"
-              icon={
-                <Label
-                  variant={tabStatus === tab.value ? 'filled' : 'soft'}
-                  color={tab.value === 'active' ? 'success' : tab.value === 'suspended' ? 'error' : 'default'}
-                  sx={{ ml: 0.5 }}
-                >
-                  {tabCounts[tab.value as keyof typeof tabCounts]}
-                </Label>
-              }
-            />
-          ))}
-        </Tabs>
+          <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 220 } }}>
+            <InputLabel>Kompaniya</InputLabel>
+            <Select
+              label="Kompaniya"
+              value={companyFilter}
+              disabled={loadingCompanies}
+              onChange={(event: SelectChangeEvent<string>) => {
+                setCompanyFilter(event.target.value);
+                table.onResetPage();
+              }}
+            >
+              <MenuItem value="">Barchasi</MenuItem>
+              {companies.map((company) => (
+                <MenuItem key={company.id} value={company.id}>
+                  {company.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-        <Box sx={{ p: 2.5 }}>
           <TextField
-            fullWidth
             value={searchText}
             onChange={(e) => { setSearchText(e.target.value); table.onResetPage(); }}
-            placeholder="Kompaniya nomi yoki telefon raqami..."
+            placeholder="Kompaniya, filial, manzil yoki ID bo'yicha..."
+            sx={{ width: { xs: 1, md: 560 }, maxWidth: 1 }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -566,7 +664,13 @@ export function CompanyBranchesView() {
                 ),
                 endAdornment: searchText ? (
                   <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchText('')}>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSearchText('');
+                        table.onResetPage();
+                      }}
+                    >
                       <Iconify icon="solar:close-circle-bold" width={16} />
                     </IconButton>
                   </InputAdornment>
@@ -576,45 +680,67 @@ export function CompanyBranchesView() {
           />
         </Box>
 
-        <Scrollbar sx={{ minHeight: 480 }}>
-          <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 900 }}>
-            <TableHeadCustom
-              order={table.order}
-              orderBy={table.orderBy}
-              headCells={TABLE_HEAD}
-              rowCount={filtered.length}
-              numSelected={table.selected.length}
-              onSort={table.onSort}
-              onSelectAllRows={(checked) =>
-                table.onSelectAllRows(checked, filtered.map((c) => c.id))
-              }
-            />
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paged.map((company) => (
-                  <CompanyRow
-                    key={company.id}
-                    row={company}
+        <Box sx={{ position: 'relative' }}>
+          <TableSelectedAction
+            dense={table.dense}
+            rowCount={filtered.length}
+            numSelected={table.selected.length}
+            onSelectAllRows={(checked) =>
+              table.onSelectAllRows(checked, filtered.map((company) => company.id))
+            }
+            action={
+              <Tooltip title="O'chirish">
+                <IconButton color="error" onClick={confirmDelete.onTrue}>
+                  <Iconify icon="solar:trash-bin-trash-bold" />
+                </IconButton>
+              </Tooltip>
+            }
+          />
+
+          <Scrollbar sx={{ minHeight: 480 }}>
+            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 820 }}>
+              <TableHeadCustom
+                order={table.order}
+                orderBy={table.orderBy}
+                headCells={TABLE_HEAD}
+                rowCount={filtered.length}
+                numSelected={table.selected.length}
+                onSort={table.onSort}
+                onSelectAllRows={(checked) =>
+                  table.onSelectAllRows(checked, filtered.map((c) => c.id))
+                }
+              />
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paged.map((company) => (
+                    <CompanyRow
+                      key={company.id}
+                      row={company}
                     branches={branchesByCompany[company.id] ?? []}
+                    newBranchIds={recentBranches
+                      .filter((branch) => branch.companyId === company.id)
+                      .map((branch) => branch.id)}
                     selected={table.selected.includes(company.id)}
                     onSelectRow={() => table.onSelectRow(company.id)}
-                    onSuspend={handleSuspend}
-                    onActivate={handleActivate}
-                    onManageBranch={setManageBranch}
-                    onEditBranch={setEditBranch}
-                  />
-                ))
-              )}
-              {!loading && filtered.length === 0 && <TableNoData notFound />}
-            </TableBody>
-          </Table>
-        </Scrollbar>
+                      onSuspend={handleSuspend}
+                      onDismissNewBranches={handleDismissNewBranches}
+                      onManageBranch={setManageBranch}
+                      kitchenAssignMap={kitchenAssignMap}
+                      kitchenNameById={kitchenNameById}
+                    />
+                  ))
+                )}
+                {!loading && filtered.length === 0 && <TableNoData notFound />}
+              </TableBody>
+            </Table>
+          </Scrollbar>
+        </Box>
 
         <TablePaginationCustom
           page={table.page}
@@ -632,21 +758,27 @@ export function CompanyBranchesView() {
           branch={manageBranch}
           open={Boolean(manageBranch)}
           onClose={() => setManageBranch(null)}
-          initialAssigned={kitchenAssignMap[manageBranch.id] ?? []}
-          onSaved={(branchId, kitchenIds) =>
-            setKitchenAssignMap((prev) => ({ ...prev, [branchId]: kitchenIds }))
-          }
+          initialAssigned={kitchenAssignMap[manageBranch.id] ?? manageBranch.kitchen_ids ?? []}
+          onSaved={handleKitchenAssignmentSaved}
         />
       )}
 
-      {editBranch && (
-        <EditBranchDialog
-          branch={editBranch}
-          open={Boolean(editBranch)}
-          onClose={() => setEditBranch(null)}
-          onSaved={() => {}}
-        />
-      )}
+      <ConfirmDialog
+        open={confirmDelete.value}
+        onClose={confirmDelete.onFalse}
+        title="Kompaniyalarni o'chirish"
+        content={`${table.selected.length} ta kompaniyani o'chirishni tasdiqlaysizmi?`}
+        action={
+          <LoadingButton
+            variant="contained"
+            color="error"
+            loading={deleteCompany.isPending}
+            onClick={handleDeleteSelected}
+          >
+            O&apos;chirish
+          </LoadingButton>
+        }
+      />
     </DashboardContent>
   );
 }

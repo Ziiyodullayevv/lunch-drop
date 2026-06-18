@@ -1,14 +1,12 @@
 'use client';
 
 import type { MapRef, MarkerDragEvent } from 'react-map-gl/maplibre';
-import type { GeolocateCoords } from 'src/components/map';
-import type { CompanyKitchenRead } from 'src/lib/api/companies';
 
 import * as z from 'zod';
-import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
-import { useRef, useState, useCallback } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRef, useState, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -29,12 +27,21 @@ import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
 import { DashboardContent } from 'src/layouts/dashboard';
+import { addRecentBranch } from 'src/lib/recent-branches';
 import { assignCompanyBranchKitchens } from 'src/lib/api/companies';
 
 import { toast } from 'src/components/snackbar';
 import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
-import { Map, MapMarker, MapControls, MapLocateButton } from 'src/components/map';
+import {
+  Map,
+  MapMarker,
+  MapControls,
+  MapLocateButton,
+  type GeolocateCoords,
+  MapAddressAutocomplete,
+  type MapAddressSuggestion,
+} from 'src/components/map';
 
 import { useCompanies } from 'src/sections/company/hooks/use-companies';
 
@@ -51,8 +58,8 @@ export const BranchSchema = z.object({
   company_id: z.string().min(1, { message: 'Kompaniya tanlanishi shart' }),
   name:       z.string().min(1, { message: 'Filial nomi majburiy' }),
   address:    z.string().min(1, { message: 'Manzil majburiy' }),
-  lat:        z.number().optional(),
-  lng:        z.number().optional(),
+  lat:        z.number({ message: 'Joylashuvni xaritadan belgilang' }),
+  lng:        z.number({ message: 'Joylashuvni xaritadan belgilang' }),
 });
 
 type FormValues = z.infer<typeof BranchSchema>;
@@ -71,11 +78,11 @@ export function BranchCreateView() {
   const [marker, setMarker]           = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [hasLocation, setHasLocation] = useState(false);
 
-  const { data: companiesData } = useCompanies(isSuperAdmin ? undefined : undefined);
+  const { data: companiesData } = useCompanies(undefined, isSuperAdmin);
   const createBranch        = useCreateBranch();
   const createCompanyBranch = useCreateCompanyBranch();
 
-  const { data: kitchensData } = useCompanyKitchens();
+  const { data: kitchensData, isLoading: kitchensLoading } = useCompanyKitchens(isCompanyAdmin);
   const kitchens = kitchensData ?? [];
   const [selectedKitchenIds, setSelectedKitchenIds] = useState<string[]>([]);
 
@@ -92,7 +99,7 @@ export function BranchCreateView() {
     },
   });
 
-  const { handleSubmit, setValue, watch, formState: { isSubmitting } } = methods;
+  const { control, handleSubmit, setValue, watch, formState: { isSubmitting } } = methods;
   const latVal = watch('lat');
   const lngVal = watch('lng');
 
@@ -117,29 +124,47 @@ export function BranchCreateView() {
     [setValue]
   );
 
+  const handleAddressSelect = useCallback(
+    (suggestion: MapAddressSuggestion) => {
+      const nextMarker = { latitude: suggestion.lat, longitude: suggestion.lng };
+      setMarker(nextMarker);
+      setHasLocation(true);
+      setValue('address', suggestion.label, { shouldDirty: true, shouldValidate: true });
+      setValue('lat', suggestion.lat, { shouldDirty: true, shouldValidate: true });
+      setValue('lng', suggestion.lng, { shouldDirty: true, shouldValidate: true });
+      mapRef.current?.flyTo({
+        center: [suggestion.lng, suggestion.lat],
+        zoom: 16,
+        duration: 900,
+      });
+    },
+    [setValue]
+  );
+
   const onSubmit = handleSubmit(async (data) => {
     try {
       if (isCompanyAdmin) {
         const branch = await createCompanyBranch.mutateAsync({
           name:    data.name,
           address: data.address,
-          lat:     data.lat ?? 0,
-          lng:     data.lng ?? 0,
+          lat:     data.lat,
+          lng:     data.lng,
         });
         if (selectedKitchenIds.length > 0) {
           await assignCompanyBranchKitchens(branch.id, selectedKitchenIds);
         }
       } else {
-        await createBranch.mutateAsync({
+        const branch = await createBranch.mutateAsync({
           company_id: data.company_id,
           name:       data.name,
           address:    data.address,
-          lat:        data.lat ?? 0,
-          lng:        data.lng ?? 0,
+          lat:        data.lat,
+          lng:        data.lng,
         });
+        addRecentBranch({ id: branch.id, companyId: branch.company_id });
       }
       toast.success('Filial yaratildi');
-      router.push(paths.dashboard.branch.root);
+      router.push(isSuperAdmin ? paths.dashboard.company.root : paths.dashboard.branch.root);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xato yuz berdi');
     }
@@ -159,7 +184,7 @@ export function BranchCreateView() {
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      <Card sx={{ p: 3, maxWidth: 900, width: '100%', mx: 'auto' }}>
+      <Card sx={{ p: 3, maxWidth: 600, width: '100%', mx: 'auto' }}>
         <Form methods={methods} onSubmit={onSubmit}>
           <Stack spacing={3}>
             {isSuperAdmin && (
@@ -171,7 +196,21 @@ export function BranchCreateView() {
             )}
 
             <Field.Text name="name" label="Filial nomi" slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.Text name="address" label="Manzil" slotProps={{ inputLabel: { shrink: true } }} />
+            <Controller
+              name="address"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <MapAddressAutocomplete
+                  value={field.value}
+                  onChange={field.onChange}
+                  onSelect={handleAddressSelect}
+                  latitude={marker.latitude}
+                  longitude={marker.longitude}
+                  error={!!error}
+                  helperText={error?.message}
+                />
+              )}
+            />
 
             {isCompanyAdmin && (
               <FormControl fullWidth>
@@ -183,7 +222,11 @@ export function BranchCreateView() {
                   value={selectedKitchenIds}
                   onChange={(e) => setSelectedKitchenIds(e.target.value as string[])}
                   notched
+                  disabled={kitchensLoading}
                   renderValue={(selected) => {
+                    if (kitchensLoading) {
+                      return <Typography variant="body2" color="text.disabled">Yuklanmoqda...</Typography>;
+                    }
                     if ((selected as string[]).length === 0) {
                       return <Typography variant="body2" color="text.disabled">Oshxona tanlang</Typography>;
                     }
@@ -197,12 +240,18 @@ export function BranchCreateView() {
                     );
                   }}
                 >
-                  {kitchens.map((k) => (
-                    <MenuItem key={k.id} value={k.id}>
-                      <Checkbox checked={selectedKitchenIds.includes(k.id)} size="small" sx={{ mr: 1 }} />
-                      {k.name}
+                  {kitchens.length === 0 && !kitchensLoading ? (
+                    <MenuItem disabled>
+                      <Typography variant="body2" color="text.disabled">Oshxona topilmadi</Typography>
                     </MenuItem>
-                  ))}
+                  ) : (
+                    kitchens.map((k) => (
+                      <MenuItem key={k.id} value={k.id}>
+                        <Checkbox checked={selectedKitchenIds.includes(k.id)} size="small" sx={{ mr: 1 }} />
+                        {k.name}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             )}
@@ -244,7 +293,7 @@ export function BranchCreateView() {
                   </>
                 ) : (
                   <Typography variant="caption" color="text.disabled">
-                    Markerni sudrab joylashuvni belgilang (ixtiyoriy)
+                    Markerni sudrab joylashuvni belgilang (majburiy)
                   </Typography>
                 )}
               </Box>

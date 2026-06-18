@@ -6,7 +6,7 @@ import type { IInvoice, IInvoiceTableFilters } from 'src/types/invoice';
 import { sumBy } from 'es-toolkit';
 import { useCallback } from 'react';
 import { varAlpha } from 'minimal-shared/utils';
-import { useBoolean, useSetState } from 'minimal-shared/hooks';
+import { useSetState } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
@@ -14,36 +14,30 @@ import Tabs from '@mui/material/Tabs';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
 import Divider from '@mui/material/Divider';
-import Tooltip from '@mui/material/Tooltip';
+import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
 import { useTheme } from '@mui/material/styles';
-import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
-import { RouterLink } from 'src/routes/components';
 
 import { fIsAfter, fIsBetween } from 'src/utils/format-time';
 
-import { INVOICE_SERVICE_OPTIONS } from 'src/_mock';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
-import { toast } from 'src/components/snackbar';
-import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
-import { ConfirmDialog } from 'src/components/custom-dialog';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
   useTable,
   emptyRows,
-  rowInPage,
   TableNoData,
   getComparator,
   TableEmptyRows,
   TableHeadCustom,
-  TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
 
@@ -56,13 +50,13 @@ import { InvoiceTableFiltersResult } from '../invoice-table-filters-result';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD: TableHeadCellProps[] = [
-  { id: 'invoiceNumber', label: 'Customer' },
-  { id: 'createDate', label: 'Create' },
-  { id: 'dueDate', label: 'Due' },
-  { id: 'price', label: 'Amount' },
-  { id: 'sent', label: 'Sent', align: 'center' },
-  { id: 'status', label: 'Status' },
-  { id: '' },
+  { id: 'invoiceNumber', label: 'Kompaniya / invoice' },
+  { id: 'createDate', label: 'Boshlanish sanasi' },
+  { id: 'dueDate', label: 'Tugash sanasi' },
+  { id: 'subtotal', label: 'Oshxona foydasi' },
+  { id: 'taxes', label: 'Tizim fee' },
+  { id: 'totalAmount', label: 'Jami xarajat' },
+  { id: 'status', label: 'Holat' },
 ];
 
 // ----------------------------------------------------------------------
@@ -72,9 +66,7 @@ export function InvoiceListView() {
 
   const table = useTable({ defaultOrderBy: 'createDate' });
 
-  const confirmDialog = useBoolean();
-
-  const { data: invoicesData } = useInvoices();
+  const { data: invoicesData, isLoading, isError, error } = useInvoices();
   const tableData: IInvoice[] = (invoicesData ?? []).map((inv) => ({
     id: inv.id,
     invoiceNumber: `INV-${inv.id.slice(0, 6).toUpperCase()}`,
@@ -83,10 +75,28 @@ export function InvoiceListView() {
     status: inv.status === 'paid' ? 'paid' : 'pending',
     totalAmount: parseFloat(inv.total_company_expense),
     sent: 0,
-    invoiceFrom: { id: '', name: '', email: '', fullAddress: '', phoneNumber: '', company: '', addressType: '', primary: true },
-    invoiceTo: { id: inv.company_id, name: inv.company_id, email: '', fullAddress: '', phoneNumber: '', company: '', addressType: '', primary: true },
+    invoiceFrom: {
+      id: '',
+      name: '',
+      email: '',
+      fullAddress: '',
+      phoneNumber: '',
+      company: '',
+      addressType: '',
+      primary: true,
+    },
+    invoiceTo: {
+      id: inv.company_id,
+      name: inv.company_id,
+      email: '',
+      fullAddress: '',
+      phoneNumber: '',
+      company: inv.company_id,
+      addressType: '',
+      primary: true,
+    },
     items: [],
-    taxes: 0,
+    taxes: parseFloat(inv.total_system_fee),
     discount: 0,
     shipping: 0,
     subtotal: parseFloat(inv.total_kitchen_profit),
@@ -110,15 +120,12 @@ export function InvoiceListView() {
     dateError,
   });
 
-  const dataInPage = rowInPage(dataFiltered, table.page, table.rowsPerPage);
-
   const canReset =
     !!currentFilters.name ||
-    currentFilters.service.length > 0 ||
     currentFilters.status !== 'all' ||
     (!!currentFilters.startDate && !!currentFilters.endDate);
 
-  const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
+  const notFound = !isLoading && ((!dataFiltered.length && canReset) || !dataFiltered.length);
 
   const getInvoiceLength = (status: string) =>
     tableData.filter((item) => item.status === status).length;
@@ -130,51 +137,28 @@ export function InvoiceListView() {
     );
 
   const getPercentByStatus = (status: string) =>
-    (getInvoiceLength(status) / tableData.length) * 100;
+    tableData.length ? (getInvoiceLength(status) / tableData.length) * 100 : 0;
 
   const TABS = [
     {
       value: 'all',
-      label: 'All',
+      label: 'Barchasi',
       color: 'default',
       count: tableData.length,
     },
     {
       value: 'paid',
-      label: 'Paid',
+      label: "To'langan",
       color: 'success',
       count: getInvoiceLength('paid'),
     },
     {
       value: 'pending',
-      label: 'Pending',
+      label: 'Kutilmoqda',
       color: 'warning',
       count: getInvoiceLength('pending'),
     },
-    {
-      value: 'overdue',
-      label: 'Overdue',
-      color: 'error',
-      count: getInvoiceLength('overdue'),
-    },
-    {
-      value: 'draft',
-      label: 'Draft',
-      color: 'default',
-      count: getInvoiceLength('draft'),
-    },
   ] as const;
-
-  const handleDeleteRow = useCallback(
-    (_id: string) => {
-      toast.info('Invoice o\'chirish hali qo\'shilmagan');
-    },
-    []
-  );
-
-  const handleDeleteRows = useCallback(() => {
-    toast.info('Invoice o\'chirish hali qo\'shilmagan');
-  }, []);
 
   const handleFilterStatus = useCallback(
     (event: React.SyntheticEvent, newValue: string) => {
@@ -184,254 +168,151 @@ export function InvoiceListView() {
     [updateFilters, table]
   );
 
-  const renderConfirmDialog = () => (
-    <ConfirmDialog
-      open={confirmDialog.value}
-      onClose={confirmDialog.onFalse}
-      title="Delete"
-      content={
-        <>
-          Are you sure want to delete <strong> {table.selected.length} </strong> items?
-        </>
-      }
-      action={
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => {
-            handleDeleteRows();
-            confirmDialog.onFalse();
+  return (
+    <DashboardContent>
+      <CustomBreadcrumbs
+        heading="Hisob-fakturalar"
+        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Hisob-fakturalar' }]}
+        sx={{ mb: { xs: 3, md: 5 } }}
+      />
+
+      {isError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error instanceof Error ? error.message : 'Hisob-fakturalarni yuklashda xatolik'}
+        </Alert>
+      )}
+
+      <Card sx={{ mb: { xs: 3, md: 5 } }}>
+        <Scrollbar sx={{ minHeight: 108 }}>
+          <Stack
+            divider={<Divider orientation="vertical" flexItem sx={{ borderStyle: 'dashed' }} />}
+            sx={{ py: 2, flexDirection: 'row' }}
+          >
+            <InvoiceAnalytic
+              title="Jami"
+              total={tableData.length}
+              percent={100}
+              price={sumBy(tableData, (invoice) => invoice.totalAmount)}
+              icon="solar:bill-list-bold-duotone"
+              color={theme.vars.palette.info.main}
+            />
+
+            <InvoiceAnalytic
+              title="To'langan"
+              total={getInvoiceLength('paid')}
+              percent={getPercentByStatus('paid')}
+              price={getTotalAmount('paid')}
+              icon="solar:file-check-bold-duotone"
+              color={theme.vars.palette.success.main}
+            />
+
+            <InvoiceAnalytic
+              title="Kutilmoqda"
+              total={getInvoiceLength('pending')}
+              percent={getPercentByStatus('pending')}
+              price={getTotalAmount('pending')}
+              icon="solar:sort-by-time-bold-duotone"
+              color={theme.vars.palette.warning.main}
+            />
+          </Stack>
+        </Scrollbar>
+      </Card>
+
+      <Card>
+        <Tabs
+          value={currentFilters.status}
+          onChange={handleFilterStatus}
+          sx={{
+            px: { md: 2.5 },
+            boxShadow: `inset 0 -2px 0 0 ${varAlpha(theme.vars.palette.grey['500Channel'], 0.08)}`,
           }}
         >
-          Delete
-        </Button>
-      }
-    />
-  );
-
-  return (
-    <>
-      <DashboardContent>
-        <CustomBreadcrumbs
-          heading="List"
-          links={[
-            { name: 'Dashboard', href: paths.dashboard.root },
-            { name: 'Invoice', href: paths.dashboard.invoice.root },
-            { name: 'List' },
-          ]}
-          action={
-            <Button
-              component={RouterLink}
-              href={paths.dashboard.invoice.new}
-              variant="contained"
-              startIcon={<Iconify icon="mingcute:add-line" />}
-            >
-              Add invoice
-            </Button>
-          }
-          sx={{ mb: { xs: 3, md: 5 } }}
-        />
-
-        <Card sx={{ mb: { xs: 3, md: 5 } }}>
-          <Scrollbar sx={{ minHeight: 108 }}>
-            <Stack
-              divider={<Divider orientation="vertical" flexItem sx={{ borderStyle: 'dashed' }} />}
-              sx={{ py: 2, flexDirection: 'row' }}
-            >
-              <InvoiceAnalytic
-                title="Total"
-                total={tableData.length}
-                percent={100}
-                price={sumBy(tableData, (invoice) => invoice.totalAmount)}
-                icon="solar:bill-list-bold-duotone"
-                color={theme.vars.palette.info.main}
-              />
-
-              <InvoiceAnalytic
-                title="Paid"
-                total={getInvoiceLength('paid')}
-                percent={getPercentByStatus('paid')}
-                price={getTotalAmount('paid')}
-                icon="solar:file-check-bold-duotone"
-                color={theme.vars.palette.success.main}
-              />
-
-              <InvoiceAnalytic
-                title="Pending"
-                total={getInvoiceLength('pending')}
-                percent={getPercentByStatus('pending')}
-                price={getTotalAmount('pending')}
-                icon="solar:sort-by-time-bold-duotone"
-                color={theme.vars.palette.warning.main}
-              />
-
-              <InvoiceAnalytic
-                title="Overdue"
-                total={getInvoiceLength('overdue')}
-                percent={getPercentByStatus('overdue')}
-                price={getTotalAmount('overdue')}
-                icon="solar:bell-bing-bold-duotone"
-                color={theme.vars.palette.error.main}
-              />
-
-              <InvoiceAnalytic
-                title="Draft"
-                total={getInvoiceLength('draft')}
-                percent={getPercentByStatus('draft')}
-                price={getTotalAmount('draft')}
-                icon="solar:file-corrupted-bold-duotone"
-                color={theme.vars.palette.text.secondary}
-              />
-            </Stack>
-          </Scrollbar>
-        </Card>
-
-        <Card>
-          <Tabs
-            value={currentFilters.status}
-            onChange={handleFilterStatus}
-            sx={{
-              px: { md: 2.5 },
-              boxShadow: `inset 0 -2px 0 0 ${varAlpha(theme.vars.palette.grey['500Channel'], 0.08)}`,
-            }}
-          >
-            {TABS.map((tab) => (
-              <Tab
-                key={tab.value}
-                value={tab.value}
-                label={tab.label}
-                iconPosition="end"
-                icon={
-                  <Label
-                    variant={
-                      ((tab.value === 'all' || tab.value === currentFilters.status) && 'filled') ||
-                      'soft'
-                    }
-                    color={tab.color}
-                  >
-                    {tab.count}
-                  </Label>
-                }
-              />
-            ))}
-          </Tabs>
-
-          <InvoiceTableToolbar
-            filters={filters}
-            dateError={dateError}
-            onResetPage={table.onResetPage}
-            options={{ services: INVOICE_SERVICE_OPTIONS.map((option) => option.name) }}
-          />
-
-          {canReset && (
-            <InvoiceTableFiltersResult
-              filters={filters}
-              onResetPage={table.onResetPage}
-              totalResults={dataFiltered.length}
-              sx={{ p: 2.5, pt: 0 }}
-            />
-          )}
-
-          <Box sx={{ position: 'relative' }}>
-            <TableSelectedAction
-              dense={table.dense}
-              numSelected={table.selected.length}
-              rowCount={dataFiltered.length}
-              onSelectAllRows={(checked) => {
-                table.onSelectAllRows(
-                  checked,
-                  dataFiltered.map((row) => row.id)
-                );
-              }}
-              action={
-                <Box sx={{ display: 'flex' }}>
-                  <Tooltip title="Sent">
-                    <IconButton color="primary">
-                      <Iconify icon="custom:send-fill" />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Download">
-                    <IconButton color="primary">
-                      <Iconify icon="solar:download-bold" />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Print">
-                    <IconButton color="primary">
-                      <Iconify icon="solar:printer-minimalistic-bold" />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Delete">
-                    <IconButton color="primary" onClick={confirmDialog.onTrue}>
-                      <Iconify icon="solar:trash-bin-trash-bold" />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
+          {TABS.map((tab) => (
+            <Tab
+              key={tab.value}
+              value={tab.value}
+              label={tab.label}
+              iconPosition="end"
+              icon={
+                <Label
+                  variant={
+                    ((tab.value === 'all' || tab.value === currentFilters.status) && 'filled') ||
+                    'soft'
+                  }
+                  color={tab.color}
+                >
+                  {tab.count}
+                </Label>
               }
             />
+          ))}
+        </Tabs>
 
-            <Scrollbar sx={{ minHeight: 444 }}>
-              <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 800 }}>
-                <TableHeadCustom
-                  order={table.order}
-                  orderBy={table.orderBy}
-                  headCells={TABLE_HEAD}
-                  rowCount={dataFiltered.length}
-                  numSelected={table.selected.length}
-                  onSort={table.onSort}
-                  onSelectAllRows={(checked) =>
-                    table.onSelectAllRows(
-                      checked,
-                      dataFiltered.map((row) => row.id)
-                    )
-                  }
-                />
+        <InvoiceTableToolbar
+          filters={filters}
+          dateError={dateError}
+          onResetPage={table.onResetPage}
+        />
 
-                <TableBody>
-                  {dataFiltered
+        {canReset && (
+          <InvoiceTableFiltersResult
+            filters={filters}
+            onResetPage={table.onResetPage}
+            totalResults={dataFiltered.length}
+            sx={{ p: 2.5, pt: 0 }}
+          />
+        )}
+
+        <Box sx={{ position: 'relative' }}>
+          <Scrollbar sx={{ minHeight: 444 }}>
+            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 800 }}>
+              <TableHeadCustom
+                order={table.order}
+                orderBy={table.orderBy}
+                headCells={TABLE_HEAD}
+                rowCount={dataFiltered.length}
+                numSelected={0}
+                onSort={table.onSort}
+              />
+
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={TABLE_HEAD.length} align="center" sx={{ py: 8 }}>
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  dataFiltered
                     .slice(
                       table.page * table.rowsPerPage,
                       table.page * table.rowsPerPage + table.rowsPerPage
                     )
-                    .map((row) => (
-                      <InvoiceTableRow
-                        key={row.id}
-                        row={row}
-                        selected={table.selected.includes(row.id)}
-                        onSelectRow={() => table.onSelectRow(row.id)}
-                        onDeleteRow={() => handleDeleteRow(row.id)}
-                        editHref={paths.dashboard.invoice.edit(row.id)}
-                        detailsHref={paths.dashboard.invoice.details(row.id)}
-                      />
-                    ))}
+                    .map((row) => <InvoiceTableRow key={row.id} row={row} />)
+                )}
 
-                  <TableEmptyRows
-                    height={table.dense ? 56 : 56 + 20}
-                    emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
-                  />
+                <TableEmptyRows
+                  height={table.dense ? 56 : 56 + 20}
+                  emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
+                />
 
-                  <TableNoData notFound={notFound} />
-                </TableBody>
-              </Table>
-            </Scrollbar>
-          </Box>
+                <TableNoData notFound={notFound} />
+              </TableBody>
+            </Table>
+          </Scrollbar>
+        </Box>
 
-          <TablePaginationCustom
-            page={table.page}
-            dense={table.dense}
-            count={dataFiltered.length}
-            rowsPerPage={table.rowsPerPage}
-            onPageChange={table.onChangePage}
-            onChangeDense={table.onChangeDense}
-            onRowsPerPageChange={table.onChangeRowsPerPage}
-          />
-        </Card>
-      </DashboardContent>
-
-      {renderConfirmDialog()}
-    </>
+        <TablePaginationCustom
+          page={table.page}
+          dense={table.dense}
+          count={dataFiltered.length}
+          rowsPerPage={table.rowsPerPage}
+          onPageChange={table.onChangePage}
+          onChangeDense={table.onChangeDense}
+          onRowsPerPageChange={table.onChangeRowsPerPage}
+        />
+      </Card>
+    </DashboardContent>
   );
 }
 
@@ -445,7 +326,7 @@ type ApplyFilterProps = {
 };
 
 function applyFilter({ inputData, comparator, filters, dateError }: ApplyFilterProps) {
-  const { name, status, service, startDate, endDate } = filters;
+  const { name, status, startDate, endDate } = filters;
 
   const stabilizedThis = inputData.map((el, index) => [el, index] as const);
 
@@ -467,12 +348,6 @@ function applyFilter({ inputData, comparator, filters, dateError }: ApplyFilterP
 
   if (status !== 'all') {
     inputData = inputData.filter((invoice) => invoice.status === status);
-  }
-
-  if (service.length) {
-    inputData = inputData.filter((invoice) =>
-      invoice.items.some((filterItem) => service.includes(filterItem.service))
-    );
   }
 
   if (!dateError) {
