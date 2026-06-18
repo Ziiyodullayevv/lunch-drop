@@ -7,7 +7,8 @@ Joriy production server:
 ```text
 IP: 206.189.229.8
 Domain: lunchdrop.uz
-Admin app port: 127.0.0.1:8082
+Public ports: 80, 443
+Internal admin app port: admin:8082
 ```
 
 ## 0. Domainni serverga bog'lash
@@ -35,7 +36,7 @@ DigitalOcean droplet ichida:
 
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl git nginx
+sudo apt install -y ca-certificates curl git
 
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
@@ -58,19 +59,48 @@ Yoniga `.env` fayl yarating:
 cat > .env <<'EOF'
 ADMIN_IMAGE=ghcr.io/GITHUB_USERNAME/launch-drop-admin:latest
 NEXT_PUBLIC_SERVER_URL=http://206.189.229.8:8000
+DOMAIN=lunchdrop.uz
+SUBDOMAINS=www
+SSL_EMAIL=you@example.com
+TZ=Asia/Tashkent
+PUID=1000
+PGID=1000
 EOF
 ```
 
-Compose fayl quyidagicha ko'rinishda bo'ladi:
+`SSL_EMAIL` ni haqiqiy emailingizga almashtiring.
+
+Compose fayl SWAG reverse proxy va admin container bilan quyidagicha ko'rinishda bo'ladi:
 
 ```yaml
 services:
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    container_name: launch-drop-swag
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Asia/Tashkent}
+      URL: ${DOMAIN:?DOMAIN is required}
+      SUBDOMAINS: ${SUBDOMAINS:-www}
+      VALIDATION: http
+      EMAIL: ${SSL_EMAIL:?SSL_EMAIL is required}
+      ONLY_SUBDOMAINS: false
+    volumes:
+      - ./swag-config:/config
+
   admin:
     image: ${ADMIN_IMAGE:-ghcr.io/OWNER/launch-drop-admin:latest}
     container_name: launch-drop-admin
     restart: unless-stopped
-    ports:
-      - '127.0.0.1:8082:8082'
+    expose:
+      - '8082'
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:?NEXT_PUBLIC_SERVER_URL is required}
@@ -115,41 +145,62 @@ Private key kontentini `VPS_SSH_KEY` secret'iga qo'ying:
 cat ~/.ssh/launch_drop_admin_deploy
 ```
 
-## 4. Nginx reverse proxy
+## 4. SWAG reverse proxy va SSL
 
-`/etc/nginx/sites-available/launch-drop-admin`:
+Avval 80 va 443 portlar ochiq bo'lishi kerak. Agar `ufw` ishlatilsa:
 
-```nginx
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+```
+
+SWAG'ni birinchi marta ishga tushiring. U Let's Encrypt SSL sertifikatni o'zi oladi:
+
+```bash
+cd /opt/launch-drop-admin
+docker compose up -d swag
+docker logs -f launch-drop-swag
+```
+
+Logda sertifikat olingani ko'ringandan keyin admin uchun root domain proxy config yarating:
+
+```bash
+cat > swag-config/nginx/site-confs/default.conf <<'EOF'
 server {
     listen 80;
+    listen [::]:80;
+    server_name lunchdrop.uz www.lunchdrop.uz;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+
     server_name lunchdrop.uz www.lunchdrop.uz;
 
+    include /config/nginx/ssl.conf;
+
+    client_max_body_size 0;
+
     location / {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        include /config/nginx/proxy.conf;
+        include /config/nginx/resolver.conf;
+        set $upstream_app admin;
+        set $upstream_port 8082;
+        set $upstream_proto http;
+        proxy_pass $upstream_proto://$upstream_app:$upstream_port;
     }
 }
+EOF
 ```
 
-Yoqish:
+HTTP'dan HTTPS'ga redirect SWAG default site orqali ishlaydi. Containerlarni ishga tushiring:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/launch-drop-admin /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-SSL kerak bo'lsa:
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d lunchdrop.uz -d www.lunchdrop.uz
+docker compose up -d
+docker logs -f launch-drop-swag
 ```
 
 ## 5. Deploy qanday ishlaydi
@@ -164,5 +215,6 @@ Qo'lda tekshirish:
 ```bash
 docker ps
 docker logs -f launch-drop-admin
-curl -I http://127.0.0.1:8082
+docker logs -f launch-drop-swag
+curl -I https://lunchdrop.uz
 ```
