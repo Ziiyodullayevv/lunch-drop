@@ -1,6 +1,7 @@
 name: Admin CD
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: [Admin CI]
     types: [completed]
@@ -10,6 +11,8 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     steps:
       - name: Deploy admin to DigitalOcean
         uses: appleboy/ssh-action@v1
@@ -20,6 +23,7 @@ jobs:
           script: |
             set -e
             cd /opt/launch-drop-admin
+            echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose pull
             docker compose up -d
             docker image prune -f
