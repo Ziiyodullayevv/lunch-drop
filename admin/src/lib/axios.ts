@@ -5,8 +5,22 @@ import axios from 'axios';
 
 // ----------------------------------------------------------------------
 
+const API_PROXY_PREFIX = '/admin-api';
+
+function normalizeApiUrl(url?: string) {
+  if (!url || /^https?:\/\//i.test(url) || url.startsWith(API_PROXY_PREFIX)) {
+    return url;
+  }
+
+  if (url.startsWith('/api/v1/')) {
+    return `${API_PROXY_PREFIX}${url}`;
+  }
+
+  return url;
+}
+
 const axiosInstance = axios.create({
-  baseURL: '/admin-api',
+  baseURL: '',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -15,6 +29,8 @@ const axiosInstance = axios.create({
 // ----------------------------------------------------------------------
 // Attach access token to every request
 axiosInstance.interceptors.request.use((config) => {
+  config.url = normalizeApiUrl(config.url);
+
   const token = sessionStorage.getItem('jwt_access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
