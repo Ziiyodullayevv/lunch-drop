@@ -1,12 +1,12 @@
 import type { NextRequest } from 'next/server';
 
-import { proxyBackendRequest } from '../../_utils/backend-proxy';
+import { proxyBackendRequest } from '../../api/_utils/backend-proxy';
 
 // ----------------------------------------------------------------------
 
 async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
-  const pathname = `/api/v1/${path.join('/')}`;
+  const pathname = `/${path.join('/')}`;
 
   return proxyBackendRequest(req, pathname);
 }
