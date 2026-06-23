@@ -5,29 +5,8 @@ import axios from 'axios';
 
 // ----------------------------------------------------------------------
 
-const DEFAULT_API_BASE_URL = 'https://api.lunchdrop.uz';
-
-function resolveApiBaseUrl() {
-  const configuredUrl = process.env.NEXT_PUBLIC_SERVER_URL?.trim();
-
-  if (!configuredUrl) return DEFAULT_API_BASE_URL;
-
-  try {
-    const url = new URL(configuredUrl);
-    if (url.hostname === 'lunchdrop.uz' || url.hostname === 'www.lunchdrop.uz') {
-      return DEFAULT_API_BASE_URL;
-    }
-  } catch {
-    return DEFAULT_API_BASE_URL;
-  }
-
-  return configuredUrl;
-}
-
-const API_BASE_URL = resolveApiBaseUrl();
-
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '',
   headers: {
     'Content-Type': 'application/json',
   },

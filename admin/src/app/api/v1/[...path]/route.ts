@@ -2,15 +2,18 @@ import type { NextRequest } from 'next/server';
 
 import { NextResponse } from 'next/server';
 
-// ----------------------------------------------------------------------
+import { getBackendUrl } from '../../_utils/backend-url';
 
-const BACKEND = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://164.90.210.222:8000';
+// ----------------------------------------------------------------------
 
 async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const pathname = `/api/v1/${path.join('/')}`;
 
-  const url = new URL(pathname, BACKEND);
+  const backend = getBackendUrl(req, pathname);
+  if (backend.error) return backend.error;
+
+  const { url } = backend;
   req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
 
   const headers = new Headers();
@@ -23,18 +26,26 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
     ? await req.arrayBuffer()
     : undefined;
 
-  const res = await fetch(url.toString(), {
-    method:  req.method,
-    headers,
-    body,
-  });
+  try {
+    const res = await fetch(url.toString(), {
+      method: req.method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(25_000),
+    });
 
-  const data = await res.text();
+    const data = await res.text();
 
-  return new NextResponse(data, {
-    status:  res.status,
-    headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
-  });
+    return new NextResponse(data, {
+      status: res.status,
+      headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
+    });
+  } catch {
+    return NextResponse.json(
+      { code: 'backend_unavailable', detail: "Backend bilan bog'lanib bo'lmadi" },
+      { status: 502 }
+    );
+  }
 }
 
 export const GET    = handler;
