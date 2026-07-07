@@ -23,14 +23,6 @@ const nextConfig: NextConfig = {
   env: {
     BUILD_STATIC_EXPORT: JSON.stringify(isStaticExport),
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${process.env.NEXT_PUBLIC_SERVER_URL}/api/v1/:path*`,
-      },
-    ];
-  },
   // Without --turbopack (next dev)
   webpack(config) {
     config.module.rules.push({

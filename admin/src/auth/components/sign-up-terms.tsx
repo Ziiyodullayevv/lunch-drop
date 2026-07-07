@@ -3,6 +3,8 @@ import type { BoxProps } from '@mui/material/Box';
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 
+import { paths } from 'src/routes/paths';
+
 // ----------------------------------------------------------------------
 
 export function SignUpTerms({ sx, ...other }: BoxProps) {
@@ -26,7 +28,7 @@ export function SignUpTerms({ sx, ...other }: BoxProps) {
         Terms of service
       </Link>
       {' and '}
-      <Link underline="always" sx={{ color: 'text.primary' }}>
+      <Link href={paths.privacyPolicy} underline="always" sx={{ color: 'text.primary' }}>
         Privacy policy
       </Link>
       .

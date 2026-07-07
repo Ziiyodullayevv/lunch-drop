@@ -58,7 +58,7 @@ Yoniga `.env` fayl yarating:
 ```bash
 cat > .env <<'EOF'
 ADMIN_IMAGE=ghcr.io/GITHUB_USERNAME/launch-drop-admin:latest
-NEXT_PUBLIC_SERVER_URL=http://164.90.210.222:8000
+NEXT_SERVER_API_URL=http://164.90.210.222:8000
 DOMAIN=lunchdrop.uz
 SUBDOMAINS=www
 SSL_EMAIL=you@example.com
@@ -103,7 +103,8 @@ services:
       - '8082'
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:?NEXT_PUBLIC_SERVER_URL is required}
+      NEXT_SERVER_API_URL: ${NEXT_SERVER_API_URL:-${NEXT_PUBLIC_SERVER_URL:?NEXT_SERVER_API_URL is required}}
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-}
 ```
 
 Agar GHCR image private bo'lsa, serverda bir marta login qiling:
@@ -122,7 +123,7 @@ Repo `Settings -> Secrets and variables -> Actions` bo'limiga qo'shing:
 VPS_HOST=server_ip_yoki_domain
 VPS_USER=root_yoki_deploy_user
 VPS_SSH_KEY=private_ssh_key
-NEXT_PUBLIC_SERVER_URL=http://164.90.210.222:8000
+NEXT_SERVER_API_URL=http://164.90.210.222:8000
 ```
 
 ## 3. SSH key ulash

@@ -4,9 +4,10 @@ import nodePath from 'node:path';
 import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 
+import { getBackendUrl } from '../_utils/backend-url';
+
 // ----------------------------------------------------------------------
 
-const BACKEND = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://164.90.210.222:8000';
 const YANDEX_BASE_URL = 'https://b2b.taxi.yandex.net';
 const DEFAULT_TOKEN_FILE = nodePath.join(
   /* turbopackIgnore: true */ process.cwd(),
@@ -29,8 +30,11 @@ async function requireKitchenAdmin(req: NextRequest) {
     return { error: NextResponse.json({ detail: 'Unauthorized' }, { status: 401 }) };
   }
 
+  const backend = getBackendUrl(req, '/api/v1/auth/me');
+  if (backend.error) return { error: backend.error };
+
   try {
-    const response = await fetch(new URL('/api/v1/auth/me', BACKEND), {
+    const response = await fetch(backend.url, {
       headers: { Authorization: authorization },
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),

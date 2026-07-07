@@ -60,7 +60,7 @@ export function BranchDetailView({ id }: Props) {
   const superBranch = useBranch(id, isSuperAdmin);
   const companyBranch = useCompanyBranch(id, isCompanyAdmin);
   const branchKitchens = useCompanyBranchKitchens(id, isCompanyAdmin);
-  const { data: kitchensData } = useKitchens({ limit: 100 });
+  const { data: kitchensData } = useKitchens({ limit: 100 }, isSuperAdmin);
 
   const branch = isCompanyAdmin ? companyBranch.data : superBranch.data;
   const isLoading = isCompanyAdmin ? companyBranch.isLoading : superBranch.isLoading;

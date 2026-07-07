@@ -318,34 +318,19 @@ function OrderDetailDrawer({
               </Box>
             </Stack>
 
-            {(isActive(row.status) || row.status === 'on_the_way') && (
+            {isActive(row.status) && (
               <Stack spacing={1} sx={{ mb: 3 }}>
-                {isActive(row.status) && (
-                  <LoadingButton
-                    fullWidth
-                    variant="contained"
-                    color="info"
-                    size="large"
-                    loading={busyStatus === 'on_the_way'}
-                    startIcon={<Iconify icon="mdi:motorbike" />}
-                    onClick={() => updateStatus('on_the_way')}
-                  >
-                    Yo&apos;lga chiqdi
-                  </LoadingButton>
-                )}
-                {row.status === 'on_the_way' && (
-                  <LoadingButton
-                    fullWidth
-                    variant="contained"
-                    color="success"
-                    size="large"
-                    loading={busyStatus === 'delivered'}
-                    startIcon={<Iconify icon="solar:check-circle-bold" />}
-                    onClick={() => updateStatus('delivered')}
-                  >
-                    Yetkazildi
-                  </LoadingButton>
-                )}
+                <LoadingButton
+                  fullWidth
+                  variant="contained"
+                  color="info"
+                  size="large"
+                  loading={busyStatus === 'on_the_way'}
+                  startIcon={<Iconify icon="mdi:motorbike" />}
+                  onClick={() => updateStatus('on_the_way')}
+                >
+                  Yo&apos;lga chiqdi
+                </LoadingButton>
               </Stack>
             )}
 
@@ -821,13 +806,6 @@ export function KitchenOrdersView() {
             <MenuItem onClick={() => { if (activeRow) handleUpdate(activeRow.id, 'on_the_way'); handleMenuClose(); }}>
               <Iconify icon="mdi:motorbike" sx={{ mr: 1 }} />
               Yo&apos;lga chiqdi
-            </MenuItem>
-          )}
-
-          {activeRow?.status === 'on_the_way' && (
-            <MenuItem onClick={() => { if (activeRow) handleUpdate(activeRow.id, 'delivered'); handleMenuClose(); }}>
-              <Iconify icon="solar:check-circle-bold" sx={{ mr: 1 }} />
-              Yetkazildi
             </MenuItem>
           )}
 

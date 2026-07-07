@@ -20,7 +20,7 @@ yarn dev        # http://localhost:8082
 
 ```env
 # Backend API manzili (majburiy)
-NEXT_PUBLIC_SERVER_URL=http://164.90.210.222:8000
+NEXT_SERVER_API_URL=http://164.90.210.222:8000
 
 # Statik fayllar manzili (ixtiyoriy)
 NEXT_PUBLIC_ASSETS_DIR=

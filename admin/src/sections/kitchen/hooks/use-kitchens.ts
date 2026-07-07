@@ -26,10 +26,11 @@ export const kitchenKeys = {
 
 // ----------------------------------------------------------------------
 
-export function useKitchens(params?: { limit?: number; offset?: number }) {
+export function useKitchens(params?: { limit?: number; offset?: number }, enabled = true) {
   return useQuery({
     queryKey: kitchenKeys.list(params),
     queryFn:  () => fetchKitchens(params),
+    enabled,
   });
 }
 

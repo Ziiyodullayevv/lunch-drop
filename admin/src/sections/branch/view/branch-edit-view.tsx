@@ -13,9 +13,14 @@ import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
+import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
+import FormControl from '@mui/material/FormControl';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
@@ -45,7 +50,10 @@ import {
   useBranch,
   useUpdateBranch,
   useCompanyBranch,
+  useAssignKitchens,
+  useCompanyKitchens,
   useUpdateCompanyBranch,
+  useAssignCompanyKitchens,
   useCompanyBranchKitchens,
 } from '../hooks/use-branches';
 
@@ -79,14 +87,24 @@ export function BranchEditView({ id }: Props) {
   const companyBranch = useCompanyBranch(id, isCompanyAdmin);
   const updateSuperBranch = useUpdateBranch(id);
   const updateCompanyBranch = useUpdateCompanyBranch(id);
+  const assignSuperKitchens = useAssignKitchens(id);
+  const assignCompanyKitchens = useAssignCompanyKitchens(id);
   const companyBranchKitchens = useCompanyBranchKitchens(id, isCompanyAdmin);
-  const { data: kitchensData } = useKitchens({ limit: 100 });
+  const { data: superKitchensData, isLoading: isSuperKitchensLoading } = useKitchens(
+    { limit: 100 },
+    isSuperAdmin
+  );
+  const { data: companyKitchensData, isLoading: isCompanyKitchensLoading } =
+    useCompanyKitchens(isCompanyAdmin);
+  const [selectedKitchenIds, setSelectedKitchenIds] = useState<string[]>([]);
 
   const branch = isCompanyAdmin ? companyBranch.data : superBranch.data;
   const isLoading = isCompanyAdmin ? companyBranch.isLoading : superBranch.isLoading;
   const isError = isCompanyAdmin ? companyBranch.isError : superBranch.isError;
+  const kitchens = isCompanyAdmin ? (companyKitchensData ?? []) : (superKitchensData?.items ?? []);
+  const isKitchensLoading = isCompanyAdmin ? isCompanyKitchensLoading : isSuperKitchensLoading;
   const superKitchenNameById = new Map(
-    (kitchensData?.items ?? []).map((kitchen) => [kitchen.id, kitchen.name])
+    (superKitchensData?.items ?? []).map((kitchen) => [kitchen.id, kitchen.name])
   );
 
   const methods = useForm<FormValues>({
@@ -132,6 +150,16 @@ export function BranchEditView({ id }: Props) {
       duration: 0,
     });
   }, [branch, reset]);
+
+  useEffect(() => {
+    if (isCompanyAdmin) {
+      if (!companyBranchKitchens.data) return;
+      setSelectedKitchenIds(companyBranchKitchens.data.map((kitchen) => kitchen.id));
+      return;
+    }
+
+    setSelectedKitchenIds(branch?.kitchen_ids ?? []);
+  }, [branch?.kitchen_ids, companyBranchKitchens.data, isCompanyAdmin]);
 
   const updateLocation = useCallback(
     (latitude: number, longitude: number) => {
@@ -185,8 +213,10 @@ export function BranchEditView({ id }: Props) {
 
       if (isCompanyAdmin) {
         await updateCompanyBranch.mutateAsync(payload);
+        await assignCompanyKitchens.mutateAsync(selectedKitchenIds);
       } else {
         await updateSuperBranch.mutateAsync(payload);
+        await assignSuperKitchens.mutateAsync(selectedKitchenIds);
       }
 
       toast.success('Filial yangilandi');
@@ -215,9 +245,6 @@ export function BranchEditView({ id }: Props) {
   }
 
   const backHref = isSuperAdmin ? paths.dashboard.company.root : paths.dashboard.branch.root;
-  const selectedKitchenNames = isCompanyAdmin
-    ? (companyBranchKitchens.data ?? []).map((kitchen) => kitchen.name)
-    : (branch.kitchen_ids ?? []).map((kitchenId) => superKitchenNameById.get(kitchenId) ?? kitchenId);
 
   return (
     <DashboardContent>
@@ -253,26 +280,56 @@ export function BranchEditView({ id }: Props) {
               )}
             />
 
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                Tanlangan oshxonalar
-              </Typography>
-              {companyBranchKitchens.isLoading && isCompanyAdmin ? (
-                <Typography variant="body2" color="text.secondary">
-                  Yuklanmoqda...
-                </Typography>
-              ) : selectedKitchenNames.length > 0 ? (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                  {selectedKitchenNames.map((name) => (
-                    <Chip key={name} label={name} size="small" variant="soft" color="primary" />
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Oshxona tanlanmagan
-                </Typography>
-              )}
-            </Box>
+            <FormControl fullWidth>
+              <InputLabel shrink>Oshxonalar</InputLabel>
+              <Select
+                multiple
+                displayEmpty
+                label="Oshxonalar"
+                value={selectedKitchenIds}
+                onChange={(event) => setSelectedKitchenIds(event.target.value as string[])}
+                notched
+                disabled={isKitchensLoading || (isCompanyAdmin && companyBranchKitchens.isLoading)}
+                renderValue={(selected) => {
+                  const selectedIds = selected as string[];
+
+                  if (isKitchensLoading || (isCompanyAdmin && companyBranchKitchens.isLoading)) {
+                    return <Typography variant="body2" color="text.disabled">Yuklanmoqda...</Typography>;
+                  }
+                  if (selectedIds.length === 0) {
+                    return <Typography variant="body2" color="text.disabled">Oshxona tanlang</Typography>;
+                  }
+
+                  return (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selectedIds.map((kitchenId) => {
+                        const kitchen = kitchens.find((item) => item.id === kitchenId);
+                        return (
+                          <Chip
+                            key={kitchenId}
+                            label={kitchen?.name ?? superKitchenNameById.get(kitchenId) ?? kitchenId}
+                            size="small"
+                          />
+                        );
+                      })}
+                    </Box>
+                  );
+                }}
+              >
+                {kitchens.length === 0 && !isKitchensLoading ? (
+                  <MenuItem disabled>
+                    <Typography variant="body2" color="text.disabled">Oshxona topilmadi</Typography>
+                  </MenuItem>
+                ) : (
+                  kitchens.map((kitchen) => (
+                    <MenuItem key={kitchen.id} value={kitchen.id}>
+                      <Checkbox checked={selectedKitchenIds.includes(kitchen.id)} size="small" sx={{ mr: 1 }} />
+                      {kitchen.name}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
 
             <Divider>
               <Typography variant="caption" color="text.secondary">Joylashuv</Typography>
@@ -317,7 +374,13 @@ export function BranchEditView({ id }: Props) {
               <Button component={RouterLink} href={backHref} variant="outlined" color="inherit">
                 Bekor qilish
               </Button>
-              <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
+              <LoadingButton
+                type="submit"
+                variant="contained"
+                loading={
+                  isSubmitting || assignCompanyKitchens.isPending || assignSuperKitchens.isPending
+                }
+              >
                 Saqlash
               </LoadingButton>
             </Box>

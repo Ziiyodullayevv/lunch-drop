@@ -28,7 +28,8 @@ services:
       - '8082'
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:?NEXT_PUBLIC_SERVER_URL is required}
+      NEXT_SERVER_API_URL: ${NEXT_SERVER_API_URL:-${NEXT_PUBLIC_SERVER_URL:?NEXT_SERVER_API_URL is required}}
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-}
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8082']
       interval: 30s

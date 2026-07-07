@@ -23,6 +23,7 @@ export const paths = {
   about: '/about-us',
   contact: '/contact-us',
   faqs: '/faqs',
+  privacyPolicy: '/privacy-policy',
   page403: '/error/403',
   page404: '/error/404',
   page500: '/error/500',

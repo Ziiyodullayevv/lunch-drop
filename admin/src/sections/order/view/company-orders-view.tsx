@@ -3,7 +3,7 @@
 import type { OrderStatus } from 'src/lib/api/orders';
 
 import dayjs from 'dayjs';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -16,7 +16,6 @@ import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
-import LoadingButton from '@mui/lab/LoadingButton';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import CircularProgress from '@mui/material/CircularProgress';
 
@@ -28,7 +27,6 @@ import { fCurrency } from 'src/utils/format-number';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { emptyOrderAnalytics } from 'src/lib/order-analytics';
 
-import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
@@ -41,8 +39,8 @@ import {
 
 import { OrderAnalytics } from './order-analytics';
 import { OrderStatusTabs } from './order-status-tabs';
+import { useCompanyOrders } from '../hooks/use-orders';
 import { buildCompanyOrdersParams } from './company-orders-data';
-import { useBulkConfirm, useCompanyOrders } from '../hooks/use-orders';
 
 // ----------------------------------------------------------------------
 
@@ -97,8 +95,6 @@ export function CompanyOrdersView() {
   });
 
   const { data, isLoading, isError, error } = useCompanyOrders(queryParams);
-  const bulkConfirm = useBulkConfirm();
-
   const orders    = data?.items ?? [];
   const total     = data?.total ?? 0;
   const statusCounts = data?.status_counts ?? {
@@ -109,18 +105,6 @@ export function CompanyOrdersView() {
     delivered: tabStatus === 'delivered' ? total : 0,
     cancelled: tabStatus === 'cancelled' ? total : 0,
   };
-
-  const onTheWayCount = statusCounts.on_the_way ?? 0;
-
-  const handleBulkConfirm = useCallback(async () => {
-    try {
-      const result = await bulkConfirm.mutateAsync();
-      toast.success(`${result.confirmed} ta buyurtma tasdiqlandi`);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Xatolik yuz berdi');
-    }
-  }, [bulkConfirm]);
-
   return (
     <DashboardContent>
       <CustomBreadcrumbs
@@ -129,19 +113,6 @@ export function CompanyOrdersView() {
           { name: 'Dashboard', href: paths.dashboard.root },
           { name: 'Buyurtmalar' },
         ]}
-        action={
-          onTheWayCount > 0 && (
-            <LoadingButton
-              variant="contained"
-              color="success"
-              loading={bulkConfirm.isPending}
-              startIcon={<Iconify icon="solar:check-circle-bold" />}
-              onClick={handleBulkConfirm}
-            >
-              Barchasini tasdiqlash ({onTheWayCount})
-            </LoadingButton>
-          )
-        }
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 

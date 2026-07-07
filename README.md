@@ -5,7 +5,7 @@ B2B korporativ tushlik platformasi. Kompaniya xodimlari oshxonalardan ovqat buyu
 ## Loyiha tuzilmasi
 
 ```
-launch-drop/
+lunchdrop/
 ├── admin/      # Next.js 16 — boshqaruv paneli (super admin, kompaniya admin, oshxona admin)
 └── mobile/     # Expo SDK 55 — xodimlar uchun mobil ilova (iOS + Android)
 ```
@@ -29,7 +29,7 @@ yarn android      # Android emulator
 
 **Admin** — `admin/.env` faylini yarating:
 ```env
-NEXT_PUBLIC_SERVER_URL=http://164.90.210.222:8000
+NEXT_SERVER_API_URL=http://164.90.210.222:8000
 ```
 
 **Mobile** — `mobile/.env` faylini yarating:

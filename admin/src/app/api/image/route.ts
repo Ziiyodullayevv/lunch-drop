@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import { NextResponse } from 'next/server';
 
-const BACKEND = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://164.90.210.222:8000';
+import { getBackendUrl } from '../_utils/backend-url';
 
 export async function GET(req: NextRequest) {
   const path = req.nextUrl.searchParams.get('path');
@@ -11,14 +11,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ detail: 'Invalid image path' }, { status: 400 });
   }
 
-  const url = new URL(path, BACKEND);
-  const backendUrl = new URL(BACKEND);
+  const backend = getBackendUrl(req, path);
+  if (backend.error) return backend.error;
 
-  if (url.origin !== backendUrl.origin) {
-    return NextResponse.json({ detail: 'Invalid image origin' }, { status: 400 });
+  const { url } = backend;
+
+  let res: Response;
+
+  try {
+    res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(25_000) });
+  } catch {
+    return NextResponse.json(
+      { code: 'backend_unavailable', detail: "Rasm serveri bilan bog'lanib bo'lmadi" },
+      { status: 502 }
+    );
   }
-
-  const res = await fetch(url, { cache: 'no-store' });
 
   if (!res.ok) {
     return NextResponse.json({ detail: 'Image not found' }, { status: res.status });

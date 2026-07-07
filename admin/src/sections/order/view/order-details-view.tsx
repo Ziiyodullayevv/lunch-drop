@@ -29,7 +29,6 @@ import {
   useCancelOrder,
   useKitchenOrder,
   useSuperAdminOrder,
-  useConfirmDelivery,
   useUpdateOrderStatus,
 } from '../hooks/use-orders';
 
@@ -100,16 +99,8 @@ export function OrderDetailsView({ id }: Props) {
     : isKitchenAdmin
       ? kitchenOrder.isError
       : regularOrder.isError;
-  const confirmMutation = useConfirmDelivery();
   const cancelMutation  = useCancelOrder();
   const statusMutation = useUpdateOrderStatus();
-
-  const handleConfirm = async () => {
-    try {
-      await confirmMutation.mutateAsync(id);
-      toast.success('Buyurtma yetkazildi deb belgilandi');
-    } catch { toast.error('Xatolik yuz berdi'); }
-  };
 
   const handleCancel = async () => {
     try {
@@ -150,7 +141,6 @@ export function OrderDetailsView({ id }: Props) {
   }
 
   const statusCfg = STATUS_MAP[order.status] ?? { label: order.status, color: 'default' as const };
-  const canConfirm = !isSuperAdmin && !isKitchenAdmin && order.status === 'on_the_way';
   const canCancel =
     !isSuperAdmin &&
     !isKitchenAdmin &&
@@ -160,9 +150,7 @@ export function OrderDetailsView({ id }: Props) {
       ? { status: 'preparing' as const, label: 'Tayyorlashni boshlash' }
       : order.status === 'preparing'
         ? { status: 'on_the_way' as const, label: "Yo'lga chiqarish" }
-        : order.status === 'on_the_way'
-          ? { status: 'delivered' as const, label: 'Yetkazildi' }
-          : null;
+        : null;
 
   return (
     <DashboardContent>
@@ -202,17 +190,6 @@ export function OrderDetailsView({ id }: Props) {
             onClick={() => handleKitchenStatus('cancelled')}
           >
             Bekor qilish
-          </LoadingButton>
-        )}
-        {canConfirm && (
-          <LoadingButton
-            variant="contained"
-            color="success"
-            startIcon={<Iconify icon="solar:check-bold" />}
-            loading={confirmMutation.isPending}
-            onClick={handleConfirm}
-          >
-            Yetkazildi
           </LoadingButton>
         )}
         {canCancel && (

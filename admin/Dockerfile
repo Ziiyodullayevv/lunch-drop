@@ -3,8 +3,10 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 ARG NEXT_PUBLIC_SERVER_URL
+ARG NEXT_SERVER_API_URL
 
 ENV NEXT_PUBLIC_SERVER_URL=$NEXT_PUBLIC_SERVER_URL
+ENV NEXT_SERVER_API_URL=$NEXT_SERVER_API_URL
 
 COPY package.json yarn.lock ./
 RUN corepack enable
@@ -18,10 +20,12 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ARG NEXT_PUBLIC_SERVER_URL
+ARG NEXT_SERVER_API_URL
 
 ENV NODE_ENV=production
 ENV PORT=8082
 ENV NEXT_PUBLIC_SERVER_URL=$NEXT_PUBLIC_SERVER_URL
+ENV NEXT_SERVER_API_URL=$NEXT_SERVER_API_URL
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
