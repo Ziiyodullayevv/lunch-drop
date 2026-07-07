@@ -33,6 +33,7 @@ const LINKS = [
     children: [
       { name: 'Terms and condition', href: '#' },
       { name: 'Privacy policy', href: paths.privacyPolicy },
+      { name: 'Account deletion', href: paths.accountDeletion },
     ],
   },
   {

@@ -7,6 +7,8 @@ import Divider from '@mui/material/Divider';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 
+import { paths } from 'src/routes/paths';
+
 import { CONFIG } from 'src/global-config';
 
 // ----------------------------------------------------------------------
@@ -35,7 +37,7 @@ const uzSections = [
   },
   {
     title: "Ma'lumotlarni saqlash va o'chirish",
-    body: "Ma'lumotlar servis ishlashi uchun kerak bo'lgan muddat davomida saqlanadi. Account yoki shaxsiy ma'lumotlarni o'chirishni Telegram bot yoki email orqali so'rashingiz mumkin.",
+    body: "Ma'lumotlar servis ishlashi uchun kerak bo'lgan muddat davomida saqlanadi. Account yoki shaxsiy ma'lumotlarni o'chirishni account deletion sahifasi, Telegram bot yoki email orqali so'rashingiz mumkin.",
   },
   {
     title: 'Xavfsizlik',
@@ -58,7 +60,7 @@ const enSections = [
   },
   {
     title: 'Retention and deletion',
-    body: 'Information is retained while it is needed to operate the service. You can request account or personal data deletion through the Telegram support bot or by email.',
+    body: 'Information is retained while it is needed to operate the service. You can request account or personal data deletion through the account deletion page, Telegram support bot, or email.',
   },
   {
     title: 'Security',
@@ -115,7 +117,9 @@ export default function Page() {
         <Stack spacing={1.5}>
           <Typography variant="h5">Contact</Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.8 }}>
-            For privacy questions or deletion requests, contact us by Telegram support bot{' '}
+            For privacy questions or deletion requests, use the{' '}
+            <Link href={paths.accountDeletion}>account deletion page</Link>, contact us by Telegram
+            support bot{' '}
             <Link href="https://t.me/lunchdropuzbot" target="_blank" rel="noopener">
               {SUPPORT_BOT}
             </Link>{' '}
