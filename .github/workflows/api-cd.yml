@@ -1,0 +1,57 @@
+name: API CD
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [API CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Prepare API deploy directory
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p /opt/lunchdrop-api/keys /opt/lunchdrop-api/media
+
+      - name: Upload API compose file
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: infra/api.yml
+          target: /opt/lunchdrop-api
+          strip_components: 1
+
+      - name: Deploy API to DigitalOcean
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+            cd /opt/lunchdrop-api
+            test -f .env || { echo "/opt/lunchdrop-api/.env is missing"; exit 1; }
+            test -f keys/private.pem || { echo "/opt/lunchdrop-api/keys/private.pem is missing"; exit 1; }
+            test -f keys/public.pem || { echo "/opt/lunchdrop-api/keys/public.pem is missing"; exit 1; }
+            echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            API_IMAGE="ghcr.io/${OWNER}/lunchdrop-api:latest" docker compose -f api.yml pull
+            API_IMAGE="ghcr.io/${OWNER}/lunchdrop-api:latest" docker compose -f api.yml run --rm api alembic upgrade head
+            API_IMAGE="ghcr.io/${OWNER}/lunchdrop-api:latest" docker compose -f api.yml up -d
+            docker image prune -f

@@ -11,7 +11,7 @@ lunchdrop/
 │   ├── mobile/     # Expo SDK 55 — xodimlar mobil ilovasi
 │   └── api/        # FastAPI backend + Telegram notifier
 ├── docs/           # umumiy loyiha hujjatlari
-└── infra/          # deployment va infra konfiguratsiyalari
+└── infra/          # deployment compose fayllari: api.yml, web.yml
 ```
 
 ## Tezkor ishga tushirish
@@ -74,3 +74,12 @@ Backend endi monorepo ichida: `apps/api`.
 
 API docs: `http://localhost:8000/docs`
 Default port: `8000`
+
+## CI/CD
+
+- Web: `.github/workflows/web-ci.yml` va `.github/workflows/web-cd.yml`
+- API: `.github/workflows/api-ci.yml` va `.github/workflows/api-cd.yml`
+- Production compose fayllari: `infra/web.yml`, `infra/api.yml`
+
+API deploy serverda `/opt/lunchdrop-api/.env`, `/opt/lunchdrop-api/keys/private.pem` va
+`/opt/lunchdrop-api/keys/public.pem` mavjud bo'lishini kutadi.
