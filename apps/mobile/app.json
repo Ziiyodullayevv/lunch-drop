@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "Lunch Drop",
+    "slug": "lunchdrop",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon2.png",
+    "scheme": "lunchdrop",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.lunchdrop.mobile"
+    },
+    "android": {
+      "package": "com.lunchdrop.mobile",
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.RECORD_AUDIO"]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "orders"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil rasmini tanlash uchun galereyaga ruxsat bering."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-blank.png",
+          "imageWidth": 1,
+          "ios": {
+            "backgroundColor": "#FFFFFF"
+          },
+          "android": {
+            "backgroundColor": "#FFFFFF",
+            "image": "./assets/images/splash-blank.png",
+            "imageWidth": 1
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9e27d06a-e1d1-49b4-a586-f646430fb105"
+      }
+    }
+  }
+}

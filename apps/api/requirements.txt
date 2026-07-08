@@ -1,0 +1,31 @@
+# LunchDrop backend — runtime dependencies
+# Python 3.13 | FastAPI + SQLAlchemy 2.0 async + PostgreSQL
+
+# Web framework / ASGI
+fastapi==0.136.3
+uvicorn[standard]==0.48.0
+python-multipart==0.0.30
+
+# Database / ORM / migrations
+sqlalchemy[asyncio]==2.0.50
+asyncpg==0.31.0          # PostgreSQL async driver
+aiosqlite==0.22.1        # dev/test uchun SQLite async driver
+alembic==1.18.4
+
+# Validatsiya / sozlamalar
+pydantic==2.13.4
+pydantic-settings==2.14.1
+email-validator==2.3.0   # User.email (EmailStr) uchun
+
+# Xavfsizlik — JWT RS256 + parol hash (argon2/bcrypt)
+pyjwt[crypto]==2.13.0
+pwdlib[argon2,bcrypt]==0.3.0
+
+# Logging / background jobs
+structlog==25.5.0
+apscheduler==3.11.2      # workers/scheduler.py — avtomatik status o'zgarish
+
+# Integratsiyalar
+boto3==1.43.19           # S3 rasm yuklash
+httpx==0.28.1            # SMS OTP va tashqi HTTP
+aiogram==3.28.2          # Telegram bot (vaqtincha OTP yetkazish, SMS ulanmaguncha)

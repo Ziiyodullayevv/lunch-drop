@@ -6,20 +6,31 @@ B2B korporativ tushlik platformasi. Kompaniya xodimlari oshxonalardan ovqat buyu
 
 ```
 lunchdrop/
-├── admin/      # Next.js 16 — boshqaruv paneli (super admin, kompaniya admin, oshxona admin)
-└── mobile/     # Expo SDK 55 — xodimlar uchun mobil ilova (iOS + Android)
+├── apps/
+│   ├── web/        # Next.js 16 — admin web panel
+│   ├── mobile/     # Expo SDK 55 — xodimlar mobil ilovasi
+│   └── api/        # FastAPI backend + Telegram notifier
+├── docs/           # umumiy loyiha hujjatlari
+└── infra/          # deployment va infra konfiguratsiyalari
 ```
 
 ## Tezkor ishga tushirish
 
 ```bash
 # Admin panel
-cd admin
+cd apps/web
 yarn install
 yarn dev          # http://localhost:8082
 
+# Backend
+cd apps/api
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload  # http://localhost:8000
+
 # Mobil ilova
-cd mobile
+cd apps/mobile
 yarn install
 yarn ios          # iOS simulator
 yarn android      # Android emulator
@@ -27,12 +38,19 @@ yarn android      # Android emulator
 
 ## Muhit o'zgaruvchilari
 
-**Admin** — `admin/.env` faylini yarating:
+**Web** — `apps/web/.env` faylini yarating:
 ```env
 NEXT_SERVER_API_URL=http://164.90.210.222:8000
 ```
 
-**Mobile** — `mobile/.env` faylini yarating:
+**API** — `apps/api/.env` faylini yarating:
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/lunchdrop
+JWT_PRIVATE_KEY_PATH=keys/private.pem
+JWT_PUBLIC_KEY_PATH=keys/public.pem
+```
+
+**Mobile** — `apps/mobile/.env` faylini yarating:
 ```env
 EXPO_PUBLIC_API_URL=http://164.90.210.222:8000/api/v1
 EXPO_PUBLIC_USE_MOCK_API=false
@@ -40,18 +58,19 @@ EXPO_PUBLIC_USE_MOCK_API=false
 
 ## Texnologiyalar
 
-| | Admin | Mobile |
-|---|---|---|
-| Framework | Next.js 16 (App Router) | Expo SDK 55 + Expo Router v4 |
-| UI | MUI v9 + Emotion | Tamagui |
-| Server state | TanStack Query v5 | TanStack Query v5 |
-| Client state | — | Zustand + persist |
-| HTTP | Axios | Axios |
-| Forms | React Hook Form + Zod | React Hook Form + Zod |
-| Language | TypeScript 5 | TypeScript 5 |
+| | Web | API | Mobile |
+|---|---|---|---|
+| Framework | Next.js 16 (App Router) | FastAPI | Expo SDK 55 + Expo Router v4 |
+| UI | MUI v9 + Emotion | — | Tamagui |
+| Server state | TanStack Query v5 | SQLAlchemy 2 async | TanStack Query v5 |
+| Client state | — | PostgreSQL + Alembic | Zustand + persist |
+| HTTP | Axios | Uvicorn | Axios |
+| Forms | React Hook Form + Zod | Pydantic | React Hook Form + Zod |
+| Language | TypeScript 5 | Python 3.13 | TypeScript 5 |
 
 ## Backend
 
-Backend loyihasi alohida repository'da. API docs: `http://localhost:8000/docs`
+Backend endi monorepo ichida: `apps/api`.
 
+API docs: `http://localhost:8000/docs`
 Default port: `8000`
