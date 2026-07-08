@@ -1,4 +1,5 @@
-import { Image } from 'expo-image';
+import { Image, type ImageSource } from 'expo-image';
+import type { ImageStyle } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { Spinner, Text, YStack } from 'tamagui';
 
@@ -8,6 +9,8 @@ type StateViewProps = {
   title?: string;
   description?: string;
   onRetry?: () => void;
+  imageSource?: ImageSource;
+  imageStyle?: ImageStyle;
 };
 
 export function LoadingState({ title }: StateViewProps) {
@@ -23,13 +26,18 @@ export function LoadingState({ title }: StateViewProps) {
   );
 }
 
-export function ErrorState({ title = 'Xatolik yuz berdi', description = "Qayta urinib ko'ring." }: StateViewProps) {
+export function ErrorState({
+  title = 'Xatolik yuz berdi',
+  description = "Qayta urinib ko'ring.",
+  imageSource = require('@/assets/images/home/error.png'),
+  imageStyle,
+}: StateViewProps) {
   return (
     <YStack flex={1} alignItems="center" justifyContent="flex-start" paddingTop={40} gap={12}>
       <Animated.View entering={FadeInDown.duration(600).easing(Easing.out(Easing.cubic))}>
         <Image
-          source={require('@/assets/images/home/error.png')}
-          style={{ width: 224, height: 224 }}
+          source={imageSource}
+          style={[{ width: 224, height: 224 }, imageStyle]}
           contentFit="contain"
         />
       </Animated.View>

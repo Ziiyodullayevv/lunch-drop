@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
@@ -12,69 +12,89 @@ import Animated, {
 } from "react-native-reanimated";
 
 const LOGO = require("@/assets/images/launch-drop-logo-gradient-80.svg");
+const MIN_VISIBLE_MS = 1300;
 
 type LaunchSplashProps = {
   onFinish: () => void;
+  onReady?: () => void;
   readyToFinish: boolean;
 };
 
-export function LaunchSplash({ onFinish, readyToFinish }: LaunchSplashProps) {
+export function LaunchSplash({ onFinish, onReady, readyToFinish }: LaunchSplashProps) {
+  const [minimumElapsed, setMinimumElapsed] = useState(false);
   const overlayOpacity = useSharedValue(1);
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.82);
-  const logoY = useSharedValue(16);
-  const textOpacity = useSharedValue(0);
-  const textY = useSharedValue(14);
+  const logoOpacity = useSharedValue(1);
+  const logoScale = useSharedValue(1);
+  const logoY = useSharedValue(0);
+  const textOpacity = useSharedValue(1);
+  const textY = useSharedValue(0);
 
   useEffect(() => {
-    logoOpacity.value = withTiming(1, {
-      duration: 360,
-      easing: Easing.out(Easing.cubic),
-    });
+    const timer = setTimeout(() => setMinimumElapsed(true), MIN_VISIBLE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     logoScale.value = withSequence(
-      withTiming(1.04, {
-        duration: 520,
+      withTiming(0.96, {
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+      }),
+      withTiming(1.08, {
+        duration: 460,
         easing: Easing.out(Easing.cubic),
       }),
       withTiming(1, {
-        duration: 220,
+        duration: 260,
         easing: Easing.out(Easing.quad),
       }),
     );
-    logoY.value = withTiming(0, {
-      duration: 520,
-      easing: Easing.out(Easing.cubic),
-    });
-    textOpacity.value = withDelay(
-      260,
-      withTiming(1, {
-        duration: 360,
+    logoY.value = withSequence(
+      withTiming(-8, {
+        duration: 460,
         easing: Easing.out(Easing.cubic),
       }),
-    );
-    textY.value = withDelay(
-      260,
       withTiming(0, {
-        duration: 360,
+        duration: 260,
+        easing: Easing.out(Easing.quad),
+      }),
+    );
+    textOpacity.value = withSequence(
+      withTiming(0.72, {
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+      }),
+      withTiming(1, {
+        duration: 420,
         easing: Easing.out(Easing.cubic),
       }),
     );
-  }, [logoOpacity, logoScale, logoY, textOpacity, textY]);
+    textY.value = withSequence(
+      withTiming(6, {
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+      }),
+      withTiming(0, {
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
+  }, [logoScale, logoY, textOpacity, textY]);
 
   useEffect(() => {
-    if (!readyToFinish) return;
+    if (!readyToFinish || !minimumElapsed) return;
 
     overlayOpacity.value = withDelay(
-      180,
+      120,
       withTiming(
         0,
-        { duration: 320, easing: Easing.out(Easing.quad) },
+        { duration: 340, easing: Easing.out(Easing.quad) },
         (finished) => {
           if (finished) runOnJS(onFinish)();
         },
       ),
     );
-  }, [onFinish, overlayOpacity, readyToFinish]);
+  }, [minimumElapsed, onFinish, overlayOpacity, readyToFinish]);
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
@@ -91,14 +111,16 @@ export function LaunchSplash({ onFinish, readyToFinish }: LaunchSplashProps) {
   }));
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.overlay, overlayStyle]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.overlay, overlayStyle]}
+      onLayout={onReady}
+    >
       <View style={styles.center}>
         <Animated.View style={logoStyle}>
           <Image source={LOGO} style={styles.logo} contentFit="contain" />
         </Animated.View>
-        <Animated.Text style={[styles.title, textStyle]}>
-          LUNCH DROP
-        </Animated.Text>
+        <Animated.Text style={[styles.title, textStyle]}>LUNCH DROP</Animated.Text>
       </View>
     </Animated.View>
   );

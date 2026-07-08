@@ -21,6 +21,7 @@ import { FloatingCartButton } from "@/components/cart/floating-cart-button";
 import { FoodCard } from "@/components/kitchen/food-card";
 import { FoodCardSkeleton } from "@/components/kitchen/food-card-skeleton";
 import { ErrorState } from "@/components/ui";
+import { ILLUSTRATIONS } from "@/constants/illustrations";
 import { useAllFoodItems } from "@/hooks/use-all-food-items";
 import { useActiveOrder } from "@/hooks/use-orders";
 import { getMe } from "@/lib/api/auth";
@@ -36,6 +37,7 @@ const LAUNCH_DROP_LOGO = require('@/assets/images/launch-drop-logo-gradient-80.s
 const TAB_BAR_HEIGHT = 49;
 const ACTIVE_ORDER_BAR_SCROLL_SPACE = 76;
 const FLOATING_CART_SCROLL_SPACE = 88;
+const HOME_ILLUSTRATION_STYLE = { width: 320, height: 240 };
 
 function isOfflineError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
@@ -209,8 +211,8 @@ export default function HomeScreen() {
 				<YStack flex={1} alignItems="center" justifyContent="flex-start" paddingTop={60} gap={12} paddingHorizontal={32}>
 					<Animated.View entering={FadeInDown.delay(150).duration(600).easing(Easing.out(Easing.cubic))}>
 						<Image
-							source={require('@/assets/images/home/administrator.png')}
-							style={{ width: 280, height: 280 }}
+							source={ILLUSTRATIONS.seo}
+							style={HOME_ILLUSTRATION_STYLE}
 							contentFit="contain"
 						/>
 					</Animated.View>
@@ -256,6 +258,8 @@ export default function HomeScreen() {
 					<ErrorState
 						title="Internet yo'q"
 						description="Internet aloqasini tekshiring va qayta urining."
+						imageSource={ILLUSTRATIONS.pageNotFoundClean}
+						imageStyle={HOME_ILLUSTRATION_STYLE}
 					/>
 				</ScrollView>
 			);
@@ -287,8 +291,8 @@ export default function HomeScreen() {
 					<YStack key={selectedDay} flex={1} alignItems="center" justifyContent="flex-start" paddingTop={60} gap={12}>
 						<Animated.View entering={FadeInDown.delay(150).duration(600).easing(Easing.out(Easing.cubic))}>
 							<Image
-								source={require('@/assets/images/home/dishes.png')}
-								style={{ width: 280, height: 280 }}
+								source={ILLUSTRATIONS.comingSoon}
+								style={HOME_ILLUSTRATION_STYLE}
 								contentFit="contain"
 							/>
 						</Animated.View>

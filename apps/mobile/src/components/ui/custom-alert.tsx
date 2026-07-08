@@ -123,13 +123,6 @@ export function CustomAlertProvider({ children }: PropsWithChildren) {
               gap={16}
               borderWidth={Platform.select({ android: 1, default: 0.5 })}
               borderColor={Platform.select({ android: 'rgba(0,0,0,0.08)', default: 'rgba(0,0,0,0.06)' })}
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.16,
-                shadowRadius: 24,
-                elevation: Platform.select({ android: 12, default: 10 }),
-              }}
             >
               <YStack alignItems="center" gap={10}>
                 <YStack

@@ -29,6 +29,14 @@ const HEADER_SCROLL_EXTRA = 96;
 const PROFILE_BUTTON_COLOR = "#1C252E";
 const PROFILE_ICON_COLOR = "#141A21";
 const PROFILE_ICON_BG = "#F1F2F4";
+const CARD_SHADOW = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.045,
+  shadowRadius: 8,
+  boxShadow: "0px 0px 12px rgba(0,0,0,0.09)",
+  elevation: 0,
+};
 
 function MenuRow({
   icon,
@@ -130,14 +138,7 @@ function Card({ children }: { children: React.ReactNode }) {
         android: "transparent",
         default: "rgba(0,0,0,0.07)",
       })}
-      style={{
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.045,
-        shadowRadius: 8,
-        boxShadow: "0px 0px 12px rgba(0,0,0,0.09)",
-        elevation: 0,
-      }}
+      style={CARD_SHADOW}
     >
       <YStack borderRadius={20} overflow="hidden">
         {children}
@@ -214,11 +215,7 @@ export default function AccountScreen() {
           backgroundColor: "#FFFFFF",
           borderBottomLeftRadius: 36,
           borderBottomRightRadius: 36,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.1,
-          shadowRadius: 14,
-          elevation: Platform.select({ android: 4, default: 6 }),
+          ...CARD_SHADOW,
         }}
       >
         <Animated.View

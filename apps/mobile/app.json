@@ -39,18 +39,19 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
-          "image": "./assets/images/splash-blank.png",
-          "imageWidth": 1,
+          "image": "./assets/images/splash.png",
+          "imageWidth": 220,
           "ios": {
             "backgroundColor": "#FFFFFF"
           },
           "android": {
             "backgroundColor": "#FFFFFF",
-            "image": "./assets/images/splash-blank.png",
-            "imageWidth": 1
+            "image": "./assets/images/splash.png",
+            "imageWidth": 220
           }
         }
-      ]
+      ],
+      "./plugins/withNativeAnimatedSplash"
     ],
     "experiments": {
       "typedRoutes": true,
