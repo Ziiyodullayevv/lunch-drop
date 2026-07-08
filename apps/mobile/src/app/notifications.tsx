@@ -11,6 +11,15 @@ import type { NotificationItem } from '@/lib/api/notifications';
 
 const ACCENT = '#00A76F';
 
+const CARD_SHADOW = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.045,
+  shadowRadius: 8,
+  boxShadow: '0px 0px 12px rgba(0,0,0,0.09)',
+  elevation: 0,
+};
+
 const TYPE_ICON: Record<string, { icon: string; color: string; bg: string }> = {
   order_status:  { icon: 'bell-ring',           color: ACCENT, bg: 'rgba(0,167,111,0.08)' },
   cooking:       { icon: 'room-service',         color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
@@ -58,13 +67,7 @@ function NotificationCard({ item, onPress }: { item: NotificationItem; onPress: 
           android: item.is_read ? 'rgba(0,0,0,0.08)' : 'rgba(91,228,155,0.25)',
           default: item.is_read ? 'rgba(0,0,0,0.07)' : 'rgba(91,228,155,0.18)',
         })}
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: item.is_read ? 0.06 : 0.1,
-          shadowRadius: 12,
-          elevation: Platform.select({ android: 0, default: item.is_read ? 2 : 4 }),
-        }}
+        style={CARD_SHADOW}
       >
         <XStack padding={14} gap={12} alignItems="center">
           <YStack
@@ -200,13 +203,6 @@ function NotificationDetailsSheet({
                 paddingTop={16}
                 paddingBottom={Math.max(insets.bottom + 16, 24)}
                 gap={16}
-                style={{
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: -8 },
-                  shadowOpacity: 0.14,
-                  shadowRadius: 20,
-                  elevation: Platform.select({ android: 12, default: 0 }),
-                }}
               >
                 <XStack alignItems="center" justifyContent="space-between" gap={12}>
                   <XStack alignItems="center" gap={12} flex={1} minWidth={0}>
@@ -308,13 +304,22 @@ export default function NotificationsScreen() {
     try { await markAllRead(); } catch { /* ignore */ }
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace('/home');
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
         {/* Header */}
         <XStack alignItems="center" paddingHorizontal={12} paddingTop={6} paddingBottom={10} height={56}>
-          <HeaderBackButton onPress={() => router.back()} />
+          <HeaderBackButton onPress={handleBack} />
           <Text fontFamily="$heading"
             color="$color"
             fontSize={17}

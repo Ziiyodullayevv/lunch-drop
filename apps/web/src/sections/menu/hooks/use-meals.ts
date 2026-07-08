@@ -50,7 +50,7 @@ export function useCreateCategory() {
 export function useMeals(params?: { limit?: number; offset?: number }) {
   return useQuery({
     queryKey: mealKeys.list(params),
-    queryFn:  () => fetchMeals(params),
+    queryFn:  () => fetchMeals({ limit: 100, ...params }),
   });
 }
 

@@ -12,6 +12,7 @@ import { HeaderBackButton } from '@/components/common/header-back-button';
 import { OrderCardSkeleton } from '@/components/order/order-card-skeleton';
 import { useCustomAlert } from '@/components/ui/custom-alert';
 import { formatMoney } from '@/constants/config';
+import { ILLUSTRATIONS } from '@/constants/illustrations';
 import { useKitchens } from '@/hooks/use-kitchens';
 import { useMonthlyOrders, useOrders } from '@/hooks/use-orders';
 import { useTodayOrderGuard } from '@/hooks/use-today-order-guard';
@@ -702,8 +703,8 @@ export default function MyOrdersScreen() {
           <YStack key={activeTab} flex={1} alignItems="center" justifyContent="flex-start" paddingTop={60} gap={12}>
             <ReAnimated.View entering={FadeInDown.duration(600).easing(Easing.out(Easing.cubic))}>
               <Image
-                source={require('@/assets/images/home/empty-orders.png')}
-                style={{ width: 280, height: 280 }}
+                source={ILLUSTRATIONS.orderComplete}
+                style={{ width: 320, height: 240 }}
                 contentFit="contain"
               />
             </ReAnimated.View>
@@ -770,13 +771,6 @@ export default function MyOrdersScreen() {
                     paddingTop={16}
                     paddingBottom={Math.max(insets.bottom + 16, 24)}
                     gap={16}
-                    style={{
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: -8 },
-                      shadowOpacity: 0.14,
-                      shadowRadius: 20,
-                      elevation: Platform.select({ android: 12, default: 0 }),
-                    }}
                   >
                     <XStack alignItems="center" justifyContent="space-between" gap={12}>
                       <XStack alignItems="center" gap={12} flex={1} minWidth={0}>
