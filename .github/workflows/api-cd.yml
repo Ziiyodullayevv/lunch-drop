@@ -2,14 +2,9 @@ name: API CD
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: [API CI]
-    types: [completed]
-    branches: [main]
 
 jobs:
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
