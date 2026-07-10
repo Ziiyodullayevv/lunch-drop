@@ -53,17 +53,21 @@ async def link_telegram_account(
             raise TelegramApprovalError(
                 "Bu telefon raqamiga bog'langan LunchDrop admin hisobi topilmadi"
             )
-        if user.role not in (UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN):
+        if user.role not in (
+            UserRole.SUPER_ADMIN,
+            UserRole.COMPANY_ADMIN,
+            UserRole.EMPLOYEE,
+        ):
             raise TelegramApprovalError(
-                "Bot orqali tasdiqlash faqat Super Admin va Company Admin uchun"
+                "Bu rol uchun Telegram bot funksiyalari mavjud emas"
             )
         if not user.is_active:
             raise TelegramApprovalError("LunchDrop hisobingiz faol emas")
-        if (
-            user.role == UserRole.COMPANY_ADMIN
-            and user.account_status != AccountStatus.APPROVED
+        if user.role in (UserRole.COMPANY_ADMIN, UserRole.EMPLOYEE) and (
+            user.account_status != AccountStatus.APPROVED
         ):
-            raise TelegramApprovalError("Company Admin hisobi hali tasdiqlanmagan")
+            label = "Company Admin" if user.role == UserRole.COMPANY_ADMIN else "Xodim"
+            raise TelegramApprovalError(f"{label} hisobi hali tasdiqlanmagan")
 
         by_telegram = (
             await session.execute(

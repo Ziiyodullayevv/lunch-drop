@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
@@ -10,7 +12,8 @@ from app.db.session import AsyncSessionLocal, engine
 from app.models.branch import Branch, EmployeeBranch
 from app.models.company import Company
 from app.models.enums import AccountStatus, UserRole
-from app.models.kitchen import Kitchen
+from app.models.kitchen import BranchKitchen, Kitchen
+from app.models.meal import Meal, MenuSchedule
 from app.models.telegram import ApprovalAction
 from app.models.user import User
 from bot.approvals import (
@@ -19,6 +22,7 @@ from bot.approvals import (
     pending_cards_for,
     process_decision,
 )
+from bot.menu import send_employee_menu
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -98,7 +102,8 @@ async def _seed_approval_flow() -> dict[str, str]:
         session.add(EmployeeBranch(user_id=users["employee"].id, branch_id=branch.id))
         await session.commit()
         return {key: user.id for key, user in users.items()} | {
-            "kitchen_entity": kitchen.id
+            "kitchen_entity": kitchen.id,
+            "branch": branch.id,
         }
 
 
@@ -165,3 +170,70 @@ async def test_company_admin_cannot_approve_other_company_employee() -> None:
             approve=True,
             message_id=3,
         )
+
+
+@pytest.mark.asyncio
+async def test_approved_employee_can_link_and_view_daily_menu() -> None:
+    ids = await _seed_approval_flow()
+    target_date = date.today()
+    async with AsyncSessionLocal() as session:
+        employee = await session.get(User, ids["employee"])
+        kitchen = await session.get(Kitchen, ids["kitchen_entity"])
+        assert employee
+        assert kitchen
+        employee.account_status = AccountStatus.APPROVED
+        kitchen.is_active = True
+        meal = Meal(
+            kitchen_id=ids["kitchen_entity"],
+            category_id=None,
+            name="Osh",
+            description="Mazali osh",
+            price=30000,
+            image_url="/media/osh.jpg",
+        )
+        session.add_all(
+            [
+                BranchKitchen(
+                    branch_id=ids["branch"], kitchen_id=ids["kitchen_entity"]
+                ),
+                meal,
+            ]
+        )
+        await session.flush()
+        session.add(
+            MenuSchedule(
+                kitchen_id=ids["kitchen_entity"],
+                meal_id=meal.id,
+                specific_date=target_date,
+                day_of_week=None,
+            )
+        )
+        await session.commit()
+
+    await link_telegram_account(
+        telegram_user_id=104,
+        chat_id=104,
+        username="employee",
+        phone="+998900000004",
+    )
+
+    class FakeBot:
+        def __init__(self) -> None:
+            self.messages: list[str] = []
+            self.photos: list[tuple[str, str]] = []
+
+        async def send_message(self, _chat_id: int, text: str) -> None:
+            self.messages.append(text)
+
+        async def send_photo(self, _chat_id: int, photo: str, caption: str) -> None:
+            self.photos.append((photo, caption))
+
+    bot = FakeBot()
+    sent = await send_employee_menu(
+        bot, user_id=ids["employee"], chat_id=104, target_date=target_date
+    )
+    assert sent == 1
+    assert bot.photos
+    assert bot.photos[0][0].endswith("/media/osh.jpg")
+    assert "Buyurtma qabul qilish" in bot.photos[0][1]
+    assert "Yetkazish" in bot.photos[0][1]

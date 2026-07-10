@@ -11,6 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
 from app.workers.tasks import generate_invoices, transition_order_statuses
+from bot.menu import send_daily_telegram_menus
 
 log = structlog.get_logger()
 
@@ -23,6 +24,17 @@ async def main() -> None:
     )
     # Invoicing — har kuni 23:59 (Asia/Tashkent).
     scheduler.add_job(generate_invoices, "cron", hour=23, minute=59, id="invoices")
+    # Xodimlarga bugungi menyu — har kuni 08:00 (Asia/Tashkent).
+    scheduler.add_job(
+        send_daily_telegram_menus,
+        "cron",
+        hour=8,
+        minute=0,
+        id="telegram_daily_menu",
+        coalesce=True,
+        misfire_grace_time=3600,
+        max_instances=1,
+    )
     scheduler.start()
     log.info("scheduler_started", timezone=settings.timezone)
 

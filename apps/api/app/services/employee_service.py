@@ -221,6 +221,7 @@ class EmployeeService:
                     price=meal.price,
                     image_url=meal.image_url,
                     kitchen_name=k.name if k else None,
+                    order_cutoff_time=k.order_cutoff_time if k else None,
                     delivery_start_time=k.delivery_start_time if k else None,
                     delivery_end_time=k.delivery_end_time if k else None,
                 )

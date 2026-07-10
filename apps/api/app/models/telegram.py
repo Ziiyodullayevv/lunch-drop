@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     String,
@@ -51,3 +52,19 @@ class ApprovalAction(Base, TimestampMixin):
     acted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class TelegramMenuDelivery(Base, TimestampMixin):
+    """Xodimga kunlik menyu yuborilganini idempotent qayd etadi."""
+
+    __tablename__ = "telegram_menu_deliveries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_date", name="uq_telegram_menu_user_date"),
+    )
+
+    id: Mapped[str] = uuid_pk()
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    target_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

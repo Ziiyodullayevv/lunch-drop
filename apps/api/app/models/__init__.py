@@ -17,7 +17,7 @@ from app.models.notification import Notification
 from app.models.order import Order
 from app.models.otp_code import OtpCode
 from app.models.refresh_token import RefreshToken
-from app.models.telegram import ApprovalAction, TelegramAccount
+from app.models.telegram import ApprovalAction, TelegramAccount, TelegramMenuDelivery
 from app.models.user import User
 
 __all__ = [
@@ -39,6 +39,7 @@ __all__ = [
     "OtpCode",
     "RefreshToken",
     "TelegramAccount",
+    "TelegramMenuDelivery",
     "User",
     "UserRole",
 ]

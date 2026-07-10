@@ -56,6 +56,7 @@ class MenuMealRead(BaseModel):
     image_url: str | None
     # Oshxona ma'lumotlari (frontend: nom + yetkazish oynasi "11:30 - 13:00")
     kitchen_name: str | None = None
+    order_cutoff_time: time | None = None
     delivery_start_time: time | None = None  # "11:30:00" formatida JSON'da
     delivery_end_time: time | None = None
 

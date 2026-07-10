@@ -1,10 +1,13 @@
 """LunchDrop'ning yagona interaktiv Telegram approval boti."""
 
 import asyncio
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import (
+    BotCommand,
     CallbackQuery,
     KeyboardButton,
     Message,
@@ -12,6 +15,7 @@ from aiogram.types import (
     ReplyKeyboardRemove,
 )
 
+from app.config import settings
 from app.models.enums import UserRole
 from bot.approvals import (
     TelegramApprovalError,
@@ -22,6 +26,7 @@ from bot.approvals import (
     unlink_telegram_account,
 )
 from bot.config import bot_settings
+from bot.menu import send_employee_menu
 from bot.notifier import approval_markup
 
 dp = Dispatcher()
@@ -31,6 +36,7 @@ def _role_label(role: UserRole) -> str:
     return {
         UserRole.SUPER_ADMIN: "Super Admin",
         UserRole.COMPANY_ADMIN: "Company Admin",
+        UserRole.EMPLOYEE: "Xodim",
     }.get(role, role.value)
 
 
@@ -74,14 +80,19 @@ async def cmd_start(message: Message) -> None:
         await message.answer(
             "LunchDrop tasdiqlash botiga xush kelibsiz.\n\n"
             "Xavfsizlik uchun Telegram'dagi o'z telefon raqamingizni yuboring. "
-            "Raqam tasdiqlangan Super Admin yoki Company Admin hisobiga mos bo'lishi kerak.",
+            "Raqam tasdiqlangan LunchDrop hisobiga mos bo'lishi kerak.",
             reply_markup=keyboard,
         )
         return
     await message.answer(
         f"✅ Hisob bog'langan\n👤 {user.name or '—'}\n🔐 {_role_label(user.role)}\n\n"
-        "Yangi ariza kelganda bot avtomatik xabar yuboradi. /pending orqali "
-        "kutilayotgan arizalarni qayta ko'rishingiz mumkin.",
+        + (
+            "Bugungi taomlarni /menu orqali ko'rishingiz mumkin. Menyu har kuni "
+            "soat 08:00 da avtomatik yuboriladi."
+            if user.role == UserRole.EMPLOYEE
+            else "Yangi ariza kelganda bot avtomatik xabar yuboradi. /pending orqali "
+            "kutilayotgan arizalarni qayta ko'rishingiz mumkin."
+        ),
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -108,12 +119,36 @@ async def handle_contact(message: Message) -> None:
         f"👤 {user.name or '—'}\n🔐 {_role_label(user.role)}",
         reply_markup=ReplyKeyboardRemove(),
     )
-    await _send_pending(message)
+    if user.role == UserRole.EMPLOYEE:
+        today = datetime.now(ZoneInfo(settings.timezone)).date()
+        await send_employee_menu(
+            message.bot, user_id=user.id, chat_id=message.chat.id, target_date=today
+        )
+    else:
+        await _send_pending(message)
 
 
 @dp.message(Command("pending"))
 async def cmd_pending(message: Message) -> None:
     await _send_pending(message)
+
+
+@dp.message(Command("menu"))
+async def cmd_menu(message: Message) -> None:
+    if message.from_user is None:
+        return
+    try:
+        user = await get_linked_user(message.from_user.id)
+    except TelegramApprovalError as exc:
+        await message.answer(str(exc))
+        return
+    if user.role != UserRole.EMPLOYEE:
+        await message.answer("/menu faqat xodimlar uchun")
+        return
+    today = datetime.now(ZoneInfo(settings.timezone)).date()
+    await send_employee_menu(
+        message.bot, user_id=user.id, chat_id=message.chat.id, target_date=today
+    )
 
 
 @dp.message(Command("me"))
@@ -178,6 +213,16 @@ async def main() -> None:
     if not bot_settings.bot_token:
         raise SystemExit("BOT_TOKEN .env da sozlanmagan")
     bot = Bot(token=bot_settings.bot_token)
+    await bot.set_my_commands(
+        [
+            BotCommand(command="start", description="LunchDrop hisobini bog'lash"),
+            BotCommand(command="menu", description="Bugungi taomlar"),
+            BotCommand(command="pending", description="Kutilayotgan arizalar"),
+            BotCommand(command="me", description="Bog'langan hisobim"),
+            BotCommand(command="unlink", description="Bog'lanishni uzish"),
+            BotCommand(command="id", description="Telegram chat ID"),
+        ]
+    )
     await dp.start_polling(bot)
 
 
