@@ -11,7 +11,12 @@ from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.models.branch import Branch, EmployeeBranch
 from app.models.company import Company
-from app.models.enums import AccountStatus, OrderStatus, UserRole
+from app.models.enums import (
+    AccountStatus,
+    ConnectionRequestStatus,
+    OrderStatus,
+    UserRole,
+)
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.meal import Meal, MenuSchedule
 from app.models.order import Order
@@ -21,10 +26,12 @@ from bot.approvals import (
     TelegramApprovalError,
     link_telegram_account,
     pending_cards_for,
+    process_connection_decision,
     process_decision,
 )
 from bot.menu import send_employee_menu
 from bot.reports import build_report, current_month, parse_month
+from app.services.kitchen_connection_service import KitchenConnectionService
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -310,3 +317,88 @@ async def test_employee_and_company_monthly_reports_are_scoped() -> None:
     assert "Bekor qilindi" in employee_orders.text
     assert "Employee" in company_employees.text
     assert "HQ" in company_branches.text
+
+
+@pytest.mark.asyncio
+async def test_kitchen_admin_approves_connection_and_sees_partner_payments() -> None:
+    ids = await _seed_approval_flow()
+    report_month = current_month()
+    target_date = parse_month(report_month)[0]
+    async with AsyncSessionLocal() as session:
+        kitchen_admin = await session.get(User, ids["kitchen"])
+        kitchen = await session.get(Kitchen, ids["kitchen_entity"])
+        employee = await session.get(User, ids["employee"])
+        branch = await session.get(Branch, ids["branch"])
+        assert kitchen_admin and kitchen and employee and branch
+        kitchen_admin.account_status = AccountStatus.APPROVED
+        kitchen_admin.is_active = True
+        kitchen.is_active = True
+        employee.account_status = AccountStatus.APPROVED
+        await session.commit()
+        request = await KitchenConnectionService(session).create_request(
+            company_id=branch.company_id,
+            branch_id=branch.id,
+            kitchen_id=ids["kitchen_entity"],
+            requested_by=ids["company"],
+        )
+        assert request.status == ConnectionRequestStatus.PENDING
+        assert (
+            await session.execute(
+                select(BranchKitchen).where(
+                    BranchKitchen.branch_id == branch.id,
+                    BranchKitchen.kitchen_id == ids["kitchen_entity"],
+                )
+            )
+        ).scalar_one_or_none() is None
+
+    await link_telegram_account(
+        telegram_user_id=107,
+        chat_id=107,
+        username="kitchen-admin",
+        phone="+998900000003",
+    )
+    assert [card.kind for card in await pending_cards_for(107)] == ["connection"]
+    await process_connection_decision(
+        telegram_user_id=107, request_id=request.id, approve=True
+    )
+
+    async with AsyncSessionLocal() as session:
+        link = (
+            await session.execute(
+                select(BranchKitchen).where(
+                    BranchKitchen.branch_id == ids["branch"],
+                    BranchKitchen.kitchen_id == ids["kitchen_entity"],
+                )
+            )
+        ).scalar_one_or_none()
+        assert link
+        meal = Meal(
+            kitchen_id=ids["kitchen_entity"],
+            category_id=None,
+            name="Osh",
+            description=None,
+            price=50000,
+            image_url=None,
+        )
+        session.add(meal)
+        await session.flush()
+        session.add(
+            Order(
+                employee_id=ids["employee"],
+                branch_id=ids["branch"],
+                kitchen_id=ids["kitchen_entity"],
+                meal_id=meal.id,
+                target_date=target_date,
+                historical_price=50000,
+                system_fee=1500,
+                status=OrderStatus.DELIVERED,
+            )
+        )
+        await session.commit()
+
+    summary = await build_report(107, month=report_month)
+    partners = await build_report(107, month=report_month, section="partners")
+    assert "50 000 so'm" in summary.text
+    assert "48 500 so'm" in summary.text
+    assert "Test Company" in partners.text
+    assert "HQ" in partners.text

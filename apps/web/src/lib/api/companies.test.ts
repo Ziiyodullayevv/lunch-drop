@@ -96,19 +96,21 @@ describe('fetchCompanyKitchenCatalog', () => {
     mockFetcher
       .mockResolvedValueOnce({ items: [mockKitchen], total: 1 })
       .mockResolvedValueOnce({ items: [mockBranch], total: 1 })
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([mockKitchen]);
 
     const result = await fetchCompanyKitchenCatalog();
 
     expect(result.branches).toEqual([mockBranch]);
     expect(result.kitchens[0].connected_branch_ids).toEqual(['b-1']);
-    expect(mockFetcher).toHaveBeenNthCalledWith(3, '/api/v1/company/branches/b-1/kitchens');
+    expect(mockFetcher).toHaveBeenNthCalledWith(4, '/api/v1/company/branches/b-1/kitchens');
   });
 
   it("ulanmagan oshxona uchun bo'sh filial ro'yxatini beradi", async () => {
     mockFetcher
       .mockResolvedValueOnce({ items: [mockKitchen], total: 1 })
       .mockResolvedValueOnce({ items: [mockBranch], total: 1 })
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
     const result = await fetchCompanyKitchenCatalog();
@@ -121,6 +123,7 @@ describe('fetchCompanyKitchenCatalog', () => {
     mockFetcher
       .mockResolvedValueOnce({ items: [mockKitchen], total: 1 })
       .mockResolvedValueOnce({ items: [mockBranch], total: 1 })
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([inactiveKitchen]);
 
     const result = await fetchCompanyKitchenCatalog();

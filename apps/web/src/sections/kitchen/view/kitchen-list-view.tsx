@@ -47,7 +47,11 @@ import { fDateTime } from 'src/utils/format-time';
 
 import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { fetchCompanyKitchenCatalog, assignCompanyBranchKitchens } from 'src/lib/api/companies';
+import {
+  requestCompanyKitchen,
+  disconnectCompanyKitchen,
+  fetchCompanyKitchenCatalog,
+} from 'src/lib/api/companies';
 
 import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
@@ -569,12 +573,10 @@ function KitchenCatalogActions({
 function CatalogKitchenItem({
   kitchen,
   branches,
-  allKitchens,
   onRefresh,
 }: {
   kitchen: KitchenCatalog;
   branches: Branch[];
-  allKitchens: KitchenCatalog[];
   onRefresh: () => void;
 }) {
   const [branchDialog, setBranchDialog] = useState(false);
@@ -588,18 +590,9 @@ function CatalogKitchenItem({
     setLoading(true);
     try {
       await Promise.all(
-        branchIds.map((branchId) => {
-          const assignedKitchenIds = allKitchens
-            .filter((item) => item.connected_branch_ids.includes(branchId))
-            .map((item) => item.id);
-
-          return assignCompanyBranchKitchens(
-            branchId,
-            Array.from(new Set([...assignedKitchenIds, kitchen.id]))
-          );
-        })
+        branchIds.map((branchId) => requestCompanyKitchen(branchId, kitchen.id))
       );
-      toast.success('Oshxona ulandi');
+      toast.success("Oshxonaga ulanish so'rovi yuborildi");
       onRefresh();
     } catch {
       toast.error("Ulab bo'lmadi");
@@ -619,10 +612,7 @@ function CatalogKitchenItem({
   const handleDisconnect = async (branchId: string) => {
     setLoading(true);
     try {
-      const remainingKitchenIds = allKitchens
-        .filter((item) => item.id !== kitchen.id && item.connected_branch_ids.includes(branchId))
-        .map((item) => item.id);
-      await assignCompanyBranchKitchens(branchId, remainingKitchenIds);
+      await disconnectCompanyKitchen(branchId, kitchen.id);
       toast.success('Uzildi');
       onRefresh();
     } catch {
@@ -635,7 +625,14 @@ function CatalogKitchenItem({
   const connectedBranches = kitchen.connected_branch_ids
     .map((id) => ({ id, name: branches.find((branch) => branch.id === id)?.name }))
     .filter((branch): branch is { id: string; name: string } => Boolean(branch.name));
-  const hasAvailableBranches = connectedBranches.length < branches.length;
+  const pendingBranches = kitchen.pending_branch_ids
+    .map((id) => branches.find((branch) => branch.id === id)?.name)
+    .filter(Boolean);
+  const unavailableBranchIds = new Set([
+    ...kitchen.connected_branch_ids,
+    ...kitchen.pending_branch_ids,
+  ]);
+  const hasAvailableBranches = unavailableBranchIds.size < branches.length;
   const infoItems = [
     {
       label: kitchen.phone ?? "Telefon yo'q",
@@ -655,6 +652,12 @@ function CatalogKitchenItem({
         : 'Filialga ulanmagan',
       icon: <Iconify width={16} icon="solar:home-2-outline" sx={{ flexShrink: 0 }} />,
     },
+    ...(pendingBranches.length
+      ? [{
+          label: `Kutilmoqda: ${pendingBranches.join(', ')}`,
+          icon: <Iconify width={16} icon="solar:clock-circle-outline" sx={{ flexShrink: 0 }} />,
+        }]
+      : []),
   ];
 
   return (
@@ -770,7 +773,7 @@ function CatalogKitchenItem({
       <BranchSelectDialog
         open={branchDialog}
         branches={branches}
-        alreadyConnected={kitchen.connected_branch_ids}
+        alreadyConnected={[...kitchen.connected_branch_ids, ...kitchen.pending_branch_ids]}
         onClose={() => setBranchDialog(false)}
         onSelect={handleConnect}
       />
@@ -977,7 +980,6 @@ export function KitchenListView() {
                 key={kitchen.id}
                 kitchen={kitchen}
                 branches={branches}
-                allKitchens={catalog}
                 onRefresh={fetchCatalog}
               />
             ))}

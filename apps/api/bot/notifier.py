@@ -14,6 +14,21 @@ log = structlog.get_logger()
 
 
 def approval_markup(kind: str, target_id: str) -> InlineKeyboardMarkup:
+    if kind == "connection":
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="✅ Ulanishni tasdiqlash",
+                        callback_data=f"connection:approve:{target_id}",
+                    ),
+                    InlineKeyboardButton(
+                        text="❌ Rad etish",
+                        callback_data=f"connection:reject:{target_id}",
+                    ),
+                ]
+            ]
+        )
     short_kind = "a" if kind == "admin" else "e"
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -88,6 +103,43 @@ async def send_approval_notification(target_id: str) -> None:
                 log.error(
                     "telegram_approval_failed",
                     target_id=target_id,
+                    chat_id=chat_id,
+                    error=str(exc),
+                )
+    finally:
+        await bot.session.close()
+
+
+async def send_kitchen_connection_notification(request_id: str) -> None:
+    """Yangi kompaniya/filial ulanish so'rovini Kitchen Adminlarga yuboradi."""
+    if not bot_settings.bot_token:
+        return
+    from bot.approvals import connection_card, connection_recipient_chat_ids
+
+    try:
+        card = await connection_card(request_id)
+        chat_ids = await connection_recipient_chat_ids(request_id)
+    except Exception as exc:
+        log.error(
+            "telegram_connection_prepare_failed", request_id=request_id, error=str(exc)
+        )
+        return
+    if card is None or not chat_ids:
+        log.warning("telegram_connection_has_no_recipient", request_id=request_id)
+        return
+    bot = Bot(token=bot_settings.bot_token)
+    try:
+        for chat_id in chat_ids:
+            try:
+                await bot.send_message(
+                    chat_id,
+                    f"{card.title}\n\n{card.details}",
+                    reply_markup=approval_markup(card.kind, request_id),
+                )
+            except Exception as exc:
+                log.error(
+                    "telegram_connection_failed",
+                    request_id=request_id,
                     chat_id=chat_id,
                     error=str(exc),
                 )

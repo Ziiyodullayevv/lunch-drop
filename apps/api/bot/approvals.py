@@ -11,6 +11,8 @@ from app.models.company import Company
 from app.models.enums import AccountStatus, UserRole
 from app.models.kitchen import Kitchen
 from app.models.telegram import ApprovalAction, TelegramAccount
+from app.models.kitchen_connection import KitchenConnectionRequest
+from app.models.enums import ConnectionRequestStatus
 from app.models.user import User
 from app.services.company_service import CompanyAdminService
 from app.services.super_admin_service import SuperAdminService
@@ -56,6 +58,7 @@ async def link_telegram_account(
         if user.role not in (
             UserRole.SUPER_ADMIN,
             UserRole.COMPANY_ADMIN,
+            UserRole.KITCHEN_ADMIN,
             UserRole.EMPLOYEE,
         ):
             raise TelegramApprovalError(
@@ -63,10 +66,16 @@ async def link_telegram_account(
             )
         if not user.is_active:
             raise TelegramApprovalError("LunchDrop hisobingiz faol emas")
-        if user.role in (UserRole.COMPANY_ADMIN, UserRole.EMPLOYEE) and (
-            user.account_status != AccountStatus.APPROVED
-        ):
-            label = "Company Admin" if user.role == UserRole.COMPANY_ADMIN else "Xodim"
+        if user.role in (
+            UserRole.COMPANY_ADMIN,
+            UserRole.KITCHEN_ADMIN,
+            UserRole.EMPLOYEE,
+        ) and (user.account_status != AccountStatus.APPROVED):
+            label = {
+                UserRole.COMPANY_ADMIN: "Company Admin",
+                UserRole.KITCHEN_ADMIN: "Kitchen Admin",
+                UserRole.EMPLOYEE: "Xodim",
+            }[user.role]
             raise TelegramApprovalError(f"{label} hisobi hali tasdiqlanmagan")
 
         by_telegram = (
@@ -242,7 +251,106 @@ async def pending_cards_for(telegram_user_id: int) -> list[ApprovalCard]:
                 .all()
             )
             return [await _employee_card(session, target) for target in targets]
+        if actor.role == UserRole.KITCHEN_ADMIN and actor.kitchen_id:
+            requests = (
+                (
+                    await session.execute(
+                        select(KitchenConnectionRequest)
+                        .where(
+                            KitchenConnectionRequest.kitchen_id == actor.kitchen_id,
+                            KitchenConnectionRequest.status
+                            == ConnectionRequestStatus.PENDING,
+                        )
+                        .order_by(KitchenConnectionRequest.created_at)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            cards = []
+            for request in requests:
+                company = await session.get(Company, request.company_id)
+                branch = await session.get(Branch, request.branch_id)
+                cards.append(
+                    ApprovalCard(
+                        target_id=request.id,
+                        kind="connection",
+                        title="🔗 Yangi ulanish so'rovi",
+                        details=(
+                            f"🏢 {(company.name if company else '—')}\n"
+                            f"📍 {(branch.name if branch else '—')}\n"
+                            f"📅 To'lov kuni: har oyning "
+                            f"{company.billing_day if company else '—'}-kuni"
+                        ),
+                    )
+                )
+            return cards
         return []
+
+
+async def connection_card(request_id: str) -> ApprovalCard | None:
+    async with AsyncSessionLocal() as session:
+        request = await session.get(KitchenConnectionRequest, request_id)
+        if request is None or request.status != ConnectionRequestStatus.PENDING:
+            return None
+        company = await session.get(Company, request.company_id)
+        branch = await session.get(Branch, request.branch_id)
+        return ApprovalCard(
+            target_id=request.id,
+            kind="connection",
+            title="🔗 Yangi ulanish so'rovi",
+            details=(
+                f"🏢 {(company.name if company else '—')}\n"
+                f"📍 {(branch.name if branch else '—')}\n"
+                f"📅 To'lov kuni: har oyning "
+                f"{company.billing_day if company else '—'}-kuni"
+            ),
+        )
+
+
+async def connection_recipient_chat_ids(request_id: str) -> list[int]:
+    async with AsyncSessionLocal() as session:
+        request = await session.get(KitchenConnectionRequest, request_id)
+        if request is None:
+            return []
+        return list(
+            (
+                await session.execute(
+                    select(TelegramAccount.chat_id)
+                    .join(User, User.id == TelegramAccount.user_id)
+                    .where(
+                        User.role == UserRole.KITCHEN_ADMIN,
+                        User.kitchen_id == request.kitchen_id,
+                        User.is_active.is_(True),
+                        User.deleted_at.is_(None),
+                        TelegramAccount.is_active.is_(True),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+
+async def process_connection_decision(
+    *, telegram_user_id: int, request_id: str, approve: bool
+) -> str:
+    actor = await get_linked_user(telegram_user_id)
+    if actor.role != UserRole.KITCHEN_ADMIN or not actor.kitchen_id:
+        raise TelegramApprovalError("Bu amal faqat Kitchen Admin uchun")
+    from app.services.kitchen_connection_service import KitchenConnectionService
+
+    async with AsyncSessionLocal() as session:
+        try:
+            await KitchenConnectionService(session).review(
+                request_id=request_id,
+                kitchen_id=actor.kitchen_id,
+                reviewer_id=actor.id,
+                approve=approve,
+            )
+        except Exception as exc:
+            raise TelegramApprovalError(str(exc)) from exc
+    return "✅ Ulanish tasdiqlandi" if approve else "❌ Ulanish rad etildi"
 
 
 async def card_for_target(target_id: str) -> ApprovalCard | None:

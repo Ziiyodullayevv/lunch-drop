@@ -22,6 +22,7 @@ from bot.approvals import (
     get_linked_user,
     link_telegram_account,
     pending_cards_for,
+    process_connection_decision,
     process_decision,
     unlink_telegram_account,
 )
@@ -37,6 +38,7 @@ def _role_label(role: UserRole) -> str:
     return {
         UserRole.SUPER_ADMIN: "Super Admin",
         UserRole.COMPANY_ADMIN: "Company Admin",
+        UserRole.KITCHEN_ADMIN: "Kitchen Admin",
         UserRole.EMPLOYEE: "Xodim",
     }.get(role, role.value)
 
@@ -232,6 +234,26 @@ async def handle_approval_callback(callback: CallbackQuery) -> None:
         if callback.message:
             await callback.message.edit_text(report.text, reply_markup=report.markup)
         await callback.answer()
+        return
+    if data.startswith("connection:"):
+        parts = data.split(":", maxsplit=2)
+        if len(parts) != 3:
+            await callback.answer("Noto'g'ri ulanish so'rovi", show_alert=True)
+            return
+        try:
+            result = await process_connection_decision(
+                telegram_user_id=callback.from_user.id,
+                request_id=parts[2],
+                approve=parts[1] == "approve",
+            )
+        except TelegramApprovalError as exc:
+            await callback.answer(str(exc), show_alert=True)
+            return
+        await callback.answer(result)
+        if callback.message:
+            await callback.message.edit_text(
+                f"{callback.message.text or 'So‘rov'}\n\n{result}"
+            )
         return
     if not (data.startswith("approve:") or data.startswith("reject:")):
         return

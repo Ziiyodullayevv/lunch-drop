@@ -220,6 +220,22 @@ export type CompanyKitchenRead = {
 
 export type CompanyKitchenCatalogRead = CompanyKitchenRead & {
   connected_branch_ids: string[];
+  pending_branch_ids: string[];
+};
+
+export type KitchenConnectionStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export type KitchenConnectionRead = {
+  id: string;
+  company_id: string;
+  company_name: string;
+  branch_id: string;
+  branch_name: string;
+  kitchen_id: string;
+  kitchen_name: string;
+  status: KitchenConnectionStatus;
+  created_at: string;
+  reviewed_at: string | null;
 };
 
 export type PageCompanyKitchen = {
@@ -260,9 +276,10 @@ export async function fetchCompanyKitchenCatalog(): Promise<{
   kitchens: CompanyKitchenCatalogRead[];
   branches: BranchRead[];
 }> {
-  const [kitchens, branches] = await Promise.all([
+  const [kitchens, branches, requests] = await Promise.all([
     fetchCompanyKitchens(),
     fetchAllPageItems<BranchRead>(endpoints.company.branches),
+    fetcher<KitchenConnectionRead[]>(endpoints.company.kitchenConnections),
   ]);
   const branchKitchenLists = await Promise.all(
     branches.map(async (branch) => ({
@@ -285,6 +302,9 @@ export async function fetchCompanyKitchenCatalog(): Promise<{
     kitchens: Array.from(kitchensById.values()).map((kitchen) => ({
       ...kitchen,
       connected_branch_ids: connectedBranchesByKitchen.get(kitchen.id) ?? [],
+      pending_branch_ids: requests
+        .filter((request) => request.kitchen_id === kitchen.id && request.status === 'pending')
+        .map((request) => request.branch_id),
     })),
     branches,
   };
@@ -294,4 +314,26 @@ export function assignCompanyBranchKitchens(branchId: string, kitchen_ids: strin
   return axiosInstance
     .post<CompanyKitchenRead[]>(endpoints.company.assignKitchens(branchId), { kitchen_ids })
     .then((r) => r.data);
+}
+
+export function requestCompanyKitchen(branchId: string, kitchenId: string) {
+  return axiosInstance
+    .post<KitchenConnectionRead>(endpoints.company.requestKitchen(branchId), {
+      kitchen_id: kitchenId,
+    })
+    .then((response) => response.data);
+}
+
+export function cancelCompanyKitchenRequest(requestId: string) {
+  return axiosInstance
+    .delete<KitchenConnectionRead>(endpoints.company.cancelKitchenRequest(requestId))
+    .then((response) => response.data);
+}
+
+export function disconnectCompanyKitchen(branchId: string, kitchenId: string) {
+  return axiosInstance.delete(endpoints.company.disconnectKitchen(branchId, kitchenId));
+}
+
+export function fetchCompanyKitchenConnections() {
+  return fetcher<KitchenConnectionRead[]>(endpoints.company.kitchenConnections);
 }

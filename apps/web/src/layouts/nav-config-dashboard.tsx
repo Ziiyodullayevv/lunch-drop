@@ -109,6 +109,12 @@ export const navData: NavSectionProps['data'] = [
         ],
       },
       {
+        title: 'Hamkorlar va so‘rovlar',
+        path: paths.dashboard.kitchen.partners,
+        icon: ICONS.banking,
+        allowedRoles: ['kitchen_admin'],
+      },
+      {
         title: 'Buyurtmalar',
         path: paths.dashboard.order.root,
         icon: ICONS.order,

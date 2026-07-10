@@ -103,6 +103,15 @@ def report_markup(role: UserRole, month: str) -> InlineKeyboardMarkup:
                 ),
             ]
         )
+    if role == UserRole.KITCHEN_ADMIN:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🏢 Kompaniya va filiallar",
+                    callback_data=f"report:partners:{month}",
+                )
+            ]
+        )
     if role == UserRole.EMPLOYEE:
         rows.append(
             [
@@ -121,8 +130,10 @@ async def _orders_for_actor(session, actor: User, month: str):
         filters.append(Order.employee_id == actor.id)
     elif actor.role == UserRole.COMPANY_ADMIN and actor.company_id:
         filters.append(User.company_id == actor.company_id)
+    elif actor.role == UserRole.KITCHEN_ADMIN and actor.kitchen_id:
+        filters.append(Order.kitchen_id == actor.kitchen_id)
     else:
-        raise TelegramApprovalError("/hisobot faqat xodim va Company Admin uchun")
+        raise TelegramApprovalError("Bu rol uchun /hisobot mavjud emas")
     return (
         await session.execute(
             select(Order, User, Meal, Branch)
@@ -142,8 +153,12 @@ async def build_report(
     section: str = "summary",
 ) -> ReportView:
     actor = await get_linked_user(telegram_user_id)
-    if actor.role not in (UserRole.EMPLOYEE, UserRole.COMPANY_ADMIN):
-        raise TelegramApprovalError("/hisobot faqat xodim va Company Admin uchun")
+    if actor.role not in (
+        UserRole.EMPLOYEE,
+        UserRole.COMPANY_ADMIN,
+        UserRole.KITCHEN_ADMIN,
+    ):
+        raise TelegramApprovalError("Bu rol uchun /hisobot mavjud emas")
     month = month or current_month()
     parse_month(month)
 
@@ -155,6 +170,14 @@ async def build_report(
             await session.get(Company, actor.company_id) if actor.company_id else None
         )
         rows = await _orders_for_actor(session, actor, month)
+        partner_rows = []
+        if actor.role == UserRole.KITCHEN_ADMIN and actor.kitchen_id:
+            from app.services.kitchen_connection_service import KitchenConnectionService
+
+            start, end = parse_month(month)
+            partner_rows = await KitchenConnectionService(session).partner_report(
+                kitchen_id=actor.kitchen_id, month_start=start, month_end=end
+            )
 
     delivered = [row for row in rows if row[0].status == OrderStatus.DELIVERED]
     total_expense = sum((row[0].historical_price for row in delivered), Decimal("0"))
@@ -164,16 +187,25 @@ async def build_report(
     )
 
     if section == "summary":
-        owner = (
-            actor.name or actor.phone
-            if actor.role == UserRole.EMPLOYEE
-            else (company.name if company else "Kompaniya")
+        if actor.role == UserRole.EMPLOYEE:
+            owner = actor.name or actor.phone
+        elif actor.role == UserRole.COMPANY_ADMIN:
+            owner = company.name if company else "Kompaniya"
+        else:
+            owner = actor.name or "Oshxona"
+        system_fee = sum((row[0].system_fee for row in delivered), Decimal("0"))
+        financial_lines = (
+            f"💵 Kompaniyalar jami to'lovi: {_money(total_expense)} so'm\n"
+            f"⚙️ Tizim haqi: {_money(system_fee)} so'm\n"
+            f"🏦 Oshxona oladi: {_money(total_expense - system_fee)} so'm\n"
+            if actor.role == UserRole.KITCHEN_ADMIN
+            else f"💳 Jami qarz/xarajat: {_money(total_expense)} so'm\n"
+            f"📅 To'lov kuni: {payment_day}\n"
         )
         text = (
             f"📊 Hisobot — {period}\n\n"
             f"👤 {owner}\n"
-            f"💳 Jami qarz/xarajat: {_money(total_expense)} so'm\n"
-            f"📅 To'lov kuni: {payment_day}\n"
+            f"{financial_lines}"
             f"✅ Yetkazilgan buyurtmalar: {len(delivered)} ta\n"
             f"📦 Barcha buyurtmalar: {len(rows)} ta"
         )
@@ -182,7 +214,7 @@ async def build_report(
         for order, employee, meal, branch in rows[:40]:
             employee_text = (
                 f" · {employee.name or employee.phone}"
-                if actor.role == UserRole.COMPANY_ADMIN
+                if actor.role != UserRole.EMPLOYEE
                 else ""
             )
             lines.append(
@@ -231,6 +263,19 @@ async def build_report(
             lines.append("Bu oyda yetkazilgan buyurtmalar yo'q")
         lines.append(f"\nJami: {_money(total_expense)} so'm")
         text = "\n".join(lines)
+    elif section == "partners" and actor.role == UserRole.KITCHEN_ADMIN:
+        lines = [f"🏢 Kompaniya va filiallar — {period}", ""]
+        for row in partner_rows:
+            lines.append(
+                f"• {row.company_name} · {row.branch_name}\n"
+                f"  {row.orders_count} ta buyurtma · "
+                f"to'lov {_money(row.gross_amount)} so'm\n"
+                f"  oshxona oladi {_money(row.kitchen_receivable)} so'm · "
+                f"to'lov kuni {row.billing_day}"
+            )
+        if not partner_rows:
+            lines.append("Tasdiqlangan hamkor filiallar yo'q")
+        text = "\n\n".join(lines)
     else:
         raise TelegramApprovalError("Bu hisobot bo'limiga ruxsat yo'q")
 

@@ -218,6 +218,10 @@ export const endpoints = {
     orders:       '/api/v1/kitchen/orders',
     order:        (id: string) => `/api/v1/kitchen/orders/${id}`,
     orderStatus:  (id: string) => `/api/v1/kitchen/orders/${id}/status`,
+    connectionRequests: '/api/v1/kitchen/connection-requests',
+    approveConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/approve`,
+    rejectConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/reject`,
+    partners: '/api/v1/kitchen/partners',
   },
   // ----------------------------------------------------------------------
   // Company Admin
@@ -235,6 +239,10 @@ export const endpoints = {
     branchKitchens:   (id: string) => `/api/v1/company/branches/${id}/kitchens`,
     assignKitchens:   (id: string) => `/api/v1/company/branches/${id}/assign-kitchens`,
     kitchens:         '/api/v1/company/kitchens',
+    kitchenConnections: '/api/v1/company/kitchen-connections',
+    requestKitchen:     (branchId: string) => `/api/v1/company/branches/${branchId}/kitchen-requests`,
+    cancelKitchenRequest: (id: string) => `/api/v1/company/kitchen-requests/${id}`,
+    disconnectKitchen: (branchId: string, kitchenId: string) => `/api/v1/company/branches/${branchId}/kitchens/${kitchenId}`,
   },
   // ----------------------------------------------------------------------
   // Employee / Orders

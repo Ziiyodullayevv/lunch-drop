@@ -6,12 +6,14 @@ from app.models.branch import Branch, EmployeeBranch
 from app.models.company import Company
 from app.models.enums import (
     AccountStatus,
+    ConnectionRequestStatus,
     InvoiceStatus,
     OrderStatus,
     UserRole,
 )
 from app.models.invoice import Invoice
 from app.models.kitchen import BranchKitchen, Kitchen
+from app.models.kitchen_connection import KitchenConnectionRequest
 from app.models.meal import Meal, MenuCategory, MenuSchedule
 from app.models.notification import Notification
 from app.models.order import Order
@@ -26,10 +28,12 @@ __all__ = [
     "BranchKitchen",
     "Branch",
     "Company",
+    "ConnectionRequestStatus",
     "EmployeeBranch",
     "Invoice",
     "InvoiceStatus",
     "Kitchen",
+    "KitchenConnectionRequest",
     "Meal",
     "MenuCategory",
     "MenuSchedule",

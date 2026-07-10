@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.dependencies import require_company_admin
-from app.models.enums import AccountStatus, OrderStatus
+from app.models.enums import AccountStatus, ConnectionRequestStatus, OrderStatus
 from app.models.user import User
 from app.schemas.auth import UserRead
 from app.schemas.branch import BranchRead, BranchUpdate, CompanyBranchCreate
@@ -21,10 +21,21 @@ from app.schemas.company_admin import (
     PendingEmployeeRead,
 )
 from app.schemas.kitchen import AssignKitchensRequest, KitchenRead
+from app.schemas.kitchen_connection import (
+    KitchenConnectionCreate,
+    KitchenConnectionRead,
+)
 from app.schemas.order import OrderRead
 from app.services.company_service import CompanyAdminService
+from app.services.kitchen_connection_service import KitchenConnectionService
 
 router = APIRouter(prefix="/api/v1/company", tags=["company-admin"])
+
+
+def _connections(
+    session: AsyncSession = Depends(get_session),
+) -> KitchenConnectionService:
+    return KitchenConnectionService(session)
 
 
 def _svc(
@@ -34,7 +45,11 @@ def _svc(
     return CompanyAdminService(session, current_user.company_id)
 
 
-@router.get("/dashboard", response_model=DashboardResponse, summary="Kompaniya statistikasi (analytics)")
+@router.get(
+    "/dashboard",
+    response_model=DashboardResponse,
+    summary="Kompaniya statistikasi (analytics)",
+)
 async def dashboard(
     year: int | None = Query(None, description="Oylik chart yili (default: joriy yil)"),
     svc: CompanyAdminService = Depends(_svc),
@@ -48,7 +63,9 @@ async def get_company(svc: CompanyAdminService = Depends(_svc)) -> CompanyRead:
     return await svc.get_company()
 
 
-@router.patch("/me", response_model=CompanyRead, summary="Kompaniya ma'lumotlarini yangilash")
+@router.patch(
+    "/me", response_model=CompanyRead, summary="Kompaniya ma'lumotlarini yangilash"
+)
 async def update_company(
     body: CompanyUpdate, svc: CompanyAdminService = Depends(_svc)
 ) -> CompanyRead:
@@ -144,6 +161,72 @@ async def assign_kitchens(
     return await svc.assign_kitchens(branch_id, body.kitchen_ids)
 
 
+@router.get(
+    "/kitchen-connections",
+    response_model=list[KitchenConnectionRead],
+    summary="Oshxona ulanish so'rovlari va holatlari",
+)
+async def kitchen_connections(
+    connection_status: ConnectionRequestStatus | None = Query(None, alias="status"),
+    current_user: User = Depends(require_company_admin),
+    svc: KitchenConnectionService = Depends(_connections),
+) -> list[KitchenConnectionRead]:
+    return await svc.list_company_requests(current_user.company_id, connection_status)
+
+
+@router.post(
+    "/branches/{branch_id}/kitchen-requests",
+    response_model=KitchenConnectionRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Filialni oshxonaga ulash so'rovini yuborish",
+)
+async def request_kitchen_connection(
+    branch_id: str,
+    body: KitchenConnectionCreate,
+    current_user: User = Depends(require_company_admin),
+    svc: KitchenConnectionService = Depends(_connections),
+) -> KitchenConnectionRead:
+    return await svc.create_request(
+        company_id=current_user.company_id,
+        branch_id=branch_id,
+        kitchen_id=body.kitchen_id,
+        requested_by=current_user.id,
+    )
+
+
+@router.delete(
+    "/kitchen-requests/{request_id}",
+    response_model=KitchenConnectionRead,
+    summary="Kutilayotgan ulanish so'rovini bekor qilish",
+)
+async def cancel_kitchen_request(
+    request_id: str,
+    current_user: User = Depends(require_company_admin),
+    svc: KitchenConnectionService = Depends(_connections),
+) -> KitchenConnectionRead:
+    return await svc.cancel_request(
+        request_id=request_id, company_id=current_user.company_id
+    )
+
+
+@router.delete(
+    "/branches/{branch_id}/kitchens/{kitchen_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Tasdiqlangan oshxona ulanishini uzish",
+)
+async def disconnect_kitchen(
+    branch_id: str,
+    kitchen_id: str,
+    current_user: User = Depends(require_company_admin),
+    svc: KitchenConnectionService = Depends(_connections),
+) -> None:
+    await svc.disconnect(
+        company_id=current_user.company_id,
+        branch_id=branch_id,
+        kitchen_id=kitchen_id,
+    )
+
+
 # --- Employees ---
 @router.get(
     "/employees",
@@ -177,7 +260,9 @@ async def pending_employees(
     summary="Xodim holatini o'zgartirish (APPROVED/REJECTED/INACTIVE)",
 )
 async def update_employee_status(
-    employee_id: str, body: EmployeeStatusUpdate, svc: CompanyAdminService = Depends(_svc)
+    employee_id: str,
+    body: EmployeeStatusUpdate,
+    svc: CompanyAdminService = Depends(_svc),
 ) -> UserRead:
     return await svc.update_employee_status(employee_id, body.status)
 
@@ -194,8 +279,12 @@ async def list_orders(
     return Page(items=items, total=total, limit=limit, offset=offset)
 
 
-@router.get("/orders/{order_id}", response_model=OrderRead, summary="Buyurtma tafsilotlari")
-async def get_order(order_id: str, svc: CompanyAdminService = Depends(_svc)) -> OrderRead:
+@router.get(
+    "/orders/{order_id}", response_model=OrderRead, summary="Buyurtma tafsilotlari"
+)
+async def get_order(
+    order_id: str, svc: CompanyAdminService = Depends(_svc)
+) -> OrderRead:
     return await svc.get_order(order_id)
 
 

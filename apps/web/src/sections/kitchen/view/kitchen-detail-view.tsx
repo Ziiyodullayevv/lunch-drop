@@ -2,7 +2,7 @@
 
 import type { MapRef, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
 import type { KitchenRead } from 'src/lib/api/kitchens';
-import type { BranchRead, CompanyKitchenCatalogRead } from 'src/lib/api/companies';
+import type { BranchRead } from 'src/lib/api/companies';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
 
@@ -34,7 +34,11 @@ import { fDateTime } from 'src/utils/format-time';
 import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { fetchKitchen, updateKitchen, fetchKitchenMe } from 'src/lib/api/kitchens';
-import { fetchCompanyKitchenCatalog, assignCompanyBranchKitchens } from 'src/lib/api/companies';
+import {
+  requestCompanyKitchen,
+  disconnectCompanyKitchen,
+  fetchCompanyKitchenCatalog,
+} from 'src/lib/api/companies';
 
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
@@ -58,6 +62,7 @@ const DEFAULT_LNG = 69.2401;
 
 type KitchenDetail = KitchenRead & {
   connected_branch_ids?: string[];
+  pending_branch_ids?: string[];
 };
 
 type InfoItem = {
@@ -228,7 +233,6 @@ export function KitchenDetailView({ id }: { id: string }) {
   const isKitchenAdmin = user?.role === 'kitchen_admin';
 
   const [kitchen, setKitchen] = useState<KitchenDetail | null>(null);
-  const [catalog, setCatalog] = useState<CompanyKitchenCatalogRead[]>([]);
   const [branches, setBranches] = useState<BranchRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -267,7 +271,6 @@ export function KitchenDetailView({ id }: { id: string }) {
 
       if (isSuperAdmin) {
         applyKitchen(await fetchKitchen(id));
-        setCatalog([]);
         setBranches([]);
         return;
       }
@@ -278,7 +281,6 @@ export function KitchenDetailView({ id }: { id: string }) {
 
         if (!selectedKitchen) throw new Error('Oshxona topilmadi');
 
-        setCatalog(result.kitchens);
         setBranches(result.branches);
         applyKitchen(selectedKitchen);
         return;
@@ -326,19 +328,10 @@ export function KitchenDetailView({ id }: { id: string }) {
     try {
       setBranchLoading(true);
       await Promise.all(
-        branchIds.map((branchId) => {
-          const assignedKitchenIds = catalog
-            .filter((item) => item.connected_branch_ids.includes(branchId))
-            .map((item) => item.id);
-
-          return assignCompanyBranchKitchens(
-            branchId,
-            Array.from(new Set([...assignedKitchenIds, kitchen.id]))
-          );
-        })
+        branchIds.map((branchId) => requestCompanyKitchen(branchId, kitchen.id))
       );
       setBranchDialog(false);
-      toast.success('Oshxona filialga ulandi');
+      toast.success("Oshxonaga ulanish so'rovi yuborildi");
       await fetchData();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Oshxonani ulab bo'lmadi");
@@ -352,11 +345,7 @@ export function KitchenDetailView({ id }: { id: string }) {
 
     try {
       setBranchLoading(true);
-      const remainingKitchenIds = catalog
-        .filter((item) => item.id !== kitchen.id && item.connected_branch_ids.includes(branchId))
-        .map((item) => item.id);
-
-      await assignCompanyBranchKitchens(branchId, remainingKitchenIds);
+      await disconnectCompanyKitchen(branchId, kitchen.id);
       toast.success('Oshxona filialdan uzildi');
       await fetchData();
     } catch (error) {
@@ -435,10 +424,11 @@ export function KitchenDetailView({ id }: { id: string }) {
   }
 
   const connectedBranchIds = kitchen.connected_branch_ids ?? [];
+  const pendingBranchIds = kitchen.pending_branch_ids ?? [];
   const connectedBranches = connectedBranchIds
     .map((branchId) => branches.find((branch) => branch.id === branchId))
     .filter((branch): branch is BranchRead => Boolean(branch));
-  const hasAvailableBranches = connectedBranchIds.length < branches.length;
+  const hasAvailableBranches = new Set([...connectedBranchIds, ...pendingBranchIds]).size < branches.length;
   const imageUrl = kitchen.image_url ? getImagePreviewUrl(kitchen.image_url) : undefined;
   const infoItems: InfoItem[] = [
     {
@@ -745,7 +735,7 @@ export function KitchenDetailView({ id }: { id: string }) {
         <BranchSelectDialog
           open={branchDialog}
           branches={branches}
-          alreadyConnected={connectedBranchIds}
+          alreadyConnected={[...connectedBranchIds, ...pendingBranchIds]}
           loading={branchLoading}
           onClose={() => setBranchDialog(false)}
           onConfirm={handleConnect}

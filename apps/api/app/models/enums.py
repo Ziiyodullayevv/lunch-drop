@@ -25,6 +25,15 @@ class AccountStatus(StrEnum):
     INACTIVE = "inactive"
 
 
+class ConnectionRequestStatus(StrEnum):
+    """Kompaniya filiali → oshxona ulanish so'rovi holati."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
 class OrderStatus(StrEnum):
     """CREATED → PREPARING → ON_THE_WAY → DELIVERED (↘ CANCELLED)."""
 
