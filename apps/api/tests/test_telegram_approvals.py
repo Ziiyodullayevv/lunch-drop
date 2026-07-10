@@ -173,7 +173,10 @@ async def test_company_admin_cannot_approve_other_company_employee() -> None:
 
 
 @pytest.mark.asyncio
-async def test_approved_employee_can_link_and_view_daily_menu() -> None:
+async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "public_base_url", "https://api.lunchdrop.uz")
     ids = await _seed_approval_flow()
     target_date = date.today()
     async with AsyncSessionLocal() as session:
