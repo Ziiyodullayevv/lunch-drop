@@ -2,51 +2,135 @@ name: API CD
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [API CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: api-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
     steps:
-      - uses: actions/checkout@v5
-
-      - name: Prepare API deploy directory
-        uses: appleboy/ssh-action@v1
+      - name: Check out the tested API revision
+        uses: actions/checkout@v5
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            mkdir -p /opt/lunchdrop-api/keys /opt/lunchdrop-api/media
+          ref: ${{ env.RELEASE_SHA }}
 
-      - name: Upload API compose file
+      - name: Package API source
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude='.env' \
+            --exclude='.env.bak*' \
+            --exclude='venv' \
+            --exclude='.venv' \
+            --exclude='keys' \
+            --exclude='media' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.pytest_cache' \
+            --exclude='.ruff_cache' \
+            --exclude='.cache' \
+            --exclude='.claude' \
+            -czf "lunchdrop-api-${RELEASE_SHA}.tar.gz" \
+            -C apps/api .
+
+      - name: Upload API release
         uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: infra/api.yml
-          target: /opt/lunchdrop-api
-          strip_components: 1
+          host: ${{ secrets.API_VPS_HOST }}
+          username: ${{ secrets.API_VPS_USER }}
+          key: ${{ secrets.API_VPS_SSH_KEY }}
+          source: lunchdrop-api-${{ env.RELEASE_SHA }}.tar.gz
+          target: /tmp
 
-      - name: Deploy API to DigitalOcean
+      - name: Deploy API to production
         uses: appleboy/ssh-action@v1
+        env:
+          RELEASE_SHA: ${{ env.RELEASE_SHA }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.API_VPS_HOST }}
+          username: ${{ secrets.API_VPS_USER }}
+          key: ${{ secrets.API_VPS_SSH_KEY }}
+          envs: RELEASE_SHA
           script: |
-            set -e
-            OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-            cd /opt/lunchdrop-api
-            test -f .env || { echo "/opt/lunchdrop-api/.env is missing"; exit 1; }
-            test -f keys/private.pem || { echo "/opt/lunchdrop-api/keys/private.pem is missing"; exit 1; }
-            test -f keys/public.pem || { echo "/opt/lunchdrop-api/keys/public.pem is missing"; exit 1; }
-            echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            API_IMAGE="ghcr.io/${OWNER}/lunchdrop-api:latest" docker compose -f api.yml pull
-            API_IMAGE="ghcr.io/${OWNER}/lunchdrop-api:latest" docker compose -f api.yml run --rm api alembic upgrade head
-            API_IMAGE="ghcr.io/${OWNER}/lunchdrop-api:latest" docker compose -f api.yml up -d
-            docker image prune -f
+            set -eu
+
+            APP_DIR=/home/lunchdrop
+            VENV="$APP_DIR/venv"
+            ARCHIVE="/tmp/lunchdrop-api-${RELEASE_SHA}.tar.gz"
+            RELEASE_DIR="/tmp/lunchdrop-api-${RELEASE_SHA}"
+            BACKUP_DIR="/home/lunchdrop-backups/${RELEASE_SHA}"
+
+            test -f "$APP_DIR/.env"
+            test -x "$VENV/bin/python"
+            test -f "$ARCHIVE"
+
+            rm -rf "$RELEASE_DIR"
+            mkdir -p "$RELEASE_DIR" "$BACKUP_DIR"
+            tar --no-same-owner -xzf "$ARCHIVE" -C "$RELEASE_DIR"
+            test -f "$RELEASE_DIR/app/main.py"
+            test -f "$RELEASE_DIR/requirements.txt"
+
+            RSYNC_EXCLUDES="
+              --exclude=.env
+              --exclude=.env.bak*
+              --exclude=venv/
+              --exclude=.venv/
+              --exclude=keys/
+              --exclude=media/
+              --exclude=__pycache__/
+              --exclude=*.pyc
+              --exclude=.pytest_cache/
+              --exclude=.ruff_cache/
+              --exclude=.cache/
+              --exclude=.claude/
+            "
+
+            # Keep a source-only rollback snapshot. Runtime data and secrets stay
+            # in their existing locations and are never copied to GitHub.
+            # shellcheck disable=SC2086
+            rsync -a --delete $RSYNC_EXCLUDES "$APP_DIR/" "$BACKUP_DIR/"
+
+            rollback() {
+              echo "Deployment failed; restoring the previous API source."
+              # shellcheck disable=SC2086
+              rsync -a --delete --chown=lunchdrop:lunchdrop $RSYNC_EXCLUDES "$BACKUP_DIR/" "$APP_DIR/"
+              supervisorctl restart lunchdrop lunchdrop-scheduler || true
+            }
+            trap rollback INT TERM HUP EXIT
+
+            # shellcheck disable=SC2086
+            rsync -a --delete --chown=lunchdrop:lunchdrop $RSYNC_EXCLUDES "$RELEASE_DIR/" "$APP_DIR/"
+            "$VENV/bin/pip" install -q -r "$APP_DIR/requirements.txt"
+            cd "$APP_DIR"
+            "$VENV/bin/alembic" upgrade head
+            supervisorctl restart lunchdrop lunchdrop-scheduler
+
+            healthy=false
+            for attempt in $(seq 1 12); do
+              if curl -fsS http://127.0.0.1:8000/api/v1/health; then
+                healthy=true
+                break
+              fi
+              sleep 5
+            done
+            test "$healthy" = true
+
+            trap - INT TERM HUP EXIT
+            rm -rf "$RELEASE_DIR" "$ARCHIVE"
+            find /home/lunchdrop-backups -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+              | sort -nr \
+              | awk 'NR > 5 { sub(/^[^ ]+ /, ""); print }' \
+              | xargs -r rm -rf
+            supervisorctl status lunchdrop lunchdrop-scheduler
