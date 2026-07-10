@@ -11,9 +11,10 @@ from app.db.base import Base
 from app.db.session import AsyncSessionLocal, engine
 from app.models.branch import Branch, EmployeeBranch
 from app.models.company import Company
-from app.models.enums import AccountStatus, UserRole
+from app.models.enums import AccountStatus, OrderStatus, UserRole
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.meal import Meal, MenuSchedule
+from app.models.order import Order
 from app.models.telegram import ApprovalAction
 from app.models.user import User
 from bot.approvals import (
@@ -23,6 +24,7 @@ from bot.approvals import (
     process_decision,
 )
 from bot.menu import send_employee_menu
+from bot.reports import build_report, current_month, parse_month
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -240,3 +242,71 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
     assert bot.photos[0][0].endswith("/media/osh.jpg")
     assert "Buyurtma qabul qilish" in bot.photos[0][1]
     assert "Yetkazish" in bot.photos[0][1]
+
+
+@pytest.mark.asyncio
+async def test_employee_and_company_monthly_reports_are_scoped() -> None:
+    ids = await _seed_approval_flow()
+    report_month = current_month()
+    target_date = parse_month(report_month)[0]
+    async with AsyncSessionLocal() as session:
+        employee = await session.get(User, ids["employee"])
+        assert employee
+        employee.account_status = AccountStatus.APPROVED
+        meal = Meal(
+            kitchen_id=ids["kitchen_entity"],
+            category_id=None,
+            name="Osh",
+            description=None,
+            price=30000,
+            image_url=None,
+        )
+        session.add(meal)
+        await session.flush()
+        session.add_all(
+            [
+                Order(
+                    employee_id=ids["employee"],
+                    branch_id=ids["branch"],
+                    kitchen_id=ids["kitchen_entity"],
+                    meal_id=meal.id,
+                    target_date=target_date,
+                    historical_price=30000,
+                    status=OrderStatus.DELIVERED,
+                ),
+                Order(
+                    employee_id=ids["employee"],
+                    branch_id=ids["branch"],
+                    kitchen_id=ids["kitchen_entity"],
+                    meal_id=meal.id,
+                    target_date=target_date,
+                    historical_price=10000,
+                    status=OrderStatus.CANCELLED,
+                ),
+            ]
+        )
+        await session.commit()
+
+    await link_telegram_account(
+        telegram_user_id=105,
+        chat_id=105,
+        username="employee-report",
+        phone="+998900000004",
+    )
+    await link_telegram_account(
+        telegram_user_id=106,
+        chat_id=106,
+        username="company-report",
+        phone="+998900000002",
+    )
+
+    employee_summary = await build_report(105, month=report_month)
+    employee_orders = await build_report(105, month=report_month, section="orders")
+    company_employees = await build_report(106, month=report_month, section="employees")
+    company_branches = await build_report(106, month=report_month, section="branches")
+    assert "30 000 so'm" in employee_summary.text
+    assert "To'lov kuni" in employee_summary.text
+    assert "Yetkazildi" in employee_orders.text
+    assert "Bekor qilindi" in employee_orders.text
+    assert "Employee" in company_employees.text
+    assert "HQ" in company_branches.text

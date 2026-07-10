@@ -28,6 +28,7 @@ from bot.approvals import (
 from bot.config import bot_settings
 from bot.menu import send_employee_menu
 from bot.notifier import approval_markup
+from bot.reports import build_report
 
 dp = Dispatcher()
 
@@ -151,6 +152,20 @@ async def cmd_menu(message: Message) -> None:
     )
 
 
+@dp.message(Command("hisobot"))
+async def cmd_report(message: Message) -> None:
+    if message.from_user is None:
+        return
+    parts = (message.text or "").split(maxsplit=1)
+    month = parts[1].strip() if len(parts) == 2 else None
+    try:
+        report = await build_report(message.from_user.id, month=month)
+    except TelegramApprovalError as exc:
+        await message.answer(str(exc))
+        return
+    await message.answer(report.text, reply_markup=report.markup)
+
+
 @dp.message(Command("me"))
 async def cmd_me(message: Message) -> None:
     if message.from_user is None:
@@ -183,6 +198,41 @@ async def cmd_unlink(message: Message) -> None:
 @dp.callback_query()
 async def handle_approval_callback(callback: CallbackQuery) -> None:
     data = callback.data or ""
+    if data.startswith("report:"):
+        parts = data.split(":", maxsplit=2)
+        if len(parts) != 3:
+            await callback.answer("Noto'g'ri hisobot so'rovi", show_alert=True)
+            return
+        section, month = parts[1], parts[2]
+        if section == "menu":
+            try:
+                user = await get_linked_user(callback.from_user.id)
+            except TelegramApprovalError as exc:
+                await callback.answer(str(exc), show_alert=True)
+                return
+            if user.role != UserRole.EMPLOYEE or callback.message is None:
+                await callback.answer("Bu bo'lim faqat xodimlar uchun", show_alert=True)
+                return
+            today = datetime.now(ZoneInfo(settings.timezone)).date()
+            await send_employee_menu(
+                callback.bot,
+                user_id=user.id,
+                chat_id=callback.message.chat.id,
+                target_date=today,
+            )
+            await callback.answer("Bugungi menyu yuborildi")
+            return
+        try:
+            report = await build_report(
+                callback.from_user.id, month=month, section=section
+            )
+        except TelegramApprovalError as exc:
+            await callback.answer(str(exc), show_alert=True)
+            return
+        if callback.message:
+            await callback.message.edit_text(report.text, reply_markup=report.markup)
+        await callback.answer()
+        return
     if not (data.startswith("approve:") or data.startswith("reject:")):
         return
     parts = data.split(":", maxsplit=2)
@@ -217,6 +267,7 @@ async def main() -> None:
         [
             BotCommand(command="start", description="LunchDrop hisobini bog'lash"),
             BotCommand(command="menu", description="Bugungi taomlar"),
+            BotCommand(command="hisobot", description="Oylik qarz va buyurtmalar"),
             BotCommand(command="pending", description="Kutilayotgan arizalar"),
             BotCommand(command="me", description="Bog'langan hisobim"),
             BotCommand(command="unlink", description="Bog'lanishni uzish"),
