@@ -5,6 +5,7 @@ Admin oqimi: send-otp → verify-otp (temp token) → admin-register → PENDING
 Employee oqimi: send-otp → employee-login (telefon+OTP → JWT, avtomatik yaratiladi).
 """
 
+import asyncio
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -41,6 +42,7 @@ from app.schemas.auth import (
     TokenResponse,
     VerifyOtpResponse,
 )
+from bot.notifier import send_approval_notification
 
 log = structlog.get_logger()
 
@@ -172,7 +174,7 @@ class AuthService:
             await self.session.flush()
             company_id = company.id
 
-        await self.users.add(
+        user = await self.users.add(
             User(
                 phone=phone,
                 name=data.full_name,
@@ -185,6 +187,7 @@ class AuthService:
             )
         )
         await self.session.commit()
+        asyncio.create_task(send_approval_notification(user.id))
         log.info("admin_registered", role=data.role.value, phone=phone)
         return RegisterResponse()
 

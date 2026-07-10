@@ -1,5 +1,7 @@
 """Employee biznes logikasi — onboarding, menyu, buyurtma."""
 
+import asyncio
+
 from datetime import date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -33,6 +35,7 @@ from app.schemas.employee import (
 )
 from app.schemas.order import OrderRead
 from app.services.order_read import build_order_read
+from bot.notifier import send_approval_notification
 
 
 class EmployeeService:
@@ -114,6 +117,7 @@ class EmployeeService:
         self.user.company_id = company_ids.pop()
         self.user.account_status = AccountStatus.PENDING_APPROVAL
         await self.session.commit()
+        asyncio.create_task(send_approval_notification(self.user.id))
         return EmployeeStatusRead(
             account_status=self.user.account_status,
             company_id=self.user.company_id,

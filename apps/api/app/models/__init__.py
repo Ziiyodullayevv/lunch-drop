@@ -17,10 +17,12 @@ from app.models.notification import Notification
 from app.models.order import Order
 from app.models.otp_code import OtpCode
 from app.models.refresh_token import RefreshToken
+from app.models.telegram import ApprovalAction, TelegramAccount
 from app.models.user import User
 
 __all__ = [
     "AccountStatus",
+    "ApprovalAction",
     "BranchKitchen",
     "Branch",
     "Company",
@@ -36,6 +38,7 @@ __all__ = [
     "OrderStatus",
     "OtpCode",
     "RefreshToken",
+    "TelegramAccount",
     "User",
     "UserRole",
 ]
