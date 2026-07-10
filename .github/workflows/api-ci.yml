@@ -1,18 +1,21 @@
 name: API CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, develop]
     paths:
       - 'apps/api/**'
       - 'infra/api.yml'
       - '.github/workflows/api-ci.yml'
+      - '.github/workflows/api-cd.yml'
   pull_request:
     branches: [main]
     paths:
       - 'apps/api/**'
       - 'infra/api.yml'
       - '.github/workflows/api-ci.yml'
+      - '.github/workflows/api-cd.yml'
 
 jobs:
   lint-test-build:
