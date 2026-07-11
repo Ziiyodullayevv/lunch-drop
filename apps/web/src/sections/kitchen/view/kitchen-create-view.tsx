@@ -1,7 +1,7 @@
 'use client';
 
 import type { Dayjs } from 'dayjs';
-import type { MapRef, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewState } from 'react-map-gl/maplibre';
 import type { KitchenCreate } from 'src/lib/api/kitchens';
 
 import * as z from 'zod';
@@ -29,10 +29,11 @@ import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
   Map,
-  MapMarker,
   MapControls,
+  MapCenterPin,
   MapLocateButton,
   type GeolocateCoords,
+  reverseGeocodeAddress,
   MapAddressAutocomplete,
   type MapAddressSuggestion,
 } from 'src/components/map';
@@ -93,6 +94,9 @@ export function KitchenCreateView() {
   const [marker, setMarker] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [hasLocation, setHasLocation] = useState(false);
   const [addressSearch, setAddressSearch] = useState('');
+  const [isMapMoving, setIsMapMoving] = useState(false);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+  const reverseLookupId = useRef(0);
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(KitchenSchema),
@@ -119,13 +123,21 @@ export function KitchenCreateView() {
   const lat = watch('lat');
   const lng = watch('lng');
 
-  const handleMarkerDragEnd = useCallback(
-    (e: MarkerDragEvent) => {
-      const { lat: newLat, lng: newLng } = e.lngLat;
-      setMarker({ latitude: newLat, longitude: newLng });
-      setValue('lat', newLat, { shouldDirty: true, shouldValidate: true });
-      setValue('lng', newLng, { shouldDirty: true, shouldValidate: true });
+  const handleMapMoveEnd = useCallback(
+    async (viewState: ViewState) => {
+      setIsMapMoving(false);
+      setMarker({ latitude: viewState.latitude, longitude: viewState.longitude });
+      setValue('lat', viewState.latitude, { shouldDirty: true, shouldValidate: true });
+      setValue('lng', viewState.longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
+      const lookupId = ++reverseLookupId.current;
+      setIsResolvingAddress(true);
+      try {
+        const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
+        if (lookupId === reverseLookupId.current && address?.label) setAddressSearch(address.label);
+      } finally {
+        if (lookupId === reverseLookupId.current) setIsResolvingAddress(false);
+      }
     },
     [setValue]
   );
@@ -244,24 +256,20 @@ export function KitchenCreateView() {
 
             <Stack spacing={1}>
               <Typography variant="subtitle2" color="text.secondary">
-                Xaritadagi joylashuv — markerni sudrab o&apos;rnating
+                Xaritani surib joylashuvni belgilang
               </Typography>
               <Box sx={{ position: 'relative' }}>
                 <Map
                   ref={mapRef}
                   initialViewState={{ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG, zoom: 12 }}
+                  onMoveStart={() => setIsMapMoving(true)}
+                  onMoveEnd={(event) => handleMapMoveEnd(event.viewState)}
                   sx={{ height: 320, borderRadius: 2, overflow: 'hidden' }}
                 >
                   <MapControls />
-                  <MapMarker
-                    latitude={marker.latitude}
-                    longitude={marker.longitude}
-                    draggable
-                    anchor="bottom"
-                    onDragEnd={handleMarkerDragEnd}
-                    sx={{ color: hasLocation ? '#FF416D' : '#9CA3AF' }}
-                  />
                 </Map>
+
+                <MapCenterPin moving={isMapMoving} />
 
                 <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
               </Box>
@@ -282,7 +290,7 @@ export function KitchenCreateView() {
                   >
                     {errors.lat?.message ??
                       errors.lng?.message ??
-                      'Markerni sudrab joylashuvni belgilang (majburiy)'}
+                      'Xaritani surib joylashuvni belgilang (majburiy)'}
                   </Typography>
                 )}
               </Box>
@@ -297,7 +305,12 @@ export function KitchenCreateView() {
               >
                 Bekor qilish
               </Button>
-              <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
+              <LoadingButton
+                type="submit"
+                variant="contained"
+                loading={isSubmitting}
+                disabled={isMapMoving || isResolvingAddress}
+              >
                 Adminsiz oshxona yaratish
               </LoadingButton>
             </Stack>

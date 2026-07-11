@@ -1,6 +1,6 @@
 'use client';
 
-import type { MapRef, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewState } from 'react-map-gl/maplibre';
 import type { KitchenRead } from 'src/lib/api/kitchens';
 import type { BranchRead } from 'src/lib/api/companies';
 
@@ -47,8 +47,10 @@ import {
   Map,
   MapMarker,
   MapControls,
+  MapCenterPin,
   MapLocateButton,
   type GeolocateCoords,
+  reverseGeocodeAddress,
   MapAddressAutocomplete,
   type MapAddressSuggestion,
 } from 'src/components/map';
@@ -242,6 +244,9 @@ export function KitchenDetailView({ id }: { id: string }) {
   const [savingLocation, setSavingLocation] = useState(false);
   const [hasLocation, setHasLocation] = useState(false);
   const [addressSearch, setAddressSearch] = useState('');
+  const [isMapMoving, setIsMapMoving] = useState(false);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+  const reverseLookupId = useRef(0);
   const [locationMarker, setLocationMarker] = useState({
     latitude: DEFAULT_LAT,
     longitude: DEFAULT_LNG,
@@ -355,11 +360,20 @@ export function KitchenDetailView({ id }: { id: string }) {
     }
   };
 
-  const handleLocationDragEnd = useCallback((event: MarkerDragEvent) => {
-    const { lat, lng } = event.lngLat;
-    setLocationMarker({ latitude: lat, longitude: lng });
+  const handleLocationMoveEnd = useCallback(async (viewState: ViewState) => {
+    if (!isSuperAdmin) return;
+    setIsMapMoving(false);
+    setLocationMarker({ latitude: viewState.latitude, longitude: viewState.longitude });
     setHasLocation(true);
-  }, []);
+    const lookupId = ++reverseLookupId.current;
+    setIsResolvingAddress(true);
+    try {
+      const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
+      if (lookupId === reverseLookupId.current && address?.label) setAddressSearch(address.label);
+    } finally {
+      if (lookupId === reverseLookupId.current) setIsResolvingAddress(false);
+    }
+  }, [isSuperAdmin]);
 
   const handleLocate = useCallback(({ latitude, longitude }: GeolocateCoords) => {
     setLocationMarker({ latitude, longitude });
@@ -672,7 +686,7 @@ export function KitchenDetailView({ id }: { id: string }) {
             <LoadingButton
               variant="contained"
               loading={savingLocation}
-              disabled={!hasLocation}
+              disabled={!hasLocation || isMapMoving || isResolvingAddress}
               startIcon={<Iconify icon="mingcute:location-fill" />}
               onClick={handleSaveLocation}
             >
@@ -697,20 +711,22 @@ export function KitchenDetailView({ id }: { id: string }) {
             ref={mapRef}
             {...locationViewState}
             onMove={(event) => setLocationViewState(event.viewState)}
+            onMoveStart={() => isSuperAdmin && setIsMapMoving(true)}
+            onMoveEnd={(event) => handleLocationMoveEnd(event.viewState)}
             sx={{ height: { xs: 320, md: 420 }, borderRadius: 2, overflow: 'hidden' }}
           >
             <MapControls hideGeolocate={isSuperAdmin} />
-            {hasLocation && (
+            {hasLocation && !isSuperAdmin && (
               <MapMarker
                 latitude={locationMarker.latitude}
                 longitude={locationMarker.longitude}
-                draggable={isSuperAdmin}
                 anchor="bottom"
-                onDragEnd={isSuperAdmin ? handleLocationDragEnd : undefined}
                 sx={{ color: '#FF416D' }}
               />
             )}
           </Map>
+
+          {isSuperAdmin && <MapCenterPin moving={isMapMoving} />}
 
           {isSuperAdmin && <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />}
         </Box>

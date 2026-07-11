@@ -36,6 +36,7 @@ import {
   MapControls,
   MapLocateButton,
   type GeolocateCoords,
+  reverseGeocodeAddress,
   MapAddressAutocomplete,
   type MapAddressSuggestion,
 } from 'src/components/map';
@@ -106,6 +107,8 @@ function RegisterFlow({
   const [hasLocation, setHasLocation] = useState(false);
   const [isMapMoving, setIsMapMoving] = useState(false);
   const [addressSearch, setAddressSearch] = useState('');
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+  const reverseLookupId = useRef(0);
 
   const step1 = useForm<Step1Values>({ resolver: zodResolver(Step1Schema), defaultValues: { phone: '' } });
   const step2 = useForm<Step2Values>({ resolver: zodResolver(Step2Schema), defaultValues: { code: '' } });
@@ -126,13 +129,23 @@ function RegisterFlow({
   const { setValue: setStep3Value } = step3;
 
   const handleMapMoveEnd = useCallback(
-    (nextViewState: ViewState) => {
+    async (nextViewState: ViewState) => {
       const { latitude, longitude } = nextViewState;
       setMarker({ latitude, longitude });
       setStep3Value('lat', latitude, { shouldDirty: true, shouldValidate: true });
       setStep3Value('lng', longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
       setIsMapMoving(false);
+      const lookupId = ++reverseLookupId.current;
+      setIsResolvingAddress(true);
+      try {
+        const address = await reverseGeocodeAddress(latitude, longitude);
+        if (lookupId === reverseLookupId.current && address?.label) {
+          setAddressSearch(address.label);
+        }
+      } finally {
+        if (lookupId === reverseLookupId.current) setIsResolvingAddress(false);
+      }
     },
     [setStep3Value]
   );
@@ -320,7 +333,10 @@ function RegisterFlow({
   const entityLabel = role === 'kitchen_admin' ? 'Oshxona nomi' : 'Kompaniya nomi';
   const isDetailsStep = activeStep === 'personal' || activeStep === 'organization' || activeStep === 'location';
   const isFinalStep = (activeStep === 'organization' && role === 'company_admin') || activeStep === 'location';
-  const isLocationSubmitDisabled = role === 'kitchen_admin' && activeStep === 'location' && !hasLocation;
+  const isLocationSubmitDisabled =
+    role === 'kitchen_admin' &&
+    activeStep === 'location' &&
+    (!hasLocation || isMapMoving || isResolvingAddress);
 
   const handleDetailsSubmit = (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();

@@ -29,6 +29,7 @@ import {
   MapCenterPin,
   MapLocateButton,
   type GeolocateCoords,
+  reverseGeocodeAddress,
   MapAddressAutocomplete,
   type MapAddressSuggestion,
 } from 'src/components/map';
@@ -76,6 +77,7 @@ export function KitchenSettingsView() {
     zoom: 13,
   });
   const markerInitialized = useRef(false);
+  const reverseLookupId = useRef(0);
 
   // kitchen data kelganda marker ni bir marta init qilamiz (render ichida emas)
   useEffect(() => {
@@ -132,10 +134,13 @@ export function KitchenSettingsView() {
     }
   };
 
-  const handleMapMoveEnd = useCallback((nextViewState: ViewState) => {
+  const handleMapMoveEnd = useCallback(async (nextViewState: ViewState) => {
     setIsMapMoving(false);
     setMarker({ lat: nextViewState.latitude, lng: nextViewState.longitude });
     setLocationDirty(true);
+    const lookupId = ++reverseLookupId.current;
+    const address = await reverseGeocodeAddress(nextViewState.latitude, nextViewState.longitude);
+    if (lookupId === reverseLookupId.current && address?.label) setAddressSearch(address.label);
   }, []);
 
   const handleLocate = useCallback(({ latitude, longitude }: GeolocateCoords) => {
