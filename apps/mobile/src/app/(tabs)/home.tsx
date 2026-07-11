@@ -26,6 +26,7 @@ import { useAllFoodItems } from "@/hooks/use-all-food-items";
 import { useActiveOrder } from "@/hooks/use-orders";
 import { getMe } from "@/lib/api/auth";
 import { getUnreadCount } from "@/lib/api/notifications";
+import { getEmployeeStatus } from "@/lib/api/onboarding";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCartStore } from "@/stores/cart-store";
 import type { MenuItem } from "@/types/domain";
@@ -69,6 +70,7 @@ export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const accountStatus = useAuthStore((s) => s.user?.accountStatus);
 	const updateUser = useAuthStore((s) => s.updateUser);
+	const storedKitchenNames = useAuthStore((s) => s.user?.kitchenNames ?? []);
 	const cartSubtotal = useCartStore(
 		(s) => s.items.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0)
 	);
@@ -92,6 +94,12 @@ export default function HomeScreen() {
 	}, [isPending, updateUser]);
 	const [selectedDay, setSelectedDay] = useState<number>(getTashkentWeekday);
 	const { items, isLoading, error, refetch } = useAllFoodItems(selectedDay);
+	const { data: employeeStatus } = useQuery({
+		queryKey: ['employee-status', 'home'],
+		queryFn: getEmployeeStatus,
+		staleTime: 60_000,
+		refetchInterval: 60_000,
+	});
 	const { activeOrder } = useActiveOrder();
 	const { data: unreadCount = 0, refetch: refetchUnreadCount } = useQuery({
 		queryKey: ['notifications', 'unread-count'],
@@ -108,9 +116,14 @@ export default function HomeScreen() {
 	const isDark = colorScheme === 'dark';
 	const { height: windowHeight } = useWindowDimensions();
 
-	const kitchenNamesText = [...new Set(
+	const menuKitchenNames = [...new Set(
 		items.map((item) => item.kitchenName).filter(Boolean)
-	)].join(', ') || 'Oshxonangiz';
+	)];
+	const kitchenNamesText = [
+		...new Set(menuKitchenNames.length
+			? menuKitchenNames
+			: (employeeStatus?.kitchen_names ?? storedKitchenNames)),
+	].join(', ') || 'Oshxona qo‘shilmagan';
 
 	const scrollY = useSharedValue(0);
 	const expandedHeaderHeight = insets.top + 6 + BRAND_ROW_HEIGHT + DAY_ROW_HEIGHT;

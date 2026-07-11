@@ -127,10 +127,25 @@ class EmployeeService:
 
     async def my_status(self) -> EmployeeStatusRead:
         branches = await self._my_branches()
+        branch_ids = [branch.id for branch in branches]
+        kitchen_names = []
+        if branch_ids:
+            kitchen_names = list((await self.session.execute(
+                select(Kitchen.name)
+                .join(BranchKitchen, BranchKitchen.kitchen_id == Kitchen.id)
+                .where(
+                    BranchKitchen.branch_id.in_(branch_ids),
+                    Kitchen.is_active.is_(True),
+                    Kitchen.deleted_at.is_(None),
+                )
+                .distinct()
+                .order_by(Kitchen.name)
+            )).scalars().all())
         return EmployeeStatusRead(
             account_status=self.user.account_status,
             company_id=self.user.company_id,
             branches=[BranchPublic.model_validate(b) for b in branches],
+            kitchen_names=kitchen_names,
         )
 
     # --- Profil ---

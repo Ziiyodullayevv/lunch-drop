@@ -49,6 +49,7 @@ export type EmployeeStatusDto = {
   account_status: string | null;
   company_id: string | null;
   branches: BranchPublicDto[];
+  kitchen_names?: string[];
 };
 
 export type CompanyBranchDto = {

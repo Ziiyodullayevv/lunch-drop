@@ -53,6 +53,7 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthSessio
         branchId: primaryBranch?.id ?? session.user.branchId,
         branchName: primaryBranch?.name ?? session.user.branchName,
         branchAddress: primaryBranch?.address ?? session.user.branchAddress,
+        kitchenNames: statusRes.data.kitchen_names ?? [],
         branches,
       },
     };

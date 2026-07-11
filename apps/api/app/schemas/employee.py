@@ -42,6 +42,7 @@ class EmployeeStatusRead(BaseModel):
     account_status: AccountStatus | None
     company_id: str | None
     branches: list[BranchPublic] = Field(default_factory=list)
+    kitchen_names: list[str] = Field(default_factory=list)
 
 
 class MenuMealRead(BaseModel):

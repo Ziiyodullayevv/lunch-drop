@@ -101,6 +101,7 @@ export type CurrentUser = {
   branchAddress: string;
   companyId: string;
   companyName: string;
+  kitchenNames?: string[];
   balance: number;
   branches: BranchInfo[];
 };

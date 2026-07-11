@@ -15,6 +15,7 @@ export function mapUser(dto: AuthResponseDto['user']): CurrentUser {
     branchAddress: '',
     companyId: dto.company_id ?? '',
     companyName: '',
+    kitchenNames: [],
     balance: 0,
     branches: [],
   };
