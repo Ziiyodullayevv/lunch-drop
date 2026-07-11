@@ -7,9 +7,10 @@ import { m } from 'framer-motion';
 import { useCallback } from 'react';
 import { usePopover } from 'minimal-shared/hooks';
 
-import MenuList from '@mui/material/MenuList';
+import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
 
 import { useTranslate } from 'src/locales';
 
@@ -42,18 +43,25 @@ export function LanguagePopover({ data = [], sx, ...other }: LanguagePopoverProp
 
   const renderMenuList = () => (
     <CustomPopover open={open} anchorEl={anchorEl} onClose={onClose}>
-      <MenuList sx={{ width: 160, minHeight: 72 }}>
+      <Box sx={{ p: 1, width: 280 }}>
         {data?.map((option) => (
           <MenuItem
             key={option.value}
             selected={option.value === currentLang.value}
             onClick={() => handleChangeLang(option.value as LangCode)}
+            sx={{
+              gap: 2,
+              minHeight: 58,
+              borderRadius: 1.5,
+              fontSize: 18,
+              fontWeight: option.value === currentLang.value ? 700 : 500,
+            }}
           >
             <FlagIcon code={option.countryCode} />
-            {option.label}
+            <Typography variant="body1" sx={{ fontWeight: 'inherit' }}>{option.label}</Typography>
           </MenuItem>
         ))}
-      </MenuList>
+      </Box>
     </CustomPopover>
   );
 

@@ -1,6 +1,39 @@
 {
-  "demo": {
-    "lang": "English",
-    "description": "The starting point for your next project is based on MUI. Easy customization helps you build apps faster and better."
+  "navigation": {
+    "general": "UMUMIY",
+    "dashboard": "Dashboard",
+    "map": "Xarita",
+    "management": "BOSHQARUV",
+    "companies": "Kompaniyalar",
+    "branches": "Filiallar",
+    "employees": "Xodimlar",
+    "users": "Foydalanuvchilar",
+    "kitchens": "Oshxonalar",
+    "menu": "Menyu",
+    "partnersRequests": "Hamkorlar va so'rovlar",
+    "orders": "Buyurtmalar",
+    "invoices": "Hisob-fakturalar",
+    "system": "TIZIM",
+    "settings": "Sozlamalar"
+  },
+  "common": {
+    "all": "Barchasi",
+    "add": "Qo'shish",
+    "create": "Yaratish",
+    "save": "Saqlash",
+    "cancel": "Bekor qilish",
+    "search": "Qidirish",
+    "loading": "Yuklanmoqda...",
+    "back": "Orqaga",
+    "status": "Holat",
+    "actions": "Amallar"
+  },
+  "mainNav": {
+    "home": "Bosh sahifa",
+    "features": "Imkoniyatlar",
+    "workflow": "Ishlash jarayoni",
+    "faq": "Savollar",
+    "register": "Ro‘yxatdan o‘tish",
+    "signIn": "Kirish"
   }
 }

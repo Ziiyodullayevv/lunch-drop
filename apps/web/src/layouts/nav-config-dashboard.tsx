@@ -32,13 +32,14 @@ const ICONS = {
 //   kitchen_admin — Dashboard, Menu, Grouped Orders
 //   employee      — Dashboard, Orders
 
-export const navData: NavSectionProps['data'] = [
+export function getDashboardNavData(t: (key: string) => string): NavSectionProps['data'] {
+  return [
   {
-    subheader: 'Umumiy',
+    subheader: t('navigation.general'),
     items: [
-      { title: 'Dashboard', path: paths.dashboard.root, icon: ICONS.dashboard },
+      { title: t('navigation.dashboard'), path: paths.dashboard.root, icon: ICONS.dashboard },
       {
-        title: 'Xarita',
+        title: t('navigation.map'),
         path: paths.dashboard.map,
         icon: ICONS.map,
         allowedRoles: ['super_admin', 'company_admin', 'kitchen_admin'],
@@ -46,82 +47,82 @@ export const navData: NavSectionProps['data'] = [
     ],
   },
   {
-    subheader: 'Boshqaruv',
+    subheader: t('navigation.management'),
     items: [
       {
-        title: 'Kompaniyalar',
+        title: t('navigation.companies'),
         path: paths.dashboard.company.root,
         icon: ICONS.banking,
         allowedRoles: ['super_admin'],
         children: [
-          { title: 'Barchasi', path: paths.dashboard.company.root },
-          { title: "Qo'shish", path: paths.dashboard.company.new },
+          { title: t('common.all'), path: paths.dashboard.company.root },
+          { title: t('common.add'), path: paths.dashboard.company.new },
         ],
       },
       {
-        title: 'Filiallar',
+        title: t('navigation.branches'),
         path: paths.dashboard.branch.root,
         icon: ICONS.booking,
         allowedRoles: ['company_admin'],
         children: [
-          { title: 'Barchasi', path: paths.dashboard.branch.root },
-          { title: "Qo'shish", path: paths.dashboard.branch.new },
+          { title: t('common.all'), path: paths.dashboard.branch.root },
+          { title: t('common.add'), path: paths.dashboard.branch.new },
         ],
       },
       {
-        title: 'Xodimlar',
+        title: t('navigation.employees'),
         path: paths.dashboard.employee.list,
         icon: ICONS.user,
         allowedRoles: ['company_admin'],
         children: [
-          { title: 'Barchasi', path: paths.dashboard.employee.list },
-          { title: 'Yaratish', path: paths.dashboard.employee.new },
+          { title: t('common.all'), path: paths.dashboard.employee.list },
+          { title: t('common.create'), path: paths.dashboard.employee.new },
         ],
       },
       {
-        title: 'Foydalanuvchilar',
+        title: t('navigation.users'),
         path: paths.dashboard.user.list,
         icon: ICONS.user,
         allowedRoles: ['super_admin'],
         children: [
-          { title: 'Barchasi', path: paths.dashboard.user.list },
-          { title: "Qo'shish", path: paths.dashboard.user.new },
+          { title: t('common.all'), path: paths.dashboard.user.list },
+          { title: t('common.add'), path: paths.dashboard.user.new },
         ],
       },
       {
-        title: 'Oshxonalar',
+        title: t('navigation.kitchens'),
         path: paths.dashboard.kitchen.root,
         icon: ICONS.product,
         allowedRoles: ['super_admin', 'company_admin'],
         children: [
-          { title: 'Barchasi', path: paths.dashboard.kitchen.root },
-          { title: "Qo'shish", path: paths.dashboard.kitchen.new, allowedRoles: ['super_admin'] },
+          { title: t('common.all'), path: paths.dashboard.kitchen.root },
+          { title: t('common.add'), path: paths.dashboard.kitchen.new, allowedRoles: ['super_admin'] },
         ],
       },
       {
-        title: 'Menyu',
+        title: t('navigation.menu'),
         path: paths.dashboard.menu.root,
         icon: ICONS.invoice,
         allowedRoles: ['kitchen_admin'],
         children: [
-          { title: 'Barchasi', path: paths.dashboard.menu.root },
-          { title: "Qo'shish", path: paths.dashboard.menu.new },
+          { title: t('common.all'), path: paths.dashboard.menu.root },
+          { title: t('common.add'), path: paths.dashboard.menu.new },
         ],
       },
       {
-        title: 'Hamkorlar va so‘rovlar',
+        title: t('navigation.partnersRequests'),
         path: paths.dashboard.kitchen.partners,
         icon: ICONS.banking,
         allowedRoles: ['kitchen_admin'],
       },
       {
-        title: 'Buyurtmalar',
+        title: t('navigation.orders'),
         path: paths.dashboard.order.root,
         icon: ICONS.order,
         allowedRoles: ['super_admin', 'company_admin', 'kitchen_admin', 'employee'],
       },
       {
-        title: 'Hisob-fakturalar',
+        title: t('navigation.invoices'),
         path: paths.dashboard.invoice.root,
         icon: ICONS.banking,
         allowedRoles: ['company_admin'],
@@ -129,14 +130,15 @@ export const navData: NavSectionProps['data'] = [
     ],
   },
   {
-    subheader: 'Tizim',
+    subheader: t('navigation.system'),
     items: [
       {
-        title: 'Sozlamalar',
+        title: t('navigation.settings'),
         path: paths.dashboard.kitchen.settings,
         icon: ICONS.lock,
         allowedRoles: ['kitchen_admin'],
       },
     ],
   },
-];
+  ];
+}

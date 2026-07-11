@@ -14,15 +14,18 @@ import Button from '@mui/material/Button';
 import { paths } from 'src/routes/paths';
 import { usePathname } from 'src/routes/hooks';
 
+import { allLangs, useTranslate } from 'src/locales';
+
 import { Logo } from 'src/components/logo';
 
 import { NavMobile } from './nav/mobile';
 import { NavDesktop } from './nav/desktop';
 import { Footer, HomeFooter } from './footer';
+import { getMainNavData } from '../nav-config-main';
 import { MenuButton } from '../components/menu-button';
-import { navData as mainNavData } from '../nav-config-main';
 import { SignInButton } from '../components/sign-in-button';
 import { SettingsButton } from '../components/settings-button';
+import { LanguagePopover } from '../components/language-popover';
 import { MainSection, LayoutSection, HeaderSection } from '../core';
 
 // ----------------------------------------------------------------------
@@ -49,12 +52,13 @@ export function MainLayout({
   layoutQuery = 'md',
 }: MainLayoutProps) {
   const pathname = usePathname();
+  const { t } = useTranslate();
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
   const isHomePage = pathname === '/';
 
-  const navData = slotProps?.nav?.data ?? mainNavData;
+  const navData = slotProps?.nav?.data ?? getMainNavData(t);
 
   const renderHeader = () => {
     const headerSlots: HeaderSectionProps['slots'] = {
@@ -92,6 +96,8 @@ export function MainLayout({
           />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+            <LanguagePopover data={allLangs} />
+
             {/** @slot Settings button */}
             <SettingsButton />
 
@@ -107,7 +113,7 @@ export function MainLayout({
                 [theme.breakpoints.up(layoutQuery)]: { display: 'inline-flex' },
               })}
             >
-              Ro‘yxatdan o‘tish
+              {t('mainNav.register')}
             </Button>
           </Box>
         </>

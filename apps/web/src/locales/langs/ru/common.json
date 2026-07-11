@@ -1,6 +1,39 @@
 {
-  "demo": {
-    "lang": "English",
-    "description": "The starting point for your next project is based on MUI. Easy customization helps you build apps faster and better."
+  "navigation": {
+    "general": "ОБЩЕЕ",
+    "dashboard": "Панель управления",
+    "map": "Карта",
+    "management": "УПРАВЛЕНИЕ",
+    "companies": "Компании",
+    "branches": "Филиалы",
+    "employees": "Сотрудники",
+    "users": "Пользователи",
+    "kitchens": "Кухни",
+    "menu": "Меню",
+    "partnersRequests": "Партнёры и заявки",
+    "orders": "Заказы",
+    "invoices": "Счета-фактуры",
+    "system": "СИСТЕМА",
+    "settings": "Настройки"
+  },
+  "common": {
+    "all": "Все",
+    "add": "Добавить",
+    "create": "Создать",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "search": "Поиск",
+    "loading": "Загрузка...",
+    "back": "Назад",
+    "status": "Статус",
+    "actions": "Действия"
+  },
+  "mainNav": {
+    "home": "Главная",
+    "features": "Возможности",
+    "workflow": "Как это работает",
+    "faq": "Вопросы",
+    "register": "Регистрация",
+    "signIn": "Войти"
   }
 }

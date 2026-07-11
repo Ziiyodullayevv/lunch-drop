@@ -4,25 +4,27 @@ import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export const navData: NavMainProps['data'] = [
+export function getMainNavData(t: (key: string) => string): NavMainProps['data'] {
+  return [
   {
-    title: 'Bosh sahifa',
+    title: t('mainNav.home'),
     path: '/',
     icon: <Iconify width={22} icon="solar:home-angle-bold-duotone" />,
   },
   {
-    title: 'Imkoniyatlar',
+    title: t('mainNav.features'),
     path: '/#imkoniyatlar',
     icon: <Iconify width={22} icon="solar:notebook-bold-duotone" />,
   },
   {
-    title: 'Ishlash jarayoni',
+    title: t('mainNav.workflow'),
     path: '/#jarayon',
     icon: <Iconify width={22} icon="solar:transfer-horizontal-bold-duotone" />,
   },
   {
-    title: 'Savollar',
+    title: t('mainNav.faq'),
     path: '/#savollar',
     icon: <Iconify width={22} icon="solar:info-circle-bold" />,
   },
-];
+  ];
+}

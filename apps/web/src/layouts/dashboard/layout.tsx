@@ -13,7 +13,7 @@ import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { iconButtonClasses } from '@mui/material/IconButton';
 
-import { allLangs } from 'src/locales';
+import { allLangs, useTranslate } from 'src/locales';
 import { fetchKitchenMe } from 'src/lib/api/kitchens';
 import { fetchCompanyMe } from 'src/lib/api/companies';
 
@@ -31,10 +31,10 @@ import { Searchbar } from '../components/searchbar';
 import { NavUpgrade } from '../components/nav-upgrade';
 import { MenuButton } from '../components/menu-button';
 import { AccountDrawer } from '../components/account-drawer';
+import { getDashboardNavData } from '../nav-config-dashboard';
 import { SettingsButton } from '../components/settings-button';
 import { LanguagePopover } from '../components/language-popover';
 import { WorkspacesPopover } from '../components/workspaces-popover';
-import { navData as dashboardNavData } from '../nav-config-dashboard';
 import { dashboardLayoutVars, dashboardNavColorVars } from './css-vars';
 import { NotificationsDrawer } from '../components/notifications-drawer';
 import { MainSection, layoutClasses, HeaderSection, LayoutSection } from '../core';
@@ -62,6 +62,7 @@ export function DashboardLayout({
   layoutQuery = 'lg',
 }: DashboardLayoutProps) {
   const theme = useTheme();
+  const { t } = useTranslate();
 
   const { user } = useAuthContext();
 
@@ -106,7 +107,7 @@ export function DashboardLayout({
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
-  const navData = slotProps?.nav?.data ?? dashboardNavData;
+  const navData = slotProps?.nav?.data ?? getDashboardNavData(t);
 
   const userRole = user?.role ?? '';
   const allowedForRole = (roles?: string | string[]) => {

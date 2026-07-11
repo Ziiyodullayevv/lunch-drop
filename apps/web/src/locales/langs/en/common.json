@@ -1,6 +1,39 @@
 {
-  "demo": {
-    "lang": "English",
-    "description": "The starting point for your next project is based on MUI. Easy customization helps you build apps faster and better."
+  "navigation": {
+    "general": "GENERAL",
+    "dashboard": "Dashboard",
+    "map": "Map",
+    "management": "MANAGEMENT",
+    "companies": "Companies",
+    "branches": "Branches",
+    "employees": "Employees",
+    "users": "Users",
+    "kitchens": "Kitchens",
+    "menu": "Menu",
+    "partnersRequests": "Partners & requests",
+    "orders": "Orders",
+    "invoices": "Invoices",
+    "system": "SYSTEM",
+    "settings": "Settings"
+  },
+  "common": {
+    "all": "All",
+    "add": "Add",
+    "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "search": "Search",
+    "loading": "Loading...",
+    "back": "Back",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "mainNav": {
+    "home": "Home",
+    "features": "Features",
+    "workflow": "How it works",
+    "faq": "FAQ",
+    "register": "Sign up",
+    "signIn": "Sign in"
   }
 }
