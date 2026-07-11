@@ -84,6 +84,7 @@ export function BranchEditView({ id }: Props) {
   const mapRef = useRef<MapRef | null>(null);
   const [marker, setMarker] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [isMapMoving, setIsMapMoving] = useState(false);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const reverseLookupId = useRef(0);
 
   const superBranch = useBranch(id, isSuperAdmin);
@@ -178,9 +179,14 @@ export function BranchEditView({ id }: Props) {
       setIsMapMoving(false);
       updateLocation(viewState.latitude, viewState.longitude);
       const lookupId = ++reverseLookupId.current;
-      const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
-      if (lookupId === reverseLookupId.current && address?.label) {
-        setValue('address', address.label, { shouldDirty: true, shouldValidate: true });
+      setIsResolvingAddress(true);
+      try {
+        const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
+        if (lookupId === reverseLookupId.current && address?.label) {
+          setValue('address', address.label, { shouldDirty: true, shouldValidate: true });
+        }
+      } finally {
+        if (lookupId === reverseLookupId.current) setIsResolvingAddress(false);
       }
     },
     [setValue, updateLocation]
@@ -385,6 +391,7 @@ export function BranchEditView({ id }: Props) {
                 loading={
                   isSubmitting || assignCompanyKitchens.isPending || assignSuperKitchens.isPending
                 }
+                disabled={isMapMoving || isResolvingAddress}
               >
                 Saqlash
               </LoadingButton>

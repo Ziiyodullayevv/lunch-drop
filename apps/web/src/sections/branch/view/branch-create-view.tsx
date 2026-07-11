@@ -79,6 +79,7 @@ export function BranchCreateView() {
   const [marker, setMarker]           = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [hasLocation, setHasLocation] = useState(false);
   const [isMapMoving, setIsMapMoving] = useState(false);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const reverseLookupId = useRef(0);
 
   const { data: companiesData } = useCompanies(undefined, isSuperAdmin);
@@ -114,9 +115,14 @@ export function BranchCreateView() {
       setValue('lng', viewState.longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
       const lookupId = ++reverseLookupId.current;
-      const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
-      if (lookupId === reverseLookupId.current && address?.label) {
-        setValue('address', address.label, { shouldDirty: true, shouldValidate: true });
+      setIsResolvingAddress(true);
+      try {
+        const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
+        if (lookupId === reverseLookupId.current && address?.label) {
+          setValue('address', address.label, { shouldDirty: true, shouldValidate: true });
+        }
+      } finally {
+        if (lookupId === reverseLookupId.current) setIsResolvingAddress(false);
       }
     },
     [setValue]
@@ -307,7 +313,12 @@ export function BranchCreateView() {
               <Button component={RouterLink} href={backHref} variant="outlined" color="inherit">
                 Bekor qilish
               </Button>
-              <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
+              <LoadingButton
+                type="submit"
+                variant="contained"
+                loading={isSubmitting}
+                disabled={isMapMoving || isResolvingAddress}
+              >
                 Filial yaratish
               </LoadingButton>
             </Box>
