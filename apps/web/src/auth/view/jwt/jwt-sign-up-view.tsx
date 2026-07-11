@@ -343,7 +343,7 @@ function RegisterFlow({
           px: { xs: 1, sm: 2 },
           py: 2,
           border: (theme) => `1px solid ${theme.palette.divider}`,
-          borderRadius: 2.5,
+          borderRadius: 1,
           bgcolor: 'background.neutral',
         }}
       >
@@ -420,7 +420,7 @@ function RegisterFlow({
               type="submit"
               variant="contained"
               loading={step1.formState.isSubmitting}
-              sx={{ borderRadius: 2.5 }}
+              sx={{ borderRadius: 1 }}
             >
               Telegram orqali davom etish
             </Button>
@@ -435,7 +435,7 @@ function RegisterFlow({
               spacing={2.25}
               sx={{
                 p: 2.5,
-                borderRadius: 2.5,
+                borderRadius: 1,
                 border: '1px solid rgba(34, 158, 217, 0.22)',
                 bgcolor: 'rgba(34, 158, 217, 0.07)',
               }}
@@ -478,7 +478,7 @@ function RegisterFlow({
                   startIcon={<Iconify icon="solar:chat-round-dots-bold" />}
                   sx={{
                     flexShrink: 0,
-                    borderRadius: 2.5,
+                    borderRadius: 1,
                     bgcolor: '#229ED9',
                     boxShadow: 'none',
                     '&:hover': { bgcolor: '#1689C2', boxShadow: 'none' },
@@ -508,7 +508,7 @@ function RegisterFlow({
                 gap: { xs: 0.75, sm: 1.25 },
                 justifyContent: 'center',
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: 'background.paper',
                 },
               }}
@@ -521,7 +521,7 @@ function RegisterFlow({
               variant="soft"
               onClick={handleBack}
               sx={{
-                borderRadius: 2.5,
+                borderRadius: 1,
                 bgcolor: 'action.hover',
                 '&:hover': { bgcolor: 'action.selected' },
               }}
@@ -603,7 +603,7 @@ function RegisterFlow({
                     onMove={(evt) => setViewState(evt.viewState)}
                     onMoveStart={() => setIsMapMoving(true)}
                     onMoveEnd={(evt) => handleMapMoveEnd(evt.viewState)}
-                    sx={{ height: 320, borderRadius: 2.5, overflow: 'hidden' }}
+                    sx={{ height: 320, borderRadius: 1, overflow: 'hidden' }}
                   >
                     <MapControls hideGeolocate />
                   </Map>
@@ -677,7 +677,7 @@ function RegisterFlow({
                     px: 1.5,
                     py: 1.25,
                     alignItems: 'center',
-                    borderRadius: 1.5,
+                    borderRadius: 1,
                     color: hasLocation ? 'success.dark' : 'text.secondary',
                     bgcolor: hasLocation ? 'success.lighter' : 'background.neutral',
                   }}
@@ -751,7 +751,7 @@ export function JwtSignUpView() {
         sx={{
           p: 0.75,
           mb: 3,
-          borderRadius: 2.5,
+          borderRadius: 1,
           bgcolor: 'background.neutral',
           border: (theme) => `1px solid ${theme.palette.divider}`,
         }}
@@ -769,7 +769,7 @@ export function JwtSignUpView() {
             '& .MuiTabs-indicator': { display: 'none' },
             '& .MuiTab-root': {
               minHeight: 48,
-              borderRadius: 2.5,
+              borderRadius: 1,
               color: 'text.secondary',
               transition: (theme) => theme.transitions.create(['background-color', 'color', 'box-shadow']),
             },
