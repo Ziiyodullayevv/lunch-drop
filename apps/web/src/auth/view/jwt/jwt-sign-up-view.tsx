@@ -342,7 +342,6 @@ function RegisterFlow({
         sx={{
           px: { xs: 1, sm: 2 },
           py: 2,
-          border: (theme) => `1px solid ${theme.palette.divider}`,
           borderRadius: 1,
           bgcolor: 'background.neutral',
         }}
@@ -389,7 +388,6 @@ function RegisterFlow({
                           color: 'primary.contrastText',
                           bgcolor: 'primary.main',
                           borderColor: 'primary.main',
-                          boxShadow: (theme) => `0 8px 16px ${theme.palette.primary.main}29`,
                         }),
                         ...(completed && {
                           color: 'primary.main',
@@ -436,7 +434,6 @@ function RegisterFlow({
               sx={{
                 p: 2.5,
                 borderRadius: 1,
-                border: '1px solid rgba(34, 158, 217, 0.22)',
                 bgcolor: 'rgba(34, 158, 217, 0.07)',
               }}
             >
@@ -451,7 +448,6 @@ function RegisterFlow({
                     borderRadius: '50%',
                     color: '#fff',
                     bgcolor: '#229ED9',
-                    boxShadow: '0 8px 20px rgba(34, 158, 217, 0.24)',
                   }}
                 >
                   <Iconify width={25} icon="solar:chat-round-dots-bold" />
@@ -753,7 +749,6 @@ export function JwtSignUpView() {
           mb: 3,
           borderRadius: 1,
           bgcolor: 'background.neutral',
-          border: (theme) => `1px solid ${theme.palette.divider}`,
         }}
       >
         <Tabs
@@ -776,7 +771,6 @@ export function JwtSignUpView() {
             '& .Mui-selected': {
               color: 'text.primary',
               bgcolor: 'background.paper',
-              boxShadow: '0 6px 18px rgba(20, 26, 33, 0.08)',
             },
           }}
         >
