@@ -342,8 +342,8 @@ export default function BranchesScreen() {
           onPress={handleConfirm}
           disabled={selectedBranchIds.length === 0 || isPending}
           style={{
-            height: 54,
-            borderRadius: 11,
+            height: 56,
+            borderRadius: 20,
             backgroundColor: selectedBranchIds.length === 0 ? '#E5E5EA' : ACCENT,
             alignItems: 'center',
             justifyContent: 'center',
@@ -351,14 +351,14 @@ export default function BranchesScreen() {
           }}
         >
           {selectedBranchIds.length === 0 ? (
-            <Text fontFamily="$heading" fontSize={16} fontWeight="700" color="#8E8E93">
+            <Text fontFamily="$heading" fontSize={15} fontWeight="700" color="#8E8E93">
               Filial tanlang
             </Text>
           ) : (
             isPending ? (
               <Spinner color="#FFFFFF" />
             ) : (
-              <Text fontFamily="$heading" fontSize={16} fontWeight="700" color="#FFFFFF">
+              <Text fontFamily="$heading" fontSize={15} fontWeight="700" color="#FFFFFF">
                 Tasdiqlash
               </Text>
             )

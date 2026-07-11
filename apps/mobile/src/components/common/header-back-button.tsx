@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import type { StyleProp, ViewStyle } from 'react-native';
-import { YStack } from 'tamagui';
+import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
 
 type HeaderBackButtonProps = {
   onPress?: () => void;
@@ -17,18 +16,27 @@ export function HeaderBackButton({
   style,
 }: HeaderBackButtonProps) {
   return (
-    <YStack
-      width={38}
-      height={38}
-      borderRadius={19}
-      backgroundColor={backgroundColor}
-      alignItems="center"
-      justifyContent="center"
-      pressStyle={{ opacity: 0.65, scale: 0.96 }}
-      style={style}
+    <Pressable
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Orqaga"
       onPress={onPress ?? (() => router.canGoBack() && router.back())}
+      style={({ pressed }) => [
+        {
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 20,
+          opacity: pressed ? 0.65 : 1,
+          transform: [{ scale: pressed ? 0.96 : 1 }],
+        },
+        style,
+      ]}
     >
       <Ionicons name="chevron-back" size={26} color={color} />
-    </YStack>
+    </Pressable>
   );
 }

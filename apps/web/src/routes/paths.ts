@@ -24,6 +24,7 @@ export const paths = {
   contact: '/contact-us',
   faqs: '/faqs',
   privacyPolicy: '/privacy-policy',
+  termsOfUse: '/terms-of-use',
   accountDeletion: '/account-deletion',
   page403: '/error/403',
   page404: '/error/404',

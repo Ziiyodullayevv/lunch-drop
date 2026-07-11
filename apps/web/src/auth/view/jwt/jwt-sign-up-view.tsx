@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import type { MapRef, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewState } from 'react-map-gl/maplibre';
 
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
@@ -33,7 +33,6 @@ import { Form, Field } from 'src/components/hook-form';
 import { Iconify, type IconifyName } from 'src/components/iconify';
 import {
   Map,
-  MapMarker,
   MapControls,
   MapLocateButton,
   type GeolocateCoords,
@@ -105,6 +104,7 @@ function RegisterFlow({
   const [marker, setMarker]       = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [viewState, setViewState] = useState<Partial<ViewState>>({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG, zoom: 12 });
   const [hasLocation, setHasLocation] = useState(false);
+  const [isMapMoving, setIsMapMoving] = useState(false);
   const [addressSearch, setAddressSearch] = useState('');
 
   const step1 = useForm<Step1Values>({ resolver: zodResolver(Step1Schema), defaultValues: { phone: '' } });
@@ -125,13 +125,14 @@ function RegisterFlow({
 
   const { setValue: setStep3Value } = step3;
 
-  const handleMarkerDragEnd = useCallback(
-    (e: MarkerDragEvent) => {
-      const { lat: newLat, lng: newLng } = e.lngLat;
-      setMarker({ latitude: newLat, longitude: newLng });
-      setStep3Value('lat', newLat);
-      setStep3Value('lng', newLng);
+  const handleMapMoveEnd = useCallback(
+    (nextViewState: ViewState) => {
+      const { latitude, longitude } = nextViewState;
+      setMarker({ latitude, longitude });
+      setStep3Value('lat', latitude, { shouldDirty: true, shouldValidate: true });
+      setStep3Value('lng', longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
+      setIsMapMoving(false);
     },
     [setStep3Value]
   );
@@ -169,6 +170,19 @@ function RegisterFlow({
       setActiveStep('otp');
     } catch (err) { setError(getErrorMessage(err)); }
   });
+
+  const openTelegramApp = useCallback(() => {
+    if (!telegramUrl) return;
+    const url = new URL(telegramUrl);
+    const start = url.searchParams.get('start');
+    const username = url.pathname.replace(/^\//, '');
+    const appUrl = `tg://resolve?domain=${encodeURIComponent(username)}${start ? `&start=${encodeURIComponent(start)}` : ''}`;
+
+    window.location.href = appUrl;
+    window.setTimeout(() => {
+      if (document.visibilityState === 'visible') window.location.href = telegramUrl;
+    }, 1200);
+  }, [telegramUrl]);
 
   const verifyOtp = useCallback(
     async (code: string) => {
@@ -235,7 +249,7 @@ function RegisterFlow({
 
   const flowSteps: { key: RegisterStep; label: string; icon: IconifyName }[] = [
     { key: 'phone', label: 'Telefon', icon: 'solar:phone-bold' },
-    { key: 'otp', label: 'SMS', icon: 'solar:shield-check-bold' },
+    { key: 'otp', label: 'Tasdiqlash', icon: 'solar:shield-check-bold' },
     { key: 'personal', label: 'Profil', icon: 'solar:user-rounded-bold' },
     {
       key: 'organization',
@@ -323,18 +337,28 @@ function RegisterFlow({
     <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Stack spacing={1.5}>
+      <Stack
+        spacing={1.5}
+        sx={{
+          px: { xs: 1, sm: 2 },
+          py: 2,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          borderRadius: 2.5,
+          bgcolor: 'background.neutral',
+        }}
+      >
         <Stepper
           activeStep={activeStepIndex}
           alternativeLabel
           sx={{
-            mx: -1,
+            mx: { xs: -1, sm: 0 },
             '& .MuiStepConnector-line': { borderColor: 'divider' },
             '& .MuiStepLabel-label': {
               mt: 0.75,
               typography: 'caption',
               color: 'text.disabled',
               whiteSpace: 'nowrap',
+              display: { xs: 'none', sm: 'block' },
             },
             '& .Mui-active .MuiStepLabel-label': { color: 'text.primary', fontWeight: 700 },
             '& .Mui-completed .MuiStepLabel-label': { color: 'text.secondary' },
@@ -347,8 +371,8 @@ function RegisterFlow({
                   stepIcon: ({ active, completed }) => (
                     <Box
                       sx={{
-                        width: 32,
-                        height: 32,
+                        width: 36,
+                        height: 36,
                         display: 'flex',
                         borderRadius: '50%',
                         alignItems: 'center',
@@ -386,7 +410,7 @@ function RegisterFlow({
           <Stack spacing={2.5}>
             <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
             <Button fullWidth size="large" type="submit" variant="contained" loading={step1.formState.isSubmitting}>
-              SMS kod yuborish
+              Telegram orqali davom etish
             </Button>
           </Stack>
         </Form>
@@ -395,28 +419,69 @@ function RegisterFlow({
       {activeStep === 'otp' && (
         <Form methods={step2} onSubmit={onStep2}>
           <Stack spacing={2.5}>
-            <Typography variant="body2" color="text.secondary">
-              Tasdiqlash kodi uchun Telegram botni oching. Botda{' '}
-              <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                {phone}
-              </Box>{' '}
-              raqamingizni tasdiqlang.
-            </Typography>
-            {telegramUrl && (
-              <Button
-                fullWidth
-                size="large"
-                variant="contained"
-                href={telegramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                startIcon={<Iconify icon="solar:chat-round-dots-bold" />}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{
+                p: 2.5,
+                alignItems: { xs: 'stretch', sm: 'center' },
+                borderRadius: 2.5,
+                border: '1px solid rgba(34, 158, 217, 0.22)',
+                bgcolor: 'rgba(34, 158, 217, 0.07)',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  flexShrink: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: '50%',
+                  color: '#fff',
+                  bgcolor: '#229ED9',
+                  boxShadow: '0 8px 20px rgba(34, 158, 217, 0.24)',
+                }}
               >
-                Telegram orqali kod olish
-              </Button>
-            )}
+                <Iconify width={25} icon="solar:chat-round-dots-bold" />
+              </Box>
+
+              <Stack spacing={0.5} sx={{ flex: 1 }}>
+                <Typography variant="subtitle1">Kod Telegram bot orqali beriladi</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Botni ochib{' '}
+                  <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
+                    {phone}
+                  </Box>{' '}
+                  raqamingizni tasdiqlang.
+                </Typography>
+              </Stack>
+
+              {telegramUrl && (
+                <Button
+                  size="large"
+                  variant="contained"
+                  onClick={openTelegramApp}
+                  startIcon={<Iconify icon="solar:chat-round-dots-bold" />}
+                  sx={{
+                    flexShrink: 0,
+                    bgcolor: '#229ED9',
+                    boxShadow: 'none',
+                    '&:hover': { bgcolor: '#1689C2', boxShadow: 'none' },
+                  }}
+                >
+                  Botni ochish
+                </Button>
+              )}
+            </Stack>
+
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" sx={{ textAlign: 'center' }}>
+                Bot yuborgan 6 xonali kodni kiriting
+              </Typography>
             <Field.Code
               name="code"
+              maxSize={52}
               placeholder=""
               slotProps={{
                 wrapper: { sx: { width: 1 } },
@@ -426,13 +491,15 @@ function RegisterFlow({
                 },
               }}
               sx={{
-                gap: 1,
+                gap: { xs: 0.75, sm: 1.25 },
                 justifyContent: 'center',
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 1.25,
+                  borderRadius: 1.75,
+                  bgcolor: 'background.paper',
                 },
               }}
             />
+            </Stack>
             <Button
               fullWidth
               size="large"
@@ -519,29 +586,94 @@ function RegisterFlow({
                     ref={mapRef}
                     {...viewState}
                     onMove={(evt) => setViewState(evt.viewState)}
-                    sx={{ height: 280, borderRadius: 2, overflow: 'hidden' }}
+                    onMoveStart={() => setIsMapMoving(true)}
+                    onMoveEnd={(evt) => handleMapMoveEnd(evt.viewState)}
+                    sx={{ height: 320, borderRadius: 2.5, overflow: 'hidden' }}
                   >
                     <MapControls hideGeolocate />
-                    <MapMarker
-                      latitude={marker.latitude}
-                      longitude={marker.longitude}
-                      draggable
-                      anchor="bottom"
-                      onDragEnd={handleMarkerDragEnd}
-                      sx={{ color: hasLocation ? '#3B82F6' : '#9CA3AF' }}
-                    />
                   </Map>
+
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      width: 58,
+                      height: 78,
+                      zIndex: 2,
+                      pointerEvents: 'none',
+                      transform: `translate(-50%, ${isMapMoving ? '-108%' : '-100%'})`,
+                      transition: 'transform 160ms ease-out',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: 1,
+                        width: 22,
+                        height: 7,
+                        borderRadius: '50%',
+                        bgcolor: 'rgba(31, 41, 55, 0.20)',
+                        filter: 'blur(2px)',
+                        transform: 'translateX(-50%)',
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: 6,
+                        width: 4,
+                        height: 29,
+                        borderRadius: 4,
+                        bgcolor: '#5B3A78',
+                        border: '1px solid rgba(255,255,255,0.65)',
+                        transform: 'translateX(-50%)',
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: '50%',
+                        width: 58,
+                        height: 58,
+                        display: 'grid',
+                        placeItems: 'center',
+                        borderRadius: '50% 50% 48% 48%',
+                        bgcolor: '#7600FF',
+                        border: '3px solid #FFFFFF',
+                        boxShadow: '0 8px 22px rgba(118, 0, 255, 0.34)',
+                        transform: 'translateX(-50%)',
+                      }}
+                    >
+                      <Box sx={{ width: 13, height: 13, borderRadius: '50%', bgcolor: '#FFFFFF' }} />
+                    </Box>
+                  </Box>
 
                   <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
                 </Box>
 
-                {!hasLocation && (
-                  <Box>
-                    <Typography variant="caption" color="warning.main">
-                      Markerni sudrab oshxona joylashuvini belgilang
-                    </Typography>
-                  </Box>
-                )}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    px: 1.5,
+                    py: 1.25,
+                    alignItems: 'center',
+                    borderRadius: 1.5,
+                    color: hasLocation ? 'success.dark' : 'text.secondary',
+                    bgcolor: hasLocation ? 'success.lighter' : 'background.neutral',
+                  }}
+                >
+                  <Iconify icon={hasLocation ? 'eva:checkmark-fill' : 'mingcute:location-fill'} />
+                  <Typography variant="caption" sx={{ color: 'inherit', fontWeight: 600 }}>
+                    {hasLocation
+                      ? 'Joylashuv belgilandi. Aniqlashtirish uchun xaritani suring.'
+                      : 'Binafsha marker kerakli nuqtada turishi uchun xaritani suring.'}
+                  </Typography>
+                </Stack>
               </Stack>
             )}
 
@@ -600,7 +732,15 @@ export function JwtSignUpView() {
         sx={{ textAlign: { xs: 'center', md: 'left' } }}
       />
 
-      <Box sx={{ mb: 3 }}>
+      <Box
+        sx={{
+          p: 0.75,
+          mb: 3,
+          borderRadius: 2.5,
+          bgcolor: 'background.neutral',
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+        }}
+      >
         <Tabs
           value={tab}
           onChange={(_, v) => {
@@ -609,6 +749,21 @@ export function JwtSignUpView() {
             }
           }}
           variant="fullWidth"
+          sx={{
+            minHeight: 48,
+            '& .MuiTabs-indicator': { display: 'none' },
+            '& .MuiTab-root': {
+              minHeight: 48,
+              borderRadius: 1.75,
+              color: 'text.secondary',
+              transition: (theme) => theme.transitions.create(['background-color', 'color', 'box-shadow']),
+            },
+            '& .Mui-selected': {
+              color: 'text.primary',
+              bgcolor: 'background.paper',
+              boxShadow: '0 6px 18px rgba(20, 26, 33, 0.08)',
+            },
+          }}
         >
           <Tab value="kitchen" label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

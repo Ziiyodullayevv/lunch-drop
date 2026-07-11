@@ -13,6 +13,14 @@ import { otpSchema, type OtpFormValues } from '@/lib/validation';
 import { OtpBoxInput } from '../components/otp-box-input';
 import { useCountdown } from '../hooks/use-countdown';
 
+async function openTelegramApp(url: string) {
+  const match = url.match(/^https:\/\/t\.me\/([^?]+)(?:\?start=(.+))?$/);
+  const appUrl = match
+    ? `tg://resolve?domain=${encodeURIComponent(match[1])}${match[2] ? `&start=${encodeURIComponent(decodeURIComponent(match[2]))}` : ''}`
+    : url;
+  await Linking.openURL(appUrl).catch(() => Linking.openURL(url));
+}
+
 export function VerifyOtpScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ phone?: string; expiresIn?: string; telegramUrl?: string }>();
@@ -111,7 +119,7 @@ export function VerifyOtpScreen() {
           alignItems="center"
           justifyContent="center"
           pressStyle={{ opacity: 0.85, scale: 0.98 }}
-          onPress={() => void Linking.openURL(telegramUrl)}
+          onPress={() => void openTelegramApp(telegramUrl)}
         >
           <Text fontFamily="$heading" fontSize="$4" fontWeight="700" color="#FFFFFF">
             Telegram orqali kod olish
@@ -166,7 +174,7 @@ export function VerifyOtpScreen() {
             onPress={async () => {
               const response = await auth.requestOtp.mutateAsync(phone);
               countdown.reset();
-              if (response.telegramUrl) void Linking.openURL(response.telegramUrl);
+              if (response.telegramUrl) void openTelegramApp(response.telegramUrl);
             }}
             pressStyle={{ opacity: 0.7 }}
             animation="quick"

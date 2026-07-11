@@ -9,14 +9,14 @@ import {
 } from "@expo-google-fonts/nunito-sans";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { NativeModules, Platform, useColorScheme, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Appearance, View } from "react-native";
 
 import { AppProviders } from "@/components/app-providers";
-import { LaunchSplash } from "@/components/launch-splash";
-
-const ANDROID_MIN_SPLASH_MS = 1300;
+Appearance.setColorScheme("light");
+void SplashScreen.preventAutoHideAsync();
 
 // Expo Go SDK 53+ does not support remote push notifications — must use development build
 const isExpoGo = Constants.executionEnvironment === "storeClient";
@@ -37,10 +37,6 @@ if (Notifications) {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [launchSplashFinished, setLaunchSplashFinished] = useState(false);
-  const appStartedAt = useRef(Date.now());
-  const nativeSplashHidden = useRef(false);
   const [fontsLoaded] = useFonts({
     Fredoka_700Bold,
     NunitoSans_400Regular,
@@ -60,44 +56,14 @@ export default function RootLayout() {
     };
   }, []);
 
-  const finishLaunchSplash = useCallback(() => {
-    setLaunchSplashFinished(true);
-  }, []);
-
-  const handleLaunchSplashReady = useCallback(() => {
-    if (nativeSplashHidden.current) return;
-
-    nativeSplashHidden.current = true;
-    requestAnimationFrame(() => {
-      if (Platform.OS === "android") {
-        NativeModules.LunchDropSplash?.hide?.();
-      }
-    });
-  }, []);
-
   useEffect(() => {
-    if (Platform.OS !== "android" || !fontsLoaded || nativeSplashHidden.current) return;
-
-    const elapsed = Date.now() - appStartedAt.current;
-    const delay = Math.max(0, ANDROID_MIN_SPLASH_MS - elapsed);
-    const timer = setTimeout(() => {
-      requestAnimationFrame(() => {
-        NativeModules.LunchDropSplash?.hide?.();
-        nativeSplashHidden.current = true;
-        setLaunchSplashFinished(true);
-      });
-    }, delay);
-
-    return () => clearTimeout(timer);
+    if (fontsLoaded) void SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
-  const useNativeAnimatedSplash = Platform.OS === "android";
-  const showLaunchSplash =
-    !useNativeAnimatedSplash && (!fontsLoaded || !launchSplashFinished);
+  if (!fontsLoaded) return null;
 
   return (
-    <View style={{ flex: 1 }}>
-      {fontsLoaded ? (
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
         <AppProviders>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
@@ -118,22 +84,8 @@ export default function RootLayout() {
               }}
             />
           </Stack>
-          <StatusBar
-            style={
-              showLaunchSplash || colorScheme !== "dark" ? "dark" : "light"
-            }
-          />
+          <StatusBar style="dark" backgroundColor="#FFFFFF" translucent={false} />
         </AppProviders>
-      ) : (
-        <StatusBar style="dark" />
-      )}
-      {showLaunchSplash ? (
-        <LaunchSplash
-          onFinish={finishLaunchSplash}
-          onReady={handleLaunchSplashReady}
-          readyToFinish={fontsLoaded}
-        />
-      ) : null}
     </View>
   );
 }

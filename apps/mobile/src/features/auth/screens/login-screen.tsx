@@ -8,7 +8,7 @@ import { Input, Spinner, Text, XStack, YStack } from "tamagui";
 
 import { useCustomAlert } from "@/components/ui/custom-alert";
 import { useAuth } from "@/hooks/use-auth";
-import { openPrivacyPolicy, openSupportBot } from "@/lib/support";
+import { openPrivacyPolicy, openSupportBot, openTermsOfUse } from "@/lib/support";
 import { phoneSchema, type PhoneFormValues } from "@/lib/validation";
 import { CountryCodeButton } from "../components/country-code-button";
 
@@ -211,9 +211,29 @@ export function LoginScreen() {
             fontSize="$3"
             color="#8E8E93"
             textAlign="center"
-            onPress={() => void openPrivacyPolicy()}
+            lineHeight={20}
           >
-            Maxfiylik siyosati
+            Davom etish orqali{' '}
+            <Text
+              fontFamily="$body"
+              fontSize="$3"
+              color="#1C252E"
+              textDecorationLine="underline"
+              onPress={() => void openPrivacyPolicy()}
+            >
+              Maxfiylik siyosati
+            </Text>{' '}
+            va{' '}
+            <Text
+              fontFamily="$body"
+              fontSize="$3"
+              color="#1C252E"
+              textDecorationLine="underline"
+              onPress={() => void openTermsOfUse()}
+            >
+              Foydalanish shartlariga
+            </Text>{' '}
+            rozilik bildirasiz.
           </Text>
         </YStack>
       </YStack>

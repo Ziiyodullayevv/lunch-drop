@@ -1,11 +1,15 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated as RNAnimated, Modal, Platform, RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
+import ReAnimated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, XStack, YStack } from 'tamagui';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { HeaderBackButton } from '@/components/common/header-back-button';
+import { ILLUSTRATIONS } from '@/constants/illustrations';
 import { listNotifications, markAllRead, markNotificationRead } from '@/lib/api/notifications';
 import type { NotificationItem } from '@/lib/api/notifications';
 
@@ -267,6 +271,7 @@ function NotificationDetailsSheet({
 }
 
 export default function NotificationsScreen() {
+  const queryClient = useQueryClient();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -296,12 +301,26 @@ export default function NotificationsScreen() {
     if (item.is_read) return;
     const id = item.id;
     setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-    try { await markNotificationRead(id); } catch { /* ignore */ }
+    queryClient.setQueryData<number>(['notifications', 'unread-count'], (count = 0) => Math.max(0, count - 1));
+    try {
+      await markNotificationRead(id);
+    } catch {
+      setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: false } : n));
+      await queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+    }
   };
 
   const handleMarkAllRead = async () => {
+    const previousUnread = queryClient.getQueryData<number>(['notifications', 'unread-count']);
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    try { await markAllRead(); } catch { /* ignore */ }
+    queryClient.setQueryData(['notifications', 'unread-count'], 0);
+    try {
+      await markAllRead();
+    } catch {
+      await fetchData();
+      queryClient.setQueryData(['notifications', 'unread-count'], previousUnread ?? 0);
+      await queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+    }
   };
 
   const handleBack = () => {
@@ -318,7 +337,7 @@ export default function NotificationsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
         {/* Header */}
-        <XStack alignItems="center" paddingHorizontal={12} paddingTop={6} paddingBottom={10} height={56}>
+        <XStack alignItems="center" paddingHorizontal={8} paddingTop={6} paddingBottom={6} height={56} position="relative">
           <HeaderBackButton onPress={handleBack} />
           <Text fontFamily="$heading"
             color="$color"
@@ -355,12 +374,22 @@ export default function NotificationsScreen() {
 
         {/* Content */}
         {!loading && items.length === 0 ? (
-          <YStack flex={1} alignItems="center" justifyContent="center" gap={12}>
-            <MaterialCommunityIcons name="bell-off-outline" size={56} color="#C7C7CC" />
-            <Text fontFamily="$heading" fontSize={18} fontWeight="700" color="#1C1C1E">{"Bildirishnomalar yo'q"}</Text>
-            <Text fontSize={14} color="#8E8E93" textAlign="center" paddingHorizontal={40} lineHeight={20}>
-              {"Yangi bildirishnomalar bu yerda ko'rinadi"}
-            </Text>
+          <YStack flex={1} alignItems="center" justifyContent="flex-start" paddingTop={60} gap={12}>
+            <ReAnimated.View entering={FadeInDown.delay(150).duration(600).easing(Easing.out(Easing.cubic))}>
+              <Image
+                source={ILLUSTRATIONS.pageNotFoundClean}
+                style={{ width: 320, height: 240 }}
+                contentFit="contain"
+              />
+            </ReAnimated.View>
+            <ReAnimated.View entering={FadeInDown.delay(150).duration(600).easing(Easing.out(Easing.cubic))}>
+              <Text fontFamily="$heading" fontSize={18} fontWeight="700" color="#1C1C1E">{"Bildirishnomalar yo'q"}</Text>
+            </ReAnimated.View>
+            <ReAnimated.View entering={FadeInDown.delay(200).duration(600).easing(Easing.out(Easing.cubic))}>
+              <Text fontSize={14} color="#8E8E93" textAlign="center" paddingHorizontal={40} lineHeight={20}>
+                {"Yangi bildirishnomalar bu yerda ko'rinadi"}
+              </Text>
+            </ReAnimated.View>
           </YStack>
         ) : (
           <ScrollView

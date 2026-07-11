@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Platform, RefreshControl, ScrollView, TouchableOpacity, useColorScheme, useWindowDimensions, View } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshControl, ScrollView, TouchableOpacity, useColorScheme, useWindowDimensions, View } from "react-native";
 import Animated, {
 	Easing,
 	Extrapolation,
@@ -32,6 +32,9 @@ import type { MenuItem } from "@/types/domain";
 
 const AnimatedFlatList = Animated.FlatList<MenuItem>;
 const COLLAPSE_DISTANCE = 70;
+const BRAND_ROW_HEIGHT = 62;
+const DAY_ROW_HEIGHT = 43;
+const DAY_ROW_HORIZONTAL_PADDING = 16;
 const ACCENT = '#00A76F';
 const LAUNCH_DROP_LOGO = require('@/assets/images/launch-drop-logo-gradient-80.svg');
 const TAB_BAR_HEIGHT = 49;
@@ -90,12 +93,17 @@ export default function HomeScreen() {
 	const [selectedDay, setSelectedDay] = useState<number>(getTashkentWeekday);
 	const { items, isLoading, error, refetch } = useAllFoodItems(selectedDay);
 	const { activeOrder } = useActiveOrder();
-	const { data: unreadCount = 0 } = useQuery({
+	const { data: unreadCount = 0, refetch: refetchUnreadCount } = useQuery({
 		queryKey: ['notifications', 'unread-count'],
 		queryFn: getUnreadCount,
 		staleTime: 30_000,
 		refetchInterval: 60_000,
 	});
+	useFocusEffect(
+		useCallback(() => {
+			void refetchUnreadCount();
+		}, [refetchUnreadCount]),
+	);
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
 	const { height: windowHeight } = useWindowDimensions();
@@ -104,8 +112,8 @@ export default function HomeScreen() {
 		items.map((item) => item.kitchenName).filter(Boolean)
 	)].join(', ') || 'Oshxonangiz';
 
-	const isAndroid = Platform.OS === 'android';
 	const scrollY = useSharedValue(0);
+	const expandedHeaderHeight = insets.top + 6 + BRAND_ROW_HEIGHT + DAY_ROW_HEIGHT;
 	const hasFloatingCart = cartSubtotal > 0 && accountStatus === 'approved';
 	const bottomScrollPadding =
 		insets.bottom +
@@ -119,54 +127,50 @@ export default function HomeScreen() {
 		},
 	});
 
-	const BRAND_ROW_HEIGHT = 58;
-
-	const brandRowContainerStyle = useAnimatedStyle(() => {
-		const height = interpolate(
-			scrollY.value,
-			[0, COLLAPSE_DISTANCE],
-			[BRAND_ROW_HEIGHT, 0],
-			Extrapolation.CLAMP,
-		);
-		const marginBottom = interpolate(
-			scrollY.value,
-			[0, COLLAPSE_DISTANCE],
-			[4, 0],
-			Extrapolation.CLAMP,
-		);
-		return { height, marginBottom, overflow: "hidden" };
-	});
-
 	const brandRowStyle = useAnimatedStyle(() => {
-		const translateY = interpolate(
+		const translateY = Math.round(interpolate(
 			scrollY.value,
 			[0, COLLAPSE_DISTANCE],
 			[0, -BRAND_ROW_HEIGHT],
 			Extrapolation.CLAMP,
+		));
+		const opacity = interpolate(
+			scrollY.value,
+			[0, COLLAPSE_DISTANCE * 0.72],
+			[1, 0],
+			Extrapolation.CLAMP,
 		);
-		return { transform: [{ translateY }] };
+		return { opacity, transform: [{ translateY }] };
 	});
 
-	const headerShadowStyle = useAnimatedStyle(() => {
-		const progress = interpolate(
+	const dayRowStyle = useAnimatedStyle(() => ({
+		transform: [{
+			translateY: Math.round(interpolate(
+				scrollY.value,
+				[0, COLLAPSE_DISTANCE],
+				[0, -BRAND_ROW_HEIGHT],
+				Extrapolation.CLAMP,
+			)),
+		}],
+	}));
+
+	const headerBackdropStyle = useAnimatedStyle(() => ({
+		height: Math.round(interpolate(
+			scrollY.value,
+			[0, COLLAPSE_DISTANCE],
+			[expandedHeaderHeight, insets.top + 6 + DAY_ROW_HEIGHT],
+			Extrapolation.CLAMP,
+		)),
+	}));
+
+	const headerDividerStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(
 			scrollY.value,
 			[COLLAPSE_DISTANCE * 0.8, COLLAPSE_DISTANCE],
 			[0, 1],
 			Extrapolation.CLAMP,
-		);
-		const borderRadius = interpolate(
-			scrollY.value,
-			[0, COLLAPSE_DISTANCE],
-			[24, 0],
-			Extrapolation.CLAMP,
-		);
-		return {
-			shadowOpacity: progress * 0.09,
-			elevation: isAndroid ? progress * 3 : progress * 5,
-			borderBottomLeftRadius: borderRadius,
-			borderBottomRightRadius: borderRadius,
-		};
-	});
+		),
+	}));
 
 
 	const [refreshing, setRefreshing] = useState(false);
@@ -191,9 +195,10 @@ export default function HomeScreen() {
 	};
 
 	const handleTabLayout = (index: number, x: number, width: number) => {
-		tabLayouts.current[index] = { x, width };
+		const indicatorPosition = x + DAY_ROW_HORIZONTAL_PADDING;
+		tabLayouts.current[index] = { x: indicatorPosition, width };
 		if (!indicatorReady.current && DAYS[index].key === selectedDay) {
-			indicatorX.value = x;
+			indicatorX.value = indicatorPosition;
 			indicatorWidth.value = width;
 			indicatorReady.current = true;
 		}
@@ -208,7 +213,7 @@ export default function HomeScreen() {
 	const renderBody = () => {
 		if (isPending) {
 			return (
-				<YStack flex={1} alignItems="center" justifyContent="flex-start" paddingTop={60} gap={12} paddingHorizontal={32}>
+				<YStack flex={1} alignItems="center" justifyContent="flex-start" paddingTop={expandedHeaderHeight + 60} gap={12} paddingHorizontal={32}>
 					<Animated.View entering={FadeInDown.delay(150).duration(600).easing(Easing.out(Easing.cubic))}>
 						<Image
 							source={ILLUSTRATIONS.seo}
@@ -234,7 +239,7 @@ export default function HomeScreen() {
 				<ScrollView
 					contentContainerStyle={{
 						paddingHorizontal: 16,
-						paddingTop: 14,
+						paddingTop: expandedHeaderHeight + 14,
 						paddingBottom: bottomScrollPadding,
 						gap: 22,
 					}}
@@ -272,8 +277,8 @@ export default function HomeScreen() {
 				onScroll={onScroll}
 				scrollEventThrottle={16}
 				contentContainerStyle={{
-					paddingHorizontal: 16,
-					paddingTop: 14,
+					paddingHorizontal: DAY_ROW_HORIZONTAL_PADDING,
+					paddingTop: expandedHeaderHeight + 14,
 					paddingBottom: bottomScrollPadding,
 					gap: 22,
 					minHeight: windowHeight + COLLAPSE_DISTANCE,
@@ -313,21 +318,40 @@ export default function HomeScreen() {
 	return (
 		<View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#FFFFFF' }}>
 			{/* ─── Header ─── */}
-			<Animated.View
-				style={[{
-					backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+			<View
+				pointerEvents="box-none"
+				style={{
+					position: 'absolute',
+					top: 0,
+					left: 0,
+					right: 0,
+					height: expandedHeaderHeight,
 					paddingHorizontal: 16,
 					paddingTop: insets.top + 6,
-					paddingBottom: 0,
-					shadowColor: '#000',
-					shadowOffset: { width: 0, height: 4 },
-					shadowRadius: 8,
 					zIndex: 10,
-				}, headerShadowStyle]}
+				}}
 			>
+				<Animated.View
+					pointerEvents="none"
+					style={[headerBackdropStyle, {
+						position: 'absolute',
+						top: 0,
+						left: 0,
+						right: 0,
+						backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+					}]}
+				/>
 				{/* Brand row + Bell */}
-				<Animated.View style={brandRowContainerStyle}>
-					<Animated.View style={[brandRowStyle, { flexDirection: 'row', alignItems: 'center' }]}>
+				<Animated.View renderToHardwareTextureAndroid style={[brandRowStyle, {
+					position: 'absolute',
+					top: insets.top + 6,
+					left: 16,
+					right: 16,
+					height: BRAND_ROW_HEIGHT,
+					backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+					flexDirection: 'row',
+					alignItems: 'center',
+				}]}>
 						<XStack alignItems="center" gap={12} paddingVertical={4} flex={1}>
 							<Image
 								source={LAUNCH_DROP_LOGO}
@@ -386,11 +410,18 @@ export default function HomeScreen() {
 								</View>
 							)}
 						</TouchableOpacity>
-					</Animated.View>
 				</Animated.View>
 
 				{/* Day selector */}
-				<View style={{ position: 'relative' }}>
+				<Animated.View renderToHardwareTextureAndroid style={[dayRowStyle, {
+					position: 'absolute',
+					top: insets.top + 6 + BRAND_ROW_HEIGHT,
+					left: 0,
+					right: 0,
+					height: DAY_ROW_HEIGHT,
+					paddingHorizontal: DAY_ROW_HORIZONTAL_PADDING,
+					backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+				}]}>
 					<View style={{ flexDirection: 'row' }}>
 						{DAYS.map((day, index) => {
 							const active = selectedDay === day.key;
@@ -430,8 +461,19 @@ export default function HomeScreen() {
 								backgroundColor: ACCENT,
 							}, indicatorStyle]}
 						/>
-					</View>
-			</Animated.View>
+					<Animated.View
+						pointerEvents="none"
+						style={[headerDividerStyle, {
+							position: 'absolute',
+							left: 0,
+							right: 0,
+							bottom: -1,
+							height: 1,
+							backgroundColor: 'rgba(0,0,0,0.08)',
+						}]}
+					/>
+				</Animated.View>
+			</View>
 
 			{/* ─── Body ─── */}
 			{renderBody()}

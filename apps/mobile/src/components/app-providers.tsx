@@ -1,7 +1,7 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
-import { Text as RNText, TextInput as RNTextInput, useColorScheme } from 'react-native';
+import { Text as RNText, TextInput as RNTextInput } from 'react-native';
 import { Input as TamaguiInput, TamaguiProvider, Text as TamaguiText } from 'tamagui';
 
 import { CustomAlertProvider } from '@/components/ui/custom-alert';
@@ -33,13 +33,10 @@ TamaguiInput.defaultProps = {
 };
 
 export function AppProviders({ children }: PropsWithChildren) {
-  const colorScheme = useColorScheme();
-  const themeName = colorScheme === 'dark' ? 'dark' : 'light';
-
   return (
-    <TamaguiProvider config={tamaguiConfig} defaultTheme={themeName}>
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={themeName === 'dark' ? DarkTheme : DefaultTheme}>
+        <ThemeProvider value={DefaultTheme}>
           <CustomAlertProvider>
             {children}
           </CustomAlertProvider>

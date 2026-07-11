@@ -6,13 +6,15 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon2.png",
     "scheme": "lunchdrop",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFFFFF",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.lunchdrop.mobile"
     },
     "android": {
       "package": "com.lunchdrop.mobile",
+      "userInterfaceStyle": "light",
       "predictiveBackGestureEnabled": false,
       "permissions": ["android.permission.RECORD_AUDIO"]
     },
@@ -39,20 +41,24 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
-          "image": "./assets/images/splash.png",
-          "imageWidth": 220,
+          "image": "./assets/images/icon2.png",
+          "imageWidth": 280,
           "ios": {
             "backgroundColor": "#FFFFFF"
           },
           "android": {
             "backgroundColor": "#FFFFFF",
-            "image": "./assets/images/splash.png",
-            "imageWidth": 220
+            "image": "./assets/images/icon2.png",
+            "imageWidth": 280
           }
         }
-      ],
-      "./plugins/withNativeAnimatedSplash"
+      ]
     ],
+    "androidStatusBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content",
+      "translucent": false
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
