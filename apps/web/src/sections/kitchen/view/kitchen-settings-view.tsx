@@ -1,7 +1,7 @@
 'use client';
 
 import type { Dayjs } from 'dayjs';
-import type { MapRef, ViewState, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewState } from 'react-map-gl/maplibre';
 
 import dayjs from 'dayjs';
 import { useRef, useState, useEffect, useCallback } from 'react';
@@ -25,8 +25,8 @@ import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
   Map,
-  MapMarker,
   MapControls,
+  MapCenterPin,
   MapLocateButton,
   type GeolocateCoords,
   MapAddressAutocomplete,
@@ -67,6 +67,7 @@ export function KitchenSettingsView() {
   } | null>(null);
 
   const [locationDirty, setLocationDirty] = useState(false);
+  const [isMapMoving, setIsMapMoving] = useState(false);
   const [addressSearch, setAddressSearch] = useState('');
   const [marker, setMarker] = useState({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
   const [viewState, setViewState] = useState<Partial<ViewState>>({
@@ -131,9 +132,9 @@ export function KitchenSettingsView() {
     }
   };
 
-  const handleMarkerDragEnd = useCallback((e: MarkerDragEvent) => {
-    const { lat, lng } = e.lngLat;
-    setMarker({ lat, lng });
+  const handleMapMoveEnd = useCallback((nextViewState: ViewState) => {
+    setIsMapMoving(false);
+    setMarker({ lat: nextViewState.latitude, lng: nextViewState.longitude });
     setLocationDirty(true);
   }, []);
 
@@ -315,18 +316,14 @@ export function KitchenSettingsView() {
                 ref={mapRef}
                 {...viewState}
                 onMove={(evt) => setViewState(evt.viewState)}
+                onMoveStart={() => setIsMapMoving(true)}
+                onMoveEnd={(evt) => handleMapMoveEnd(evt.viewState)}
                 sx={{ height: 300, borderRadius: 2, overflow: 'hidden' }}
               >
                 <MapControls hideGeolocate />
-                <MapMarker
-                  latitude={marker.lat}
-                  longitude={marker.lng}
-                  draggable
-                  anchor="bottom"
-                  onDragEnd={handleMarkerDragEnd}
-                  sx={{ color: '#FF416D' }}
-                />
               </Map>
+
+              <MapCenterPin moving={isMapMoving} />
 
               <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
             </Box>
