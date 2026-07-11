@@ -7,8 +7,8 @@ import { m } from 'framer-motion';
 import { useCallback } from 'react';
 import { usePopover } from 'minimal-shared/hooks';
 
-import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
+import MenuList from '@mui/material/MenuList';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 
@@ -43,7 +43,7 @@ export function LanguagePopover({ data = [], sx, ...other }: LanguagePopoverProp
 
   const renderMenuList = () => (
     <CustomPopover open={open} anchorEl={anchorEl} onClose={onClose}>
-      <Box sx={{ p: 1, width: 280 }}>
+      <MenuList sx={{ p: 1, width: 280 }}>
         {data?.map((option) => (
           <MenuItem
             key={option.value}
@@ -61,7 +61,7 @@ export function LanguagePopover({ data = [], sx, ...other }: LanguagePopoverProp
             <Typography variant="body1" sx={{ fontWeight: 'inherit' }}>{option.label}</Typography>
           </MenuItem>
         ))}
-      </Box>
+      </MenuList>
     </CustomPopover>
   );
 
