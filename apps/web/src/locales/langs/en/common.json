@@ -44,6 +44,18 @@
     "loadError": "Failed to load employees",
     "searchPlaceholder": "Name or phone number..."
   },
+  "home": {
+    "hero": {
+      "management": "Meal management",
+      "withLunchDrop": "with Lunch Drop",
+      "description": "We connect companies, kitchens, and employees in one system.\nEvery step from ordering to delivery stays fully under control.",
+      "platform": "One platform for companies, kitchens, and employees",
+      "android": "For Android",
+      "ios": "For iOS",
+      "download": "Download",
+      "forWho": "Who is it for?"
+    }
+  },
   "mainNav": {
     "home": "Home",
     "features": "Features",

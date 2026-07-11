@@ -12,6 +12,8 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
+import { useTranslate } from 'src/locales';
+
 import { Iconify } from 'src/components/iconify';
 import { varFade, MotionContainer } from 'src/components/animate';
 
@@ -28,6 +30,7 @@ const motionProps: MotionProps = {
 };
 
 export function HomeHero({ sx, ...other }: BoxProps) {
+  const { t } = useTranslate();
   const scrollProgress = useScrollPercent();
 
   const mdUp = useMediaQuery((theme) => theme.breakpoints.up(mdKey));
@@ -68,7 +71,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
         ]}
       >
         <Box component="span" sx={{ width: 1, opacity: 0.24 }}>
-          Ovqat boshqaruvi
+          {t('home.hero.management')}
         </Box>
         <Box
           component={m.span}
@@ -89,7 +92,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
             }),
           ]}
         >
-          Lunch Drop bilan
+          {t('home.hero.withLunchDrop')}
         </Box>
       </Box>
     </m.div>
@@ -107,7 +110,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           }),
         ]}
       >
-        {`Kompaniyalar, oshxonalar va xodimlarni yagona tizimda bog‘laymiz. \nBuyurtmadan yetkazib berishgacha bo‘lgan jarayon to‘liq nazoratda.`}
+        {t('home.hero.description')}
       </Typography>
     </m.div>
   );
@@ -125,7 +128,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
         }}
       >
         <Iconify width={24} icon="solar:verified-check-bold" color="primary.main" />
-        Kompaniya, oshxona va xodim uchun yagona platforma
+        {t('home.hero.platform')}
       </Box>
     </m.div>
   );
@@ -149,7 +152,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           sx={{ height: 52, minWidth: 200 }}
         >
           <span>
-            Android uchun
+            {t('home.hero.android')}
             <Box
               component="small"
               sx={[
@@ -163,7 +166,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
                 }),
               ]}
             >
-              Yuklab olish
+              {t('home.hero.download')}
             </Box>
           </span>
         </Button>
@@ -179,7 +182,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           sx={{ height: 52, minWidth: 200, borderColor: 'currentColor' }}
         >
           <span>
-            iOS uchun
+            {t('home.hero.ios')}
             <Box
               component="small"
               sx={[
@@ -193,7 +196,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
                 }),
               ]}
             >
-              Yuklab olish
+              {t('home.hero.download')}
             </Box>
           </span>
         </Button>
@@ -205,7 +208,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
     <Stack spacing={3} sx={{ textAlign: 'center' }}>
       <m.div {...motionProps}>
         <Typography variant="overline" sx={{ opacity: 0.4 }}>
-          Kimlar uchun?
+          {t('home.hero.forWho')}
         </Typography>
       </m.div>
 
@@ -219,9 +222,9 @@ export function HomeHero({ sx, ...other }: BoxProps) {
       >
         {(
           [
-            { label: 'Kompaniyalar', icon: 'solar:case-minimalistic-bold' },
-            { label: 'Oshxonalar', icon: 'solar:tea-cup-bold' },
-            { label: 'Xodimlar', icon: 'solar:users-group-rounded-bold-duotone' },
+            { label: t('navigation.companies'), icon: 'solar:case-minimalistic-bold' },
+            { label: t('navigation.kitchens'), icon: 'solar:tea-cup-bold' },
+            { label: t('navigation.employees'), icon: 'solar:users-group-rounded-bold-duotone' },
           ] as const
         ).map((item) => (
           <m.div {...motionProps} key={item.label}>

@@ -44,6 +44,18 @@
     "loadError": "Xodimlarni yuklashda xatolik",
     "searchPlaceholder": "Ism yoki telefon raqami..."
   },
+  "home": {
+    "hero": {
+      "management": "Ovqat boshqaruvi",
+      "withLunchDrop": "Lunch Drop bilan",
+      "description": "Kompaniyalar, oshxonalar va xodimlarni yagona tizimda bog‘laymiz.\nBuyurtmadan yetkazib berishgacha bo‘lgan jarayon to‘liq nazoratda.",
+      "platform": "Kompaniya, oshxona va xodim uchun yagona platforma",
+      "android": "Android uchun",
+      "ios": "iOS uchun",
+      "download": "Yuklab olish",
+      "forWho": "Kimlar uchun?"
+    }
+  },
   "mainNav": {
     "home": "Bosh sahifa",
     "features": "Imkoniyatlar",
