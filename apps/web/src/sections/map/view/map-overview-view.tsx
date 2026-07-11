@@ -85,6 +85,7 @@ type Branch = {
   lat: number | null;
   lng: number | null;
   connected_to_kitchen?: boolean;
+  connected_kitchen_names?: string[];
 };
 
 type MarkerItem =
@@ -226,6 +227,12 @@ function BranchPopupCard({
   companies: Company[];
 }) {
   const company = companies.find((item) => item.id === branch.company_id);
+  const connectedKitchenNames = branch.connected_kitchen_names ?? [];
+  const connectionLabel = connectedKitchenNames.length
+    ? `${connectedKitchenNames.join(', ')} bilan hamkor`
+    : branch.connected_to_kitchen
+      ? 'Hamkor filial'
+      : 'Ulanmagan filial';
 
   return (
     <Stack spacing={1.75} sx={{ width: 1, minWidth: 0, maxWidth: 1, overflow: 'hidden' }}>
@@ -246,7 +253,7 @@ function BranchPopupCard({
             {branch.name}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {branch.connected_to_kitchen ? 'Hamkor filial' : 'Ulanmagan filial'}
+            {connectionLabel}
           </Typography>
         </Box>
       </Stack>
@@ -305,7 +312,11 @@ function BranchPopupCard({
           variant="caption"
           sx={{ minWidth: 0, color: 'inherit', fontWeight: 700, whiteSpace: 'normal' }}
         >
-          {branch.connected_to_kitchen ? 'Oshxonaga ulangan' : 'Hamkorlik mavjud emas'}
+          {branch.connected_to_kitchen
+            ? connectedKitchenNames.length
+              ? `${connectedKitchenNames.join(', ')} oshxonasiga ulangan`
+              : 'Oshxonaga ulangan'
+            : 'Hamkorlik mavjud emas'}
         </Typography>
       </Stack>
     </Stack>
@@ -362,8 +373,25 @@ export function MapOverviewView() {
           fetchCompanyKitchenCatalog(),
         ]);
 
+        const connectedKitchensByBranch = new globalThis.Map<string, string[]>();
+        catalog.kitchens.forEach((kitchen) => {
+          kitchen.connected_branch_ids.forEach((branchId) => {
+            const kitchenNames = connectedKitchensByBranch.get(branchId) ?? [];
+            connectedKitchensByBranch.set(branchId, [...kitchenNames, kitchen.name]);
+          });
+        });
+
         setCompanies([companyResponse.data]);
-        setBranches(catalog.branches);
+        setBranches(
+          catalog.branches.map((branch) => {
+            const connectedKitchenNames = connectedKitchensByBranch.get(branch.id) ?? [];
+            return {
+              ...branch,
+              connected_to_kitchen: connectedKitchenNames.length > 0,
+              connected_kitchen_names: connectedKitchenNames,
+            };
+          })
+        );
         setKitchens(catalog.kitchens.filter((kitchen) => kitchen.is_active));
         return;
       }
