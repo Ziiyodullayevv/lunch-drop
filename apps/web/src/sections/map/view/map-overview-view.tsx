@@ -1,9 +1,9 @@
 'use client';
 
-import type { MarkerEvent } from 'react-map-gl/maplibre';
 import type { SelectChangeEvent } from '@mui/material/Select';
+import type { MapRef, MarkerEvent } from 'react-map-gl/maplibre';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -14,9 +14,11 @@ import Avatar from '@mui/material/Avatar';
 import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
+import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
 import FormControl from '@mui/material/FormControl';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
@@ -87,6 +89,15 @@ type Branch = {
 type MarkerItem =
   | { kind: 'kitchen'; data: Kitchen }
   | { kind: 'branch'; data: Branch };
+type PopupAnchor =
+  | 'top'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom'
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'left'
+  | 'right';
 
 type PageResponse<T> = {
   items: T[];
@@ -126,13 +137,13 @@ async function fetchAllItems<T>(url: string): Promise<T[]> {
 
 function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
   return (
-    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 220 }}>
+    <Stack spacing={1.25} sx={{ p: 0.5, width: { xs: 1, sm: 270 } }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
         <Avatar sx={{ width: 40, height: 40, bgcolor: C_KITCHEN }}>
           {kitchen.name[0]}
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 165 }}>
+          <Typography variant="subtitle1" noWrap>
             {kitchen.name}
           </Typography>
           <Chip
@@ -175,7 +186,7 @@ function BranchPopupCard({
   const company = companies.find((item) => item.id === branch.company_id);
 
   return (
-    <Stack spacing={1.5} sx={{ p: 0.5, minWidth: 220 }}>
+    <Stack spacing={1.25} sx={{ p: 0.5, width: { xs: 1, sm: 280 } }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
         <Avatar
           sx={{
@@ -189,7 +200,7 @@ function BranchPopupCard({
           {branch.name[0]}
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle2" noWrap sx={{ maxWidth: 165 }}>
+          <Typography variant="subtitle1" noWrap>
             {branch.name}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -206,7 +217,7 @@ function BranchPopupCard({
           width={14}
           sx={{ mt: 0.25, color: 'text.secondary' }}
         />
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
           {branch.address}
         </Typography>
       </Stack>
@@ -241,6 +252,8 @@ function BranchPopupCard({
 // ----------------------------------------------------------------------
 
 export function MapOverviewView() {
+  const mapRef = useRef<MapRef | null>(null);
+  const isCompactMap = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { user } = useAuthContext();
   const role = user?.role as UserRole | undefined;
   const isSuperAdmin = role === 'super_admin';
@@ -258,6 +271,7 @@ export function MapOverviewView() {
   const [kitchenFilter, setKitchenFilter] = useState('');
   const [selected, setSelected] = useState<MarkerItem | null>(null);
   const [popupCoords, setPopupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [popupAnchor, setPopupAnchor] = useState<PopupAnchor>('bottom');
 
   const fetchData = useCallback(async () => {
     if (!role) return;
@@ -389,6 +403,18 @@ export function MapOverviewView() {
   const handleMarkerClick = useCallback(
     (event: MarkerEvent<MouseEvent>, item: MarkerItem, lat: number, lng: number) => {
       event.originalEvent.stopPropagation();
+      const map = mapRef.current;
+      if (map) {
+        const point = map.project([lng, lat]);
+        const canvas = map.getCanvas();
+        const vertical = point.y < 230 ? 'top' : point.y > canvas.clientHeight - 230 ? 'bottom' : '';
+        const horizontal = point.x < 310 ? 'left' : point.x > canvas.clientWidth - 310 ? 'right' : '';
+        setPopupAnchor(
+          (vertical && horizontal
+            ? `${vertical}-${horizontal}`
+            : vertical || horizontal || 'bottom') as PopupAnchor
+        );
+      }
       setSelected(item);
       setPopupCoords({ lat, lng });
     },
@@ -528,6 +554,7 @@ export function MapOverviewView() {
         ) : (
           <Box sx={{ position: 'relative' }}>
             <Map
+              ref={mapRef}
               initialViewState={DEFAULT_VIEW}
               mapStyle={MAP_STYLES.light}
               sx={{ height: { xs: 500, md: 680 } }}
@@ -576,7 +603,7 @@ export function MapOverviewView() {
                 />
               ))}
 
-              {selected && popupCoords && (
+              {selected && popupCoords && !isCompactMap && (
                 <MapPopup
                   latitude={popupCoords.lat}
                   longitude={popupCoords.lng}
@@ -585,6 +612,25 @@ export function MapOverviewView() {
                     setPopupCoords(null);
                   }}
                   closeOnClick={false}
+                  anchor={popupAnchor}
+                  offset={18}
+                  maxWidth="320px"
+                  sx={{
+                    '& .maplibregl-popup-content': {
+                      p: 2,
+                      borderRadius: 1.5,
+                      boxShadow: '0 18px 48px rgba(20, 26, 33, 0.18)',
+                    },
+                    '& .maplibregl-popup-close-button': {
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      fontSize: 22,
+                      borderRadius: '50%',
+                      color: 'text.secondary',
+                    },
+                  }}
                 >
                   {selected.kind === 'kitchen' && (
                     <KitchenPopupCard kitchen={selected.data} />
@@ -595,6 +641,38 @@ export function MapOverviewView() {
                 </MapPopup>
               )}
             </Map>
+
+            {selected && popupCoords && isCompactMap && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  zIndex: 4,
+                  p: 2,
+                  borderRadius: 1.5,
+                  bgcolor: 'background.paper',
+                  boxShadow: '0 16px 44px rgba(20, 26, 33, 0.22)',
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setSelected(null);
+                    setPopupCoords(null);
+                  }}
+                  sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
+                >
+                  <Iconify icon="mingcute:close-line" />
+                </IconButton>
+                {selected.kind === 'kitchen' ? (
+                  <KitchenPopupCard kitchen={selected.data} />
+                ) : (
+                  <BranchPopupCard branch={selected.data} companies={companies} />
+                )}
+              </Box>
+            )}
 
             {visibleMarkerCount === 0 && !errorMessage && (
               <Alert
