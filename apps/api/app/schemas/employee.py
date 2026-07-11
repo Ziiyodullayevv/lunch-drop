@@ -3,7 +3,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import AccountStatus, OrderStatus
 
@@ -66,11 +66,33 @@ class MenuResponse(BaseModel):
     items: list[MenuMealRead]
 
 
+class OrderItemCreate(BaseModel):
+    meal_id: str
+    quantity: int = Field(default=1, ge=1, le=20)
+
+
 class OrderCreate(BaseModel):
     branch_id: str  # bugun qaysi filialdasiz — ovqat shu yerga yetkaziladi
     kitchen_id: str
-    meal_id: str
+    items: list[OrderItemCreate] = Field(default_factory=list, max_length=20)
+    meal_id: str | None = None  # eski clientlar uchun vaqtinchalik moslik
     target_date: date
+
+    @model_validator(mode="after")
+    def require_items(self):
+        if not self.items and not self.meal_id:
+            raise ValueError("Kamida bitta taom tanlanishi kerak")
+        if not self.items and self.meal_id:
+            self.items = [OrderItemCreate(meal_id=self.meal_id)]
+        return self
+
+
+class OrderHistoryMealItem(BaseModel):
+    meal_id: str
+    meal_name: str
+    meal_image_url: str | None
+    quantity: int
+    historical_price: Decimal
 
 
 class OrderHistoryItem(BaseModel):
@@ -90,3 +112,4 @@ class OrderHistoryItem(BaseModel):
     branch_id: str
     branch_name: str
     created_at: datetime
+    items: list[OrderHistoryMealItem] = Field(default_factory=list)

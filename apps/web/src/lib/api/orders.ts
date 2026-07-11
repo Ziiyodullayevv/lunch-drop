@@ -25,7 +25,23 @@ export type OrderRead = {
   company_name: string | null;
   kitchen_name: string | null;
   meal_name: string | null;
+  items?: {
+    meal_id: string;
+    meal_name: string | null;
+    meal_image_url: string | null;
+    quantity: number;
+    historical_price: string;
+  }[];
 };
+
+type OrderItemsSummary = Pick<OrderRead, 'meal_name' | 'items'>;
+
+export function orderItemsLabel(order: OrderItemsSummary) {
+  if (!order.items?.length) return order.meal_name ?? '—';
+  return order.items
+    .map((item) => `${item.quantity > 1 ? `${item.quantity}× ` : ''}${item.meal_name ?? 'Taom'}`)
+    .join(', ');
+}
 
 export type Page<T> = {
   items: T[];
@@ -117,6 +133,7 @@ export type OrderHistoryItem = {
   branch_id: string;
   branch_name: string;
   created_at: string;
+  items?: OrderRead['items'];
 };
 
 export type KitchenMe = {

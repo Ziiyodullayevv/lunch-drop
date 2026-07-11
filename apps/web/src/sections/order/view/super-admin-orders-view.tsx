@@ -34,6 +34,7 @@ import { RouterLink } from 'src/routes/components';
 import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
+import { orderItemsLabel } from 'src/lib/api/orders';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { emptyOrderAnalytics } from 'src/lib/order-analytics';
 
@@ -368,7 +369,7 @@ export function SuperAdminOrdersView() {
                     </TableCell>
 
                     <TableCell>
-                      <Typography variant="body2">{order.meal_name ?? '—'}</Typography>
+                      <Typography variant="body2">{orderItemsLabel(order)}</Typography>
                     </TableCell>
 
                     <TableCell>

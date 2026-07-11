@@ -13,7 +13,7 @@ from app.models.kitchen import Kitchen
 from app.models.meal import Meal
 from app.models.order import Order
 from app.models.user import User
-from app.schemas.order import OrderRead
+from app.schemas.order import OrderRead, OrderMealItemRead
 
 
 async def build_order_reads(
@@ -32,7 +32,7 @@ async def build_order_reads(
     employees = await _map(User, {o.employee_id for o in orders})
     branches = await _map(Branch, {o.branch_id for o in orders})
     kitchens = await _map(Kitchen, {o.kitchen_id for o in orders})
-    meals = await _map(Meal, {o.meal_id for o in orders})
+    meals = await _map(Meal, {o.meal_id for o in orders} | {i.meal_id for o in orders for i in o.items})
     companies = await _map(Company, {b.company_id for b in branches.values()})
 
     result: list[OrderRead] = []
@@ -58,6 +58,16 @@ async def build_order_reads(
                 company_name=company.name if company else None,
                 kitchen_name=kitchens[o.kitchen_id].name if o.kitchen_id in kitchens else None,
                 meal_name=meals[o.meal_id].name if o.meal_id in meals else None,
+                items=[
+                    OrderMealItemRead(
+                        meal_id=item.meal_id,
+                        meal_name=meals[item.meal_id].name if item.meal_id in meals else None,
+                        meal_image_url=meals[item.meal_id].image_url if item.meal_id in meals else None,
+                        quantity=item.quantity,
+                        historical_price=item.historical_price,
+                    )
+                    for item in o.items
+                ],
             )
         )
     return result

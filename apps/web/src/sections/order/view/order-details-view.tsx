@@ -16,6 +16,7 @@ import { useRouter } from 'src/routes/hooks';
 import { fCurrency } from 'src/utils/format-number';
 import { fDate, fDateTime } from 'src/utils/format-time';
 
+import { orderItemsLabel } from 'src/lib/api/orders';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
@@ -213,7 +214,7 @@ export function OrderDetailsView({ id }: Props) {
               <Typography variant="h6" sx={{ mb: 2 }}>Buyurtma ma&apos;lumotlari</Typography>
 
               <Stack spacing={2}>
-                <InfoRow icon="solar:tea-cup-bold" label="Taom" value={order.meal_name ?? '—'} />
+                <InfoRow icon="solar:tea-cup-bold" label="Taomlar" value={orderItemsLabel(order)} />
                 <InfoRow icon="solar:calendar-date-bold" label="Yetkazish sanasi" value={fDate(order.target_date)} />
                 <InfoRow icon="solar:clock-circle-bold" label="Yaratilgan vaqt" value={fDateTime(order.created_at)} />
                 <InfoRow icon="custom:fast-food-fill" label="Oshxona" value={order.kitchen_name ?? '—'} />

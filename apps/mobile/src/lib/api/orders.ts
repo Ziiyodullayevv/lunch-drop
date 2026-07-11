@@ -55,7 +55,7 @@ export async function getOrder(orderId: string): Promise<Order> {
   return order;
 }
 
-// Creates one order per cart item. targetDate format: "YYYY-MM-DD"
+// Creates one order containing every cart item. targetDate format: "YYYY-MM-DD"
 export async function createOrder(
   items: CartItem[],
   branchId: string,
@@ -63,23 +63,19 @@ export async function createOrder(
   targetDate?: string
 ): Promise<Order[]> {
   const date = targetDate ?? getTodayDate();
-  const results: Order[] = [];
-
-  for (const cartItem of items) {
-    const input: CreateOrderInput = {
-      branch_id: branchId,
-      kitchen_id: cartItem.menuItem.kitchenId,
-      meal_id: cartItem.menuItem.id,
-      target_date: date,
-    };
-
-    for (let q = 0; q < cartItem.quantity; q++) {
-      const res = await apiClient.post<OrderReadDto>('/orders', input);
-      results.push(mapOrderRead(res.data));
-    }
+  if (!items.length) return [];
+  const kitchenId = items[0].menuItem.kitchenId;
+  if (items.some((item) => item.menuItem.kitchenId !== kitchenId)) {
+    throw new Error('Bitta buyurtmadagi barcha taomlar bir oshxonadan bo‘lishi kerak');
   }
-
-  return results;
+  const input: CreateOrderInput = {
+    branch_id: branchId,
+    kitchen_id: kitchenId,
+    items: items.map((item) => ({ meal_id: item.menuItem.id, quantity: item.quantity })),
+    target_date: date,
+  };
+  const res = await apiClient.post<OrderReadDto>('/orders', input);
+  return [mapOrderRead(res.data)];
 }
 
 export async function cancelOrder(orderId: string): Promise<Order> {

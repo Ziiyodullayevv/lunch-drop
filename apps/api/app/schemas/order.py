@@ -3,13 +3,21 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import OrderStatus
 
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
+
+
+class OrderMealItemRead(BaseModel):
+    meal_id: str
+    meal_name: str | None = None
+    meal_image_url: str | None = None
+    quantity: int
+    historical_price: Decimal
 
 
 class OrderRead(BaseModel):
@@ -33,3 +41,4 @@ class OrderRead(BaseModel):
     company_name: str | None = None
     kitchen_name: str | None = None
     meal_name: str | None = None
+    items: list[OrderMealItemRead] = Field(default_factory=list)

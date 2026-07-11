@@ -50,7 +50,13 @@ export function mapOrder(dto: OrderHistoryDto): Order {
     branchName: dto.branch_name,
     status: mapOrderStatus(dto.status),
     statusLabel: dto.status_label,
-    items: [
+    items: dto.items?.length ? dto.items.map((item) => ({
+      id: item.meal_id,
+      name: item.meal_name ?? '',
+      quantity: item.quantity,
+      price: parseFloat(item.historical_price) || 0,
+      imageUrl: item.meal_image_url ?? undefined,
+    })) : [
       {
         id: dto.meal_id,
         name: dto.meal_name,
@@ -80,7 +86,13 @@ export function mapOrderRead(dto: OrderReadDto): Order {
     branchName: '',
     status: mapOrderStatus(dto.status),
     statusLabel: dto.status,
-    items: [
+    items: dto.items?.length ? dto.items.map((item) => ({
+      id: item.meal_id,
+      name: item.meal_name ?? '',
+      quantity: item.quantity,
+      price: parseFloat(item.historical_price) || 0,
+      imageUrl: item.meal_image_url ?? undefined,
+    })) : [
       {
         id: dto.meal_id,
         name: '',

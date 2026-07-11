@@ -112,6 +112,15 @@ export type OrderHistoryDto = {
   branch_id: string;
   branch_name: string;
   created_at: string;
+  items?: OrderItemDto[];
+};
+
+export type OrderItemDto = {
+  meal_id: string;
+  meal_name: string | null;
+  meal_image_url: string | null;
+  quantity: number;
+  historical_price: string;
 };
 
 // POST /orders, POST /orders/{id}/cancel, PATCH /orders/{id}/confirm-delivery
@@ -125,6 +134,7 @@ export type OrderReadDto = {
   system_fee: string;
   status: string;
   created_at: string;
+  items?: OrderItemDto[];
 };
 
 export type OrderListResponseDto = PaginatedResponse<OrderHistoryDto>;
@@ -132,7 +142,7 @@ export type OrderListResponseDto = PaginatedResponse<OrderHistoryDto>;
 export type CreateOrderInput = {
   branch_id: string;
   kitchen_id: string;
-  meal_id: string;
+  items: { meal_id: string; quantity: number }[];
   target_date: string;
 };
 

@@ -21,7 +21,7 @@ from app.models.company import Company
 from app.models.enums import ORDER_STATUS_LABELS, AccountStatus, OrderStatus
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.meal import Meal, MenuSchedule
-from app.models.order import Order
+from app.models.order import Order, OrderItem
 from app.models.user import User
 from app.schemas.employee import (
     BranchPublic,
@@ -31,6 +31,7 @@ from app.schemas.employee import (
     MenuMealRead,
     MenuResponse,
     OrderCreate,
+    OrderHistoryMealItem,
     OrderHistoryItem,
 )
 from app.schemas.order import OrderRead
@@ -259,23 +260,39 @@ class EmployeeService:
         if data.target_date == today and now.time() >= kitchen.order_cutoff_time:
             raise PermissionDeniedError("Buyurtma qabul qilish vaqti tugagan")
 
-        # Taom shu kunda mavjudmi?
-        if data.meal_id not in await self._available_meal_ids(data.kitchen_id, data.target_date):
-            raise PermissionDeniedError("Bu taom tanlangan kunda mavjud emas")
+        requested = {item.meal_id: item.quantity for item in data.items}
+        available_meal_ids = await self._available_meal_ids(data.kitchen_id, data.target_date)
+        if not set(requested).issubset(available_meal_ids):
+            raise PermissionDeniedError("Tanlangan taomlardan biri bu kunda mavjud emas")
 
-        meal = await self.session.get(Meal, data.meal_id)
-        if meal is None or meal.deleted_at is not None:
-            raise NotFoundError("Taom topilmadi")
+        meals = list((await self.session.execute(
+            select(Meal).where(
+                Meal.id.in_(requested), Meal.kitchen_id == data.kitchen_id, Meal.deleted_at.is_(None)
+            )
+        )).scalars().all())
+        if len(meals) != len(requested):
+            raise NotFoundError("Tanlangan taomlardan biri topilmadi")
+        meals_by_id = {meal.id: meal for meal in meals}
+        first = meals_by_id[data.items[0].meal_id]
+        total = sum(meals_by_id[item.meal_id].price * item.quantity for item in data.items)
 
         order = Order(
             employee_id=self.user.id,
             branch_id=data.branch_id,
             kitchen_id=data.kitchen_id,
-            meal_id=data.meal_id,
+            meal_id=first.id,
             target_date=data.target_date,
-            historical_price=meal.price,
+            historical_price=total,
             status=OrderStatus.CREATED,
         )
+        order.items = [
+            OrderItem(
+                meal_id=item.meal_id,
+                quantity=item.quantity,
+                historical_price=meals_by_id[item.meal_id].price,
+            )
+            for item in data.items
+        ]
         self.session.add(order)
         await self.session.commit()  # bir kunda bir nechta buyurtma mumkin (cheklov yo'q)
         return await build_order_read(self.session, order)
@@ -283,7 +300,7 @@ class EmployeeService:
     # --- Buyurtmalar tarixi ---
     @staticmethod
     def _to_history_item(
-        order: Order, meal: Meal, kitchen: Kitchen, branch: Branch
+        order: Order, meal: Meal, kitchen: Kitchen, branch: Branch, meals_by_id: dict[str, Meal]
     ) -> OrderHistoryItem:
         return OrderHistoryItem(
             id=order.id,
@@ -300,6 +317,17 @@ class EmployeeService:
             branch_id=order.branch_id,
             branch_name=branch.name,
             created_at=order.created_at,
+            items=[
+                OrderHistoryMealItem(
+                    meal_id=item.meal_id,
+                    meal_name=meals_by_id[item.meal_id].name,
+                    meal_image_url=meals_by_id[item.meal_id].image_url,
+                    quantity=item.quantity,
+                    historical_price=item.historical_price,
+                )
+                for item in order.items
+                if item.meal_id in meals_by_id
+            ],
         )
 
     @staticmethod
@@ -351,7 +379,12 @@ class EmployeeService:
                 select(func.count()).select_from(Order).where(*filters)
             )
         ).scalar_one()
-        items = [self._to_history_item(o, m, k, b) for o, m, k, b in rows]
+        item_meal_ids = {item.meal_id for o, *_ in rows for item in o.items}
+        item_meals = list((await self.session.execute(
+            select(Meal).where(Meal.id.in_(item_meal_ids))
+        )).scalars().all()) if item_meal_ids else []
+        meals_by_id = {meal.id: meal for meal in item_meals}
+        items = [self._to_history_item(o, m, k, b, meals_by_id) for o, m, k, b in rows]
         return items, total
 
     async def get_order_detail(self, order_id: str) -> OrderHistoryItem:
@@ -359,7 +392,12 @@ class EmployeeService:
         meal = await self.session.get(Meal, order.meal_id)
         kitchen = await self.session.get(Kitchen, order.kitchen_id)
         branch = await self.session.get(Branch, order.branch_id)
-        return self._to_history_item(order, meal, kitchen, branch)
+        item_meals = list((await self.session.execute(
+            select(Meal).where(Meal.id.in_({item.meal_id for item in order.items}))
+        )).scalars().all())
+        return self._to_history_item(
+            order, meal, kitchen, branch, {item.id: item for item in item_meals}
+        )
 
     async def _own_order(self, order_id: str) -> Order:
         order = await self.session.get(Order, order_id)

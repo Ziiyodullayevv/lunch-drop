@@ -24,6 +24,7 @@ import { paths } from 'src/routes/paths';
 import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
+import { orderItemsLabel } from 'src/lib/api/orders';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { emptyOrderAnalytics } from 'src/lib/order-analytics';
 
@@ -225,7 +226,7 @@ export function CompanyOrdersView() {
                     </TableCell>
 
                     <TableCell>
-                      <Typography variant="body2">{row.meal_name ?? '—'}</Typography>
+                      <Typography variant="body2">{orderItemsLabel(row)}</Typography>
                     </TableCell>
 
                     <TableCell>

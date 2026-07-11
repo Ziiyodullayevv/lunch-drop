@@ -517,7 +517,7 @@ export function KitchenOrdersView() {
     id: o.id,
     status: o.status,
     total_orders: 1,
-    total_items: 1,
+    total_items: o.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 1,
     total_amount: parseFloat(o.historical_price),
     delivery_time: o.target_date,
     created_at: o.created_at,
@@ -536,9 +536,16 @@ export function KitchenOrdersView() {
       total_price: parseFloat(o.historical_price),
       note: null,
       status: o.status,
-      items: o.meal_name
-        ? [{ id: o.meal_id, name: o.meal_name, quantity: 1, price: parseFloat(o.historical_price) }]
-        : [],
+      items: o.items?.length
+        ? o.items.map((item) => ({
+            id: item.meal_id,
+            name: item.meal_name ?? 'Taom',
+            quantity: item.quantity,
+            price: parseFloat(item.historical_price),
+          }))
+        : o.meal_name
+          ? [{ id: o.meal_id, name: o.meal_name, quantity: 1, price: parseFloat(o.historical_price) }]
+          : [],
     }],
   }));
 
