@@ -26,7 +26,23 @@
     "loading": "Loading...",
     "back": "Back",
     "status": "Status",
-    "actions": "Actions"
+    "actions": "Actions",
+    "error": "Something went wrong",
+    "approve": "Approve",
+    "reject": "Reject",
+    "activate": "Activate",
+    "deactivate": "Deactivate"
+  },
+  "field": { "phone": "Phone", "role": "Role" },
+  "status": { "approved": "Active", "pending_approval": "Pending", "inactive": "Inactive", "rejected": "Rejected" },
+  "employee": {
+    "singular": "Employee",
+    "add": "Add employee",
+    "approved": "Employee approved",
+    "deactivated": "Employee deactivated",
+    "rejected": "Employee rejected",
+    "loadError": "Failed to load employees",
+    "searchPlaceholder": "Name or phone number..."
   },
   "mainNav": {
     "home": "Home",

@@ -26,7 +26,23 @@
     "loading": "Загрузка...",
     "back": "Назад",
     "status": "Статус",
-    "actions": "Действия"
+    "actions": "Действия",
+    "error": "Произошла ошибка",
+    "approve": "Подтвердить",
+    "reject": "Отклонить",
+    "activate": "Активировать",
+    "deactivate": "Деактивировать"
+  },
+  "field": { "phone": "Телефон", "role": "Роль" },
+  "status": { "approved": "Активен", "pending_approval": "Ожидает", "inactive": "Неактивен", "rejected": "Отклонён" },
+  "employee": {
+    "singular": "Сотрудник",
+    "add": "Добавить сотрудника",
+    "approved": "Сотрудник подтверждён",
+    "deactivated": "Сотрудник деактивирован",
+    "rejected": "Сотрудник отклонён",
+    "loadError": "Не удалось загрузить сотрудников",
+    "searchPlaceholder": "Имя или номер телефона..."
   },
   "mainNav": {
     "home": "Главная",

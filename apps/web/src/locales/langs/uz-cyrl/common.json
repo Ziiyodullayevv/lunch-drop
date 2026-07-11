@@ -26,7 +26,23 @@
     "loading": "Юкланмоқда...",
     "back": "Орқага",
     "status": "Ҳолат",
-    "actions": "Амаллар"
+    "actions": "Амаллар",
+    "error": "Хатолик юз берди",
+    "approve": "Тасдиқлаш",
+    "reject": "Рад этиш",
+    "activate": "Фаоллаштириш",
+    "deactivate": "Фаолсизлаштириш"
+  },
+  "field": { "phone": "Телефон", "role": "Рол" },
+  "status": { "approved": "Фаол", "pending_approval": "Кутмоқда", "inactive": "Фаолсиз", "rejected": "Рад этилган" },
+  "employee": {
+    "singular": "Ходим",
+    "add": "Ходим қўшиш",
+    "approved": "Ходим тасдиқланди",
+    "deactivated": "Ходим фаолсизлаштирилди",
+    "rejected": "Ходим рад этилди",
+    "loadError": "Ходимларни юклашда хатолик",
+    "searchPlaceholder": "Исм ёки телефон рақами..."
   },
   "mainNav": {
     "home": "Бош саҳифа",

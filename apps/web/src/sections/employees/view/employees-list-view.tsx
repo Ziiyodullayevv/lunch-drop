@@ -29,6 +29,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
+import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
@@ -49,35 +50,12 @@ import { useCompanyEmployees, useUpdateEmployeeStatus } from '../hooks/use-emplo
 
 // ----------------------------------------------------------------------
 
-const STATUS_TABS: { value: AccountStatus | 'all'; label: string }[] = [
-  { value: 'all',              label: 'Barchasi'    },
-  { value: 'approved',         label: 'Faol'        },
-  { value: 'pending_approval', label: 'Kutmoqda'    },
-  { value: 'inactive',         label: 'Faolsiz'     },
-  { value: 'rejected',         label: 'Rad etilgan' },
-];
-
 const STATUS_COLOR: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
   approved:         'success',
   pending_approval: 'warning',
   inactive:         'error',
   rejected:         'error',
 };
-
-const STATUS_LABEL: Record<string, string> = {
-  approved:         'Faol',
-  pending_approval: 'Kutmoqda',
-  inactive:         'Faolsiz',
-  rejected:         'Rad etilgan',
-};
-
-const TABLE_HEAD = [
-  { id: 'name',    label: 'Xodim'    },
-  { id: 'phone',   label: 'Telefon',  width: 150 },
-  { id: 'role',    label: 'Rol',      width: 130 },
-  { id: 'status',  label: 'Holat',    width: 140 },
-  { id: 'actions', label: '',         width: 72 },
-];
 
 function avatarInitials(name: string | null, phone: string) {
   return name ? name.charAt(0).toUpperCase() : phone.charAt(phone.length - 1);
@@ -100,24 +78,25 @@ type RowProps = {
 function EmployeeRow({ row, selected, onSelectRow }: RowProps) {
   const popover = usePopover();
   const updateStatus = useUpdateEmployeeStatus();
+  const { t } = useTranslate();
 
   const handle = async (status: AccountStatus) => {
     popover.onClose();
     const labels: Record<string, string> = {
-      approved: 'Xodim tasdiqlandi',
-      inactive: 'Xodim faolsizlashtirildi',
-      rejected: 'Xodim rad etildi',
+      approved: t('employee.approved'),
+      inactive: t('employee.deactivated'),
+      rejected: t('employee.rejected'),
     };
     try {
       await updateStatus.mutateAsync({ id: row.id, status });
       toast.success(labels[status] ?? 'Yangilandi');
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(t('common.error'));
     }
   };
 
   const color = STATUS_COLOR[row.account_status ?? ''] ?? 'default';
-  const label = STATUS_LABEL[row.account_status ?? ''] ?? (row.account_status ?? '—');
+  const label = row.account_status ? t(`status.${row.account_status}`) : '—';
   const isPending  = row.account_status === 'pending_approval';
   const isApproved = row.account_status === 'approved';
   const isInactive = row.account_status === 'inactive';
@@ -153,7 +132,7 @@ function EmployeeRow({ row, selected, onSelectRow }: RowProps) {
 
         <TableCell>
           <Label variant="soft" color="default">
-            {row.role === 'employee' ? 'Xodim' : row.role}
+            {row.role === 'employee' ? t('employee.singular') : row.role}
           </Label>
         </TableCell>
 
@@ -178,25 +157,25 @@ function EmployeeRow({ row, selected, onSelectRow }: RowProps) {
           {isPending && (
             <MenuItem onClick={() => handle('approved')} sx={{ color: 'success.main' }}>
               <Iconify icon="solar:check-circle-bold" sx={{ mr: 1 }} />
-              Tasdiqlash
+              {t('common.approve')}
             </MenuItem>
           )}
           {isPending && (
             <MenuItem onClick={() => handle('rejected')} sx={{ color: 'error.main' }}>
               <Iconify icon="solar:close-circle-bold" sx={{ mr: 1 }} />
-              Rad etish
+              {t('common.reject')}
             </MenuItem>
           )}
           {isApproved && (
             <MenuItem onClick={() => handle('inactive')} sx={{ color: 'warning.main' }}>
               <Iconify icon="solar:forbidden-circle-bold" sx={{ mr: 1 }} />
-              Faolsizlashtirish
+              {t('common.deactivate')}
             </MenuItem>
           )}
           {isInactive && (
             <MenuItem onClick={() => handle('approved')} sx={{ color: 'success.main' }}>
               <Iconify icon="solar:restart-bold" sx={{ mr: 1 }} />
-              Faollashtirish
+              {t('common.activate')}
             </MenuItem>
           )}
         </MenuList>
@@ -208,6 +187,7 @@ function EmployeeRow({ row, selected, onSelectRow }: RowProps) {
 // ----------------------------------------------------------------------
 
 export function EmployeesListView() {
+  const { t } = useTranslate();
   const table = useTable({ defaultRowsPerPage: 10 });
   const [tabStatus, setTabStatus] = useState<AccountStatus | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -215,6 +195,20 @@ export function EmployeesListView() {
   const { data, isLoading, isError, error } = useCompanyEmployees({ limit: 100, offset: 0 });
 
   const employees = data?.items ?? [];
+  const statusTabs: { value: AccountStatus | 'all'; label: string }[] = [
+    { value: 'all', label: t('common.all') },
+    { value: 'approved', label: t('status.approved') },
+    { value: 'pending_approval', label: t('status.pending_approval') },
+    { value: 'inactive', label: t('status.inactive') },
+    { value: 'rejected', label: t('status.rejected') },
+  ];
+  const tableHead = [
+    { id: 'name', label: t('employee.singular') },
+    { id: 'phone', label: t('field.phone'), width: 150 },
+    { id: 'role', label: t('field.role'), width: 130 },
+    { id: 'status', label: t('common.status'), width: 140 },
+    { id: 'actions', label: '', width: 72 },
+  ];
 
   const dataFiltered = employees
     .filter((employee) => tabStatus === 'all' || employee.account_status === tabStatus)
@@ -234,10 +228,10 @@ export function EmployeesListView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Xodimlar"
+        heading={t('navigation.employees')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Xodimlar' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('navigation.employees') },
         ]}
         action={
           <Button
@@ -246,7 +240,7 @@ export function EmployeesListView() {
             variant="contained"
             startIcon={<Iconify icon="mingcute:add-line" />}
           >
-            Xodim qo&apos;shish
+            {t('employee.add')}
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -254,7 +248,7 @@ export function EmployeesListView() {
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error instanceof Error ? error.message : 'Xodimlarni yuklashda xatolik'}
+          {error instanceof Error ? error.message : t('employee.loadError')}
         </Alert>
       )}
 
@@ -264,7 +258,7 @@ export function EmployeesListView() {
           onChange={(_, val) => { setTabStatus(val); table.onResetPage(); }}
           sx={{ px: 2.5, borderBottom: 1, borderColor: 'divider' }}
         >
-          {STATUS_TABS.map((tab) => (
+          {statusTabs.map((tab) => (
             <Tab
               key={tab.value}
               value={tab.value}
@@ -287,7 +281,7 @@ export function EmployeesListView() {
           <TextField
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ism yoki telefon raqami..."
+            placeholder={t('employee.searchPlaceholder')}
             sx={{ width: { xs: 1, md: 320 } }}
             slotProps={{
               input: {
@@ -317,7 +311,7 @@ export function EmployeesListView() {
               <TableHeadCustom
                 order={table.order}
                 orderBy={table.orderBy}
-                headCells={TABLE_HEAD}
+                headCells={tableHead}
                 rowCount={dataFiltered.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}

@@ -26,7 +26,23 @@
     "loading": "Yuklanmoqda...",
     "back": "Orqaga",
     "status": "Holat",
-    "actions": "Amallar"
+    "actions": "Amallar",
+    "error": "Xatolik yuz berdi",
+    "approve": "Tasdiqlash",
+    "reject": "Rad etish",
+    "activate": "Faollashtirish",
+    "deactivate": "Faolsizlashtirish"
+  },
+  "field": { "phone": "Telefon", "role": "Rol" },
+  "status": { "approved": "Faol", "pending_approval": "Kutmoqda", "inactive": "Faolsiz", "rejected": "Rad etilgan" },
+  "employee": {
+    "singular": "Xodim",
+    "add": "Xodim qo'shish",
+    "approved": "Xodim tasdiqlandi",
+    "deactivated": "Xodim faolsizlashtirildi",
+    "rejected": "Xodim rad etildi",
+    "loadError": "Xodimlarni yuklashda xatolik",
+    "searchPlaceholder": "Ism yoki telefon raqami..."
   },
   "mainNav": {
     "home": "Bosh sahifa",
