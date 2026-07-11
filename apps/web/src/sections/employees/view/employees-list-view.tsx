@@ -27,6 +27,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
+import { RouterLink } from 'src/routes/components';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 
@@ -75,7 +76,7 @@ const TABLE_HEAD = [
   { id: 'phone',   label: 'Telefon',  width: 150 },
   { id: 'role',    label: 'Rol',      width: 130 },
   { id: 'status',  label: 'Holat',    width: 140 },
-  { id: 'actions', label: '',         width: 130 },
+  { id: 'actions', label: '',         width: 72 },
 ];
 
 function avatarInitials(name: string | null, phone: string) {
@@ -151,9 +152,9 @@ function EmployeeRow({ row, selected, onSelectRow }: RowProps) {
         <TableCell sx={{ color: 'text.secondary' }}>{row.phone}</TableCell>
 
         <TableCell>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          <Label variant="soft" color="default">
             {row.role === 'employee' ? 'Xodim' : row.role}
-          </Typography>
+          </Label>
         </TableCell>
 
         <TableCell>
@@ -161,16 +162,9 @@ function EmployeeRow({ row, selected, onSelectRow }: RowProps) {
         </TableCell>
 
         <TableCell>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            {isPending && (
-              <Button size="small" variant="contained" color="success" onClick={() => handle('approved')}>
-                Tasdiqlash
-              </Button>
-            )}
-            <IconButton size="small" color={popover.open ? 'inherit' : 'default'} onClick={popover.onOpen}>
-              <Iconify icon="eva:more-vertical-fill" />
-            </IconButton>
-          </Box>
+          <IconButton size="small" color={popover.open ? 'inherit' : 'default'} onClick={popover.onOpen}>
+            <Iconify icon="eva:more-vertical-fill" />
+          </IconButton>
         </TableCell>
       </TableRow>
 
@@ -218,27 +212,24 @@ export function EmployeesListView() {
   const [tabStatus, setTabStatus] = useState<AccountStatus | 'all'>('all');
   const [search, setSearch] = useState('');
 
-  const queryParams = {
-    account_status: tabStatus === 'all' ? undefined : tabStatus,
-    limit:  table.rowsPerPage,
-    offset: table.page * table.rowsPerPage,
-  };
-
-  const { data, isLoading, isError, error } = useCompanyEmployees(queryParams);
+  const { data, isLoading, isError, error } = useCompanyEmployees({ limit: 100, offset: 0 });
 
   const employees = data?.items ?? [];
-  const total     = data?.total ?? 0;
 
-  const pendingCount = tabStatus === 'all'
-    ? (data?.items ?? []).filter((e) => e.account_status === 'pending_approval').length
-    : 0;
-
-  const dataFiltered = search
-    ? employees.filter((e) =>
+  const dataFiltered = employees
+    .filter((employee) => tabStatus === 'all' || employee.account_status === tabStatus)
+    .filter((e) => !search ||
         (e.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
         e.phone.toLowerCase().includes(search.toLowerCase())
-      )
-    : employees;
+      );
+  const paged = dataFiltered.slice(
+    table.page * table.rowsPerPage,
+    table.page * table.rowsPerPage + table.rowsPerPage
+  );
+  const statusCount = (status: AccountStatus | 'all') =>
+    status === 'all'
+      ? employees.length
+      : employees.filter((employee) => employee.account_status === status).length;
 
   return (
     <DashboardContent>
@@ -249,11 +240,14 @@ export function EmployeesListView() {
           { name: 'Xodimlar' },
         ]}
         action={
-          pendingCount > 0 && (
-            <Label variant="filled" color="warning" sx={{ px: 2, py: 0.5, typography: 'subtitle2' }}>
-              {pendingCount} ta kutmoqda
-            </Label>
-          )
+          <Button
+            component={RouterLink}
+            href={paths.dashboard.employee.new}
+            variant="contained"
+            startIcon={<Iconify icon="mingcute:add-line" />}
+          >
+            Xodim qo&apos;shish
+          </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
       />
@@ -282,19 +276,19 @@ export function EmployeesListView() {
                   color={STATUS_COLOR[tab.value] ?? 'default'}
                   sx={{ ml: 0.5 }}
                 >
-                  {tabStatus === tab.value ? total : ''}
+                  {statusCount(tab.value)}
                 </Label>
               }
             />
           ))}
         </Tabs>
 
-        <Box sx={{ p: 2.5 }}>
+        <Box sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
           <TextField
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Ism yoki telefon raqami..."
-            sx={{ width: 300 }}
+            sx={{ width: { xs: 1, md: 320 } }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -318,8 +312,8 @@ export function EmployeesListView() {
             action={null}
           />
 
-          <Scrollbar sx={{ minHeight: 444 }}>
-            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 700 }}>
+          <Scrollbar sx={{ minHeight: isLoading || dataFiltered.length === 0 ? 240 : 0 }}>
+            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 800 }}>
               <TableHeadCustom
                 order={table.order}
                 orderBy={table.orderBy}
@@ -340,7 +334,7 @@ export function EmployeesListView() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  dataFiltered.map((row) => (
+                  paged.map((row) => (
                     <EmployeeRow
                       key={row.id}
                       row={row}
@@ -359,7 +353,7 @@ export function EmployeesListView() {
         <TablePaginationCustom
           page={table.page}
           dense={table.dense}
-          count={total}
+          count={dataFiltered.length}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
           onChangeDense={table.onChangeDense}
