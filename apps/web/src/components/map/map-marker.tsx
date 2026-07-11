@@ -13,17 +13,48 @@ export type MapMarkerProps = MarkerProps & {
   sx?: SxProps<Theme>;
   label?: string;
   markerColor?: string;
+  active?: boolean;
 };
 
-export function MapMarker({ sx, label = 'L', markerColor = '#FF5630', anchor = 'bottom', ...other }: MapMarkerProps) {
+export function MapMarker({
+  sx,
+  label = 'L',
+  markerColor = '#FF5630',
+  active = false,
+  anchor = 'bottom',
+  ...other
+}: MapMarkerProps) {
   return (
     <Marker anchor={anchor} {...other}>
       <Box
         sx={[
-          { position: 'relative', width: 38, height: 46, cursor: other.draggable ? 'grab' : 'pointer' },
+          {
+            position: 'relative',
+            width: 38,
+            height: 46,
+            cursor: other.draggable ? 'grab' : 'pointer',
+            transform: active ? 'scale(1.12)' : 'scale(1)',
+            transformOrigin: '50% 100%',
+            transition: 'transform 160ms ease-out',
+          },
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
       >
+        {active && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: -4,
+              left: '50%',
+              width: 42,
+              height: 42,
+              borderRadius: '50%',
+              bgcolor: `${markerColor}24`,
+              border: `2px solid ${markerColor}42`,
+              transform: 'translateX(-50%)',
+            }}
+          />
+        )}
         <Box
           sx={{
             position: 'absolute',

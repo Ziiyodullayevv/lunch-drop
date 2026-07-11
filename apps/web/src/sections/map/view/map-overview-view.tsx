@@ -624,6 +624,7 @@ export function MapOverviewView() {
                   longitude={kitchen.lng!}
                   label={kitchen.name}
                   markerColor="#00A76F"
+                  active={selected?.kind === 'kitchen' && selected.data.id === kitchen.id}
                   onClick={(event) =>
                     handleMarkerClick(
                       event,
@@ -643,6 +644,7 @@ export function MapOverviewView() {
                   longitude={branch.lng!}
                   label={companies.find((company) => company.id === branch.company_id)?.name ?? branch.name}
                   markerColor="#FF5630"
+                  active={selected?.kind === 'branch' && selected.data.id === branch.id}
                   onClick={(event) =>
                     handleMarkerClick(
                       event,
@@ -665,7 +667,7 @@ export function MapOverviewView() {
                   }}
                   closeOnClick={false}
                   anchor={popupAnchor}
-                  offset={18}
+                  offset={56}
                   maxWidth="320px"
                   sx={{
                     '& .maplibregl-popup-content': {
