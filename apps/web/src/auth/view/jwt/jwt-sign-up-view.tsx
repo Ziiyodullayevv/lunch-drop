@@ -409,7 +409,14 @@ function RegisterFlow({
         <Form methods={step1} onSubmit={onStep1}>
           <Stack spacing={2.5}>
             <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
-            <Button fullWidth size="large" type="submit" variant="contained" loading={step1.formState.isSubmitting}>
+            <Button
+              fullWidth
+              size="large"
+              type="submit"
+              variant="contained"
+              loading={step1.formState.isSubmitting}
+              sx={{ borderRadius: 2.5 }}
+            >
               Telegram orqali davom etish
             </Button>
           </Stack>
@@ -420,51 +427,53 @@ function RegisterFlow({
         <Form methods={step2} onSubmit={onStep2}>
           <Stack spacing={2.5}>
             <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
+              spacing={2.25}
               sx={{
                 p: 2.5,
-                alignItems: { xs: 'stretch', sm: 'center' },
                 borderRadius: 2.5,
                 border: '1px solid rgba(34, 158, 217, 0.22)',
                 bgcolor: 'rgba(34, 158, 217, 0.07)',
               }}
             >
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  flexShrink: 0,
-                  display: 'grid',
-                  placeItems: 'center',
-                  borderRadius: '50%',
-                  color: '#fff',
-                  bgcolor: '#229ED9',
-                  boxShadow: '0 8px 20px rgba(34, 158, 217, 0.24)',
-                }}
-              >
-                <Iconify width={25} icon="solar:chat-round-dots-bold" />
-              </Box>
+              <Stack direction="row" spacing={1.75} sx={{ alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    flexShrink: 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    borderRadius: '50%',
+                    color: '#fff',
+                    bgcolor: '#229ED9',
+                    boxShadow: '0 8px 20px rgba(34, 158, 217, 0.24)',
+                  }}
+                >
+                  <Iconify width={25} icon="solar:chat-round-dots-bold" />
+                </Box>
 
-              <Stack spacing={0.5} sx={{ flex: 1 }}>
-                <Typography variant="subtitle1">Kod Telegram bot orqali beriladi</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Botni ochib{' '}
-                  <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                    {phone}
-                  </Box>{' '}
-                  raqamingizni tasdiqlang.
-                </Typography>
+                <Stack spacing={0.35} sx={{ minWidth: 0 }}>
+                  <Typography variant="subtitle1">Kod Telegram bot orqali beriladi</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Botda{' '}
+                    <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
+                      {phone}
+                    </Box>{' '}
+                    raqamingizni tasdiqlang.
+                  </Typography>
+                </Stack>
               </Stack>
 
               {telegramUrl && (
                 <Button
+                  fullWidth
                   size="large"
                   variant="contained"
                   onClick={openTelegramApp}
                   startIcon={<Iconify icon="solar:chat-round-dots-bold" />}
                   sx={{
                     flexShrink: 0,
+                    borderRadius: 2.5,
                     bgcolor: '#229ED9',
                     boxShadow: 'none',
                     '&:hover': { bgcolor: '#1689C2', boxShadow: 'none' },
@@ -494,7 +503,7 @@ function RegisterFlow({
                 gap: { xs: 0.75, sm: 1.25 },
                 justifyContent: 'center',
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 1.75,
+                  borderRadius: 2.5,
                   bgcolor: 'background.paper',
                 },
               }}
@@ -507,6 +516,7 @@ function RegisterFlow({
               variant="soft"
               onClick={handleBack}
               sx={{
+                borderRadius: 2.5,
                 bgcolor: 'action.hover',
                 '&:hover': { bgcolor: 'action.selected' },
               }}
@@ -754,7 +764,7 @@ export function JwtSignUpView() {
             '& .MuiTabs-indicator': { display: 'none' },
             '& .MuiTab-root': {
               minHeight: 48,
-              borderRadius: 1.75,
+              borderRadius: 2.5,
               color: 'text.secondary',
               transition: (theme) => theme.transitions.create(['background-color', 'color', 'box-shadow']),
             },
