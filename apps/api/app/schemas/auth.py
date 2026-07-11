@@ -32,8 +32,9 @@ class SendOtpRequest(_PhoneMixin):
 
 
 class OTPSendResponse(BaseModel):
-    message: str = "OTP yuborildi"
+    message: str = "Tasdiqlash kodini Telegram bot orqali oling"
     expires_in: int
+    telegram_url: str | None = None
 
 
 class VerifyOtpRequest(_PhoneMixin):

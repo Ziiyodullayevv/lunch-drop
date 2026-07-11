@@ -37,10 +37,10 @@ export function LoginScreen() {
   async function handleSubmit(values: PhoneFormValues) {
     const fullPhone = `+998${values.phone.replace(/\D/g, "")}`;
     try {
-      const { expiresIn } = await auth.requestOtp.mutateAsync(fullPhone);
+      const { expiresIn, telegramUrl } = await auth.requestOtp.mutateAsync(fullPhone);
       router.push({
         pathname: "/verify-otp",
-        params: { phone: fullPhone, expiresIn },
+        params: { phone: fullPhone, expiresIn, telegramUrl: telegramUrl ?? '' },
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Xatolik yuz berdi";

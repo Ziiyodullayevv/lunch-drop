@@ -94,6 +94,7 @@ function RegisterFlow({
   const submittedOtpRef = useRef('');
   const [activeStep, setActiveStep] = useState<RegisterStep>('phone');
   const [phone, setPhone] = useState('');
+  const [telegramUrl, setTelegramUrl] = useState('');
   const [regToken, setRegToken] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [done, setDone]   = useState(false);
@@ -162,8 +163,9 @@ function RegisterFlow({
   const onStep1 = step1.handleSubmit(async (data) => {
     try {
       setError(null);
-      await axios.post(endpoints.auth.sendOtp, { phone: data.phone });
+      const response = await axios.post(endpoints.auth.sendOtp, { phone: data.phone });
       setPhone(data.phone);
+      setTelegramUrl(response.data.telegram_url ?? '');
       setActiveStep('otp');
     } catch (err) { setError(getErrorMessage(err)); }
   });
@@ -394,12 +396,25 @@ function RegisterFlow({
         <Form methods={step2} onSubmit={onStep2}>
           <Stack spacing={2.5}>
             <Typography variant="body2" color="text.secondary">
-              Tasdiqlash kodi{' '}
+              Tasdiqlash kodi uchun Telegram botni oching. Botda{' '}
               <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
                 {phone}
               </Box>{' '}
-              raqamiga yuborildi
+              raqamingizni tasdiqlang.
             </Typography>
+            {telegramUrl && (
+              <Button
+                fullWidth
+                size="large"
+                variant="contained"
+                href={telegramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                startIcon={<Iconify icon="solar:chat-round-dots-bold" />}
+              >
+                Telegram orqali kod olish
+              </Button>
+            )}
             <Field.Code
               name="code"
               placeholder=""

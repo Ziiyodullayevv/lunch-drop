@@ -139,4 +139,5 @@ export type CreateOrderInput = {
 export type OtpSendResponseDto = {
   message: string;
   expires_in: number;
+  telegram_url?: string | null;
 };

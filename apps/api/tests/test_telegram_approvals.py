@@ -24,6 +24,8 @@ from app.models.telegram import ApprovalAction
 from app.models.user import User
 from bot.approvals import (
     TelegramApprovalError,
+    begin_telegram_otp,
+    claim_telegram_otp,
     link_telegram_account,
     pending_cards_for,
     process_connection_decision,
@@ -32,6 +34,9 @@ from bot.approvals import (
 from bot.menu import send_employee_menu
 from bot.reports import build_report, current_month, parse_month
 from app.services.kitchen_connection_service import KitchenConnectionService
+from app.services.auth_service import AuthService
+from app.models.otp_code import OtpCode
+from app.core.security import verify_password
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -402,3 +407,29 @@ async def test_kitchen_admin_approves_connection_and_sees_partner_payments() -> 
     assert "48 500 so'm" in summary.text
     assert "Test Company" in partners.text
     assert "HQ" in partners.text
+
+
+@pytest.mark.asyncio
+async def test_telegram_otp_requires_matching_own_phone():
+    async with AsyncSessionLocal() as session:
+        response = await AuthService(session).send_otp("+998901112233")
+    assert response.telegram_url
+    token = response.telegram_url.split("otp_", 1)[1]
+
+    await begin_telegram_otp(token=token, telegram_user_id=777)
+    with pytest.raises(TelegramApprovalError, match="mos emas"):
+        await claim_telegram_otp(telegram_user_id=777, phone="+998909999999")
+
+    code = await claim_telegram_otp(telegram_user_id=777, phone="998901112233")
+    assert len(code) == 6 and code.isdigit()
+
+    async with AsyncSessionLocal() as session:
+        otp = (
+            await session.execute(
+                select(OtpCode).where(OtpCode.phone == "+998901112233")
+            )
+        ).scalar_one()
+    assert verify_password(code, otp.code_hash)
+
+    with pytest.raises(TelegramApprovalError, match="Faol tasdiqlash"):
+        await claim_telegram_otp(telegram_user_id=777, phone="+998901112233")

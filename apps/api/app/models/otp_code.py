@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import BigInteger, Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, uuid_pk
@@ -25,3 +25,6 @@ class OtpCode(Base, TimestampMixin):
     )
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     consumed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    telegram_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    telegram_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

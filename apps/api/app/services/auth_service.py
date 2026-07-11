@@ -6,6 +6,7 @@ Employee oqimi: send-otp → employee-login (telefon+OTP → JWT, avtomatik yara
 """
 
 import asyncio
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -43,6 +44,7 @@ from app.schemas.auth import (
     VerifyOtpResponse,
 )
 from bot.notifier import send_approval_notification
+from bot.config import bot_settings
 
 log = structlog.get_logger()
 
@@ -108,12 +110,16 @@ class AuthService:
                     f"Iltimos {int(OTP_RESEND_COOLDOWN_SECONDS - age)} soniyadan keyin urinib ko'ring"
                 )
         code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
+        telegram_token = secrets.token_urlsafe(24)
+        telegram_token_hash = hashlib.sha256(telegram_token.encode()).hexdigest()
         expires_at = datetime.now(UTC) + timedelta(seconds=OTP_TTL_SECONDS)
-        await self.auth.create_otp(phone, hash_password(code), expires_at)
+        await self.auth.create_otp(phone, hash_password(code), expires_at, telegram_token_hash)
         await self.session.commit()
-        await send_otp_sms(phone, code)
+        telegram_url = f"https://t.me/{bot_settings.bot_username}?start=otp_{telegram_token}"
+        if settings.sms_api_url and settings.sms_api_key:
+            await send_otp_sms(phone, code)
         log.info("otp_sent", phone=phone)
-        return OTPSendResponse(expires_in=OTP_TTL_SECONDS)
+        return OTPSendResponse(expires_in=OTP_TTL_SECONDS, telegram_url=telegram_url)
 
     # --- OTP tasdiqlash → vaqtinchalik token (admin register uchun) ---
     async def verify_otp(self, phone: str, code: str) -> VerifyOtpResponse:

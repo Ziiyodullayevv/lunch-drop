@@ -12,6 +12,7 @@ class BotSettings(BaseSettings):
 
     # Token kodda emas — .env (BOT_TOKEN). Bo'sh bo'lsa bot/notifier o'chiq.
     bot_token: str = ""
+    bot_username: str = "lunchdropuzbot"
     # OTP yuboriladigan admin chat ID'lari (vergul bilan): "961047307,1038185913"
     otp_notify_chat_ids: str = ""
 

@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import hashlib
+import secrets
 
 from sqlalchemy import or_, select
 
@@ -14,6 +16,8 @@ from app.models.telegram import ApprovalAction, TelegramAccount
 from app.models.kitchen_connection import KitchenConnectionRequest
 from app.models.enums import ConnectionRequestStatus
 from app.models.user import User
+from app.models.otp_code import OtpCode
+from app.core.security import hash_password
 from app.services.company_service import CompanyAdminService
 from app.services.super_admin_service import SuperAdminService
 
@@ -33,6 +37,54 @@ class ApprovalCard:
 def normalize_phone(phone: str) -> str:
     digits = "".join(ch for ch in phone if ch.isdigit())
     return f"+{digits}" if digits else ""
+
+
+async def begin_telegram_otp(*, token: str, telegram_user_id: int) -> None:
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    async with AsyncSessionLocal() as session:
+        otp = (
+            await session.execute(
+                select(OtpCode).where(
+                    OtpCode.telegram_token_hash == token_hash,
+                    OtpCode.consumed.is_(False),
+                    OtpCode.telegram_claimed_at.is_(None),
+                    OtpCode.expires_at > datetime.now(UTC),
+                )
+            )
+        ).scalar_one_or_none()
+        if otp is None:
+            raise TelegramApprovalError("Havola eskirgan. Ilovadan yangi kod so‘rang")
+        otp.telegram_user_id = telegram_user_id
+        await session.commit()
+
+
+async def claim_telegram_otp(*, telegram_user_id: int, phone: str) -> str:
+    normalized = normalize_phone(phone)
+    async with AsyncSessionLocal() as session:
+        otp = (
+            await session.execute(
+                select(OtpCode)
+                .where(
+                    OtpCode.telegram_user_id == telegram_user_id,
+                    OtpCode.consumed.is_(False),
+                    OtpCode.telegram_claimed_at.is_(None),
+                    OtpCode.expires_at > datetime.now(UTC),
+                )
+                .order_by(OtpCode.created_at.desc())
+                .with_for_update()
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if otp is None:
+            raise TelegramApprovalError("Faol tasdiqlash so‘rovi yo‘q. Ilovadagi havolani qayta oching")
+        if normalize_phone(otp.phone) != normalized:
+            raise TelegramApprovalError("Telegram telefon raqami ilovada kiritilgan raqamga mos emas")
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        otp.code_hash = hash_password(code)
+        otp.telegram_claimed_at = datetime.now(UTC)
+        otp.telegram_token_hash = None
+        await session.commit()
+        return code
 
 
 async def link_telegram_account(

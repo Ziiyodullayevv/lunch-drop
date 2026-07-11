@@ -18,6 +18,8 @@ from aiogram.types import (
 from app.config import settings
 from app.models.enums import UserRole
 from bot.approvals import (
+    begin_telegram_otp,
+    claim_telegram_otp,
     TelegramApprovalError,
     get_linked_user,
     link_telegram_account,
@@ -66,6 +68,25 @@ async def _send_pending(message: Message) -> None:
 async def cmd_start(message: Message) -> None:
     if message.from_user is None:
         return
+    payload = (message.text or "").split(maxsplit=1)
+    if len(payload) == 2 and payload[1].startswith("otp_"):
+        try:
+            await begin_telegram_otp(
+                token=payload[1][4:], telegram_user_id=message.from_user.id
+            )
+        except TelegramApprovalError as exc:
+            await message.answer(str(exc))
+            return
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="📱 Telefon raqamimni tasdiqlash", request_contact=True)]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
+        await message.answer(
+            "Tasdiqlash kodini olish uchun Telegram’dagi o‘z telefon raqamingizni yuboring.",
+            reply_markup=keyboard,
+        )
+        return
     try:
         user = await get_linked_user(message.from_user.id)
     except TelegramApprovalError:
@@ -106,6 +127,22 @@ async def handle_contact(message: Message) -> None:
         return
     if message.contact.user_id != message.from_user.id:
         await message.answer("Faqat o'zingizning Telegram kontaktingizni yuboring")
+        return
+    try:
+        code = await claim_telegram_otp(
+            telegram_user_id=message.from_user.id,
+            phone=message.contact.phone_number,
+        )
+    except TelegramApprovalError as otp_exc:
+        if "Faol tasdiqlash" not in str(otp_exc):
+            await message.answer(str(otp_exc), reply_markup=ReplyKeyboardRemove())
+            return
+    else:
+        await message.answer(
+            f"✅ LunchDrop tasdiqlash kodi: <code>{code}</code>\n\nKod 3 daqiqa amal qiladi.",
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardRemove(),
+        )
         return
     try:
         user = await link_telegram_account(

@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
+import { Linking } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,12 +15,13 @@ import { useCountdown } from '../hooks/use-countdown';
 
 export function VerifyOtpScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ phone?: string; expiresIn?: string }>();
+  const params = useLocalSearchParams<{ phone?: string; expiresIn?: string; telegramUrl?: string }>();
   const auth = useAuth();
   const expiresIn = Number(params.expiresIn ?? 60);
   const countdown = useCountdown(expiresIn);
 
   const phone = params.phone ?? '';
+  const telegramUrl = params.telegramUrl ?? '';
 
   const form = useForm<OtpFormValues>({
     resolver: zodResolver(otpSchema),
@@ -92,12 +94,30 @@ export function VerifyOtpScreen() {
           Tasdiqlash
         </Text>
         <Text fontFamily="$body" fontSize="$4" color="#8E8E93" fontWeight="400" lineHeight={22}>
-          Yuborilgan 6 xonali kodni kiriting:{' '}
+          Telegram botdan olingan 6 xonali kodni kiriting:{' '}
           <Text fontFamily="$body" fontSize="$4" color="#8E8E93" fontWeight="600">
             {maskedPhone || phone}
           </Text>
         </Text>
       </YStack>
+
+      {telegramUrl ? (
+        <YStack
+          marginHorizontal="$5"
+          marginTop="$5"
+          height={54}
+          borderRadius={16}
+          backgroundColor="#229ED9"
+          alignItems="center"
+          justifyContent="center"
+          pressStyle={{ opacity: 0.85, scale: 0.98 }}
+          onPress={() => void Linking.openURL(telegramUrl)}
+        >
+          <Text fontFamily="$heading" fontSize="$4" fontWeight="700" color="#FFFFFF">
+            Telegram orqali kod olish
+          </Text>
+        </YStack>
+      ) : null}
 
       {/* OTP boxes */}
       <YStack paddingTop="$8" animation="quick" enterStyle={{ opacity: 0, y: 18 }}>
@@ -143,7 +163,11 @@ export function VerifyOtpScreen() {
 
         {countdown.isDone ? (
           <YStack
-            onPress={countdown.reset}
+            onPress={async () => {
+              const response = await auth.requestOtp.mutateAsync(phone);
+              countdown.reset();
+              if (response.telegramUrl) void Linking.openURL(response.telegramUrl);
+            }}
             pressStyle={{ opacity: 0.7 }}
             animation="quick"
           >

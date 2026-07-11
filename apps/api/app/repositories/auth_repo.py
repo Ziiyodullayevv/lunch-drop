@@ -33,9 +33,9 @@ class AuthRepository:
         return result.scalar_one()
 
     async def create_otp(
-        self, phone: str, code_hash: str, expires_at: datetime
+        self, phone: str, code_hash: str, expires_at: datetime, telegram_token_hash: str | None = None
     ) -> OtpCode:
-        otp = OtpCode(phone=phone, code_hash=code_hash, expires_at=expires_at)
+        otp = OtpCode(phone=phone, code_hash=code_hash, expires_at=expires_at, telegram_token_hash=telegram_token_hash)
         self.session.add(otp)
         await self.session.flush()
         return otp

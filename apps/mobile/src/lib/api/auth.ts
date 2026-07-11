@@ -10,13 +10,13 @@ import { apiClient, apiRequest, toJsonBody } from './client';
 import { mapAuthSession, mapBranchInfo } from './mappers';
 import type { AuthSession } from '@/types/domain';
 
-export async function requestOtp(phone: string): Promise<{ phone: string; expiresIn: number }> {
+export async function requestOtp(phone: string): Promise<{ phone: string; expiresIn: number; telegramUrl: string | null }> {
   const res = await apiRequest<OtpSendResponseDto>('/auth/send-otp', {
     method: 'POST',
     skipAuth: true,
     body: toJsonBody({ phone }),
   });
-  return { phone, expiresIn: res.expires_in };
+  return { phone, expiresIn: res.expires_in, telegramUrl: res.telegram_url ?? null };
 }
 
 export async function verifyOtp(phone: string, code: string): Promise<AuthSession> {
