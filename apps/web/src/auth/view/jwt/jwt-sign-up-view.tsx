@@ -352,6 +352,11 @@ function RegisterFlow({
           alternativeLabel
           sx={{
             mx: { xs: -1, sm: 0 },
+            '& .MuiStepConnector-root.MuiStepConnector-alternativeLabel': {
+              top: 18,
+              left: 'calc(-50% + 26px)',
+              right: 'calc(50% + 26px)',
+            },
             '& .MuiStepConnector-line': { borderColor: 'divider' },
             '& .MuiStepLabel-label': {
               mt: 0.75,
