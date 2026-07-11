@@ -24,8 +24,7 @@ export function NavList({ data, sx, ...other }: NavListProps) {
   const navItemRef = useRef<HTMLButtonElement>(null);
 
   const isNotRootOrDocs = !['/', paths.docs].includes(pathname);
-  const isNotComponentsPath = !pathname.startsWith(paths.components);
-  const isOpenPath = !!data.children && isNotRootOrDocs && isNotComponentsPath;
+  const isOpenPath = !!data.children && isNotRootOrDocs;
 
   const isActive = useMainNavActive(pathname, data.path, data.deepMatch ?? !!data.children);
 
