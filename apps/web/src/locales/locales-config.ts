@@ -13,7 +13,7 @@ import { enUS as enUSDataGrid, ruRU as ruRUDataGrid } from '@mui/x-data-grid/loc
 // ----------------------------------------------------------------------
 
 // Supported languages
-export const supportedLngs = ['uz', 'uz-cyrl', 'ru', 'en'] as const;
+export const supportedLngs = ['uz', 'ru', 'en'] as const;
 export type LangCode = (typeof supportedLngs)[number];
 
 // Fallback and default namespace
@@ -46,17 +46,7 @@ export type LangOption = {
 export const allLangs: LangOption[] = [
   {
     value: 'uz',
-    label: "O'zbek (Lotin)",
-    countryCode: 'UZ',
-    adapterLocale: 'uz',
-    numberFormat: { code: 'uz-UZ', currency: 'UZS' },
-    systemValue: {
-      components: { ...enUSDate.components, ...enUSDataGrid.components },
-    },
-  },
-  {
-    value: 'uz-cyrl',
-    label: 'Ўзбек (Кирил)',
+    label: "O'zbek",
     countryCode: 'UZ',
     adapterLocale: 'uz',
     numberFormat: { code: 'uz-UZ', currency: 'UZS' },
