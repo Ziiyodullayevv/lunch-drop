@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { MapRef, MarkerEvent } from 'react-map-gl/maplibre';
 
@@ -135,14 +136,42 @@ async function fetchAllItems<T>(url: string): Promise<T[]> {
   ];
 }
 
+function MapInfoRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+  return (
+    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
+      <Box
+        sx={{
+          mt: 0.1,
+          width: 30,
+          height: 30,
+          flexShrink: 0,
+          display: 'grid',
+          placeItems: 'center',
+          borderRadius: 1,
+          color: 'text.secondary',
+          bgcolor: 'background.neutral',
+        }}
+      >
+        {icon}
+      </Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography variant="caption" sx={{ display: 'block', mb: 0.15, color: 'text.disabled' }}>
+          {label}
+        </Typography>
+        {children}
+      </Box>
+    </Stack>
+  );
+}
+
 function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
   return (
-    <Stack spacing={1.25} sx={{ p: 0.5, width: { xs: 1, sm: 270 } }}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Avatar sx={{ width: 40, height: 40, bgcolor: C_KITCHEN }}>
+    <Stack spacing={1.75} sx={{ width: { xs: 1, sm: 290 } }}>
+      <Stack direction="row" spacing={1.5} sx={{ pr: 4, alignItems: 'center' }}>
+        <Avatar sx={{ width: 44, height: 44, bgcolor: C_KITCHEN, fontWeight: 800 }}>
           {kitchen.name[0]}
         </Avatar>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="subtitle1" noWrap>
             {kitchen.name}
           </Typography>
@@ -158,20 +187,18 @@ function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
       <Divider />
 
       {kitchen.phone && (
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Iconify icon="solar:phone-bold" width={14} sx={{ color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        <MapInfoRow icon={<Iconify icon="solar:phone-bold" width={16} />} label="Telefon">
+          <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
             {kitchen.phone}
           </Typography>
-        </Stack>
+        </MapInfoRow>
       )}
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Iconify icon="solar:clock-circle-bold" width={14} sx={{ color: 'text.secondary' }} />
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          Buyurtma: {kitchen.order_cutoff_time} gacha
+      <MapInfoRow icon={<Iconify icon="solar:clock-circle-bold" width={16} />} label="Buyurtma qabul qilish">
+        <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+          {kitchen.order_cutoff_time} gacha
         </Typography>
-      </Stack>
+      </MapInfoRow>
     </Stack>
   );
 }
@@ -186,12 +213,12 @@ function BranchPopupCard({
   const company = companies.find((item) => item.id === branch.company_id);
 
   return (
-    <Stack spacing={1.25} sx={{ p: 0.5, width: { xs: 1, sm: 280 } }}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+    <Stack spacing={1.75} sx={{ width: { xs: 1, sm: 300 } }}>
+      <Stack direction="row" spacing={1.5} sx={{ pr: 4, alignItems: 'center' }}>
         <Avatar
           sx={{
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             bgcolor: C_BRANCH,
             color: '#fff',
             fontWeight: 700,
@@ -199,7 +226,7 @@ function BranchPopupCard({
         >
           {branch.name[0]}
         </Avatar>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="subtitle1" noWrap>
             {branch.name}
           </Typography>
@@ -211,40 +238,54 @@ function BranchPopupCard({
 
       <Divider />
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-        <Iconify
-          icon="mingcute:location-fill"
-          width={14}
-          sx={{ mt: 0.25, color: 'text.secondary' }}
-        />
-        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+      <MapInfoRow icon={<Iconify icon="mingcute:location-fill" width={16} />} label="Manzil">
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.primary',
+            lineHeight: 1.45,
+            display: '-webkit-box',
+            overflow: 'hidden',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 3,
+          }}
+        >
           {branch.address}
         </Typography>
-      </Stack>
+      </MapInfoRow>
 
       {company && (
         <>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Iconify icon="solar:home-2-outline" width={14} sx={{ color: 'text.secondary' }} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          <MapInfoRow icon={<Iconify icon="solar:home-2-outline" width={16} />} label="Kompaniya">
+            <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }} noWrap>
               {company.name}
             </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Iconify icon="solar:calendar-date-bold" width={14} sx={{ color: 'text.secondary' }} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Hisob-kitob kuni: har oyning {company.billing_day}-kuni
+          </MapInfoRow>
+          <MapInfoRow icon={<Iconify icon="solar:calendar-date-bold" width={16} />} label="Hisob-kitob kuni">
+            <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+              Har oyning {company.billing_day}-kuni
             </Typography>
-          </Stack>
+          </MapInfoRow>
         </>
       )}
 
-      <Chip
-        size="small"
-        color={branch.connected_to_kitchen ? 'success' : 'default'}
-        label={branch.connected_to_kitchen ? 'Oshxonaga ulangan' : 'Hamkorlik mavjud emas'}
-        sx={{ alignSelf: 'flex-start', height: 22, fontSize: 11 }}
-      />
+      <Stack
+        direction="row"
+        spacing={0.75}
+        sx={{
+          px: 1.25,
+          py: 0.9,
+          alignItems: 'center',
+          borderRadius: 1,
+          color: branch.connected_to_kitchen ? 'success.dark' : 'text.secondary',
+          bgcolor: branch.connected_to_kitchen ? 'success.lighter' : 'background.neutral',
+        }}
+      >
+        <Iconify icon={branch.connected_to_kitchen ? 'eva:checkmark-fill' : 'solar:info-circle-bold'} width={16} />
+        <Typography variant="caption" sx={{ color: 'inherit', fontWeight: 700 }}>
+          {branch.connected_to_kitchen ? 'Oshxonaga ulangan' : 'Hamkorlik mavjud emas'}
+        </Typography>
+      </Stack>
     </Stack>
   );
 }
