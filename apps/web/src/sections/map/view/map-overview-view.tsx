@@ -138,7 +138,11 @@ async function fetchAllItems<T>(url: string): Promise<T[]> {
 
 function MapInfoRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
-    <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
+    <Stack
+      direction="row"
+      spacing={1.25}
+      sx={{ width: 1, minWidth: 0, maxWidth: 1, alignItems: 'flex-start' }}
+    >
       <Box
         sx={{
           mt: 0.1,
@@ -154,7 +158,7 @@ function MapInfoRow({ icon, label, children }: { icon: ReactNode; label: string;
       >
         {icon}
       </Box>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
+      <Box sx={{ minWidth: 0, maxWidth: 'calc(100% - 40px)', flex: 1, overflow: 'hidden' }}>
         <Typography variant="caption" sx={{ display: 'block', mb: 0.15, color: 'text.disabled' }}>
           {label}
         </Typography>
@@ -166,13 +170,13 @@ function MapInfoRow({ icon, label, children }: { icon: ReactNode; label: string;
 
 function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
   return (
-    <Stack spacing={1.75} sx={{ width: { xs: 1, sm: 290 } }}>
-      <Stack direction="row" spacing={1.5} sx={{ pr: 4, alignItems: 'center' }}>
+    <Stack spacing={1.75} sx={{ width: 1, minWidth: 0, maxWidth: 1, overflow: 'hidden' }}>
+      <Stack direction="row" spacing={1.5} sx={{ pr: 5, minWidth: 0, alignItems: 'center' }}>
         <Avatar sx={{ width: 44, height: 44, bgcolor: C_KITCHEN, fontWeight: 800 }}>
           {kitchen.name[0]}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="subtitle1" noWrap>
+          <Typography variant="subtitle1" noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {kitchen.name}
           </Typography>
           <Chip
@@ -213,8 +217,8 @@ function BranchPopupCard({
   const company = companies.find((item) => item.id === branch.company_id);
 
   return (
-    <Stack spacing={1.75} sx={{ width: { xs: 1, sm: 300 } }}>
-      <Stack direction="row" spacing={1.5} sx={{ pr: 4, alignItems: 'center' }}>
+    <Stack spacing={1.75} sx={{ width: 1, minWidth: 0, maxWidth: 1, overflow: 'hidden' }}>
+      <Stack direction="row" spacing={1.5} sx={{ pr: 5, minWidth: 0, alignItems: 'center' }}>
         <Avatar
           sx={{
             width: 44,
@@ -227,7 +231,7 @@ function BranchPopupCard({
           {branch.name[0]}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="subtitle1" noWrap>
+          <Typography variant="subtitle1" noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {branch.name}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -244,6 +248,7 @@ function BranchPopupCard({
           sx={{
             color: 'text.primary',
             lineHeight: 1.45,
+            overflowWrap: 'anywhere',
             display: '-webkit-box',
             overflow: 'hidden',
             WebkitBoxOrient: 'vertical',
@@ -273,6 +278,9 @@ function BranchPopupCard({
         direction="row"
         spacing={0.75}
         sx={{
+          width: 1,
+          minWidth: 0,
+          maxWidth: 1,
           px: 1.25,
           py: 0.9,
           alignItems: 'center',
@@ -282,7 +290,10 @@ function BranchPopupCard({
         }}
       >
         <Iconify icon={branch.connected_to_kitchen ? 'eva:checkmark-fill' : 'solar:info-circle-bold'} width={16} />
-        <Typography variant="caption" sx={{ color: 'inherit', fontWeight: 700 }}>
+        <Typography
+          variant="caption"
+          sx={{ minWidth: 0, color: 'inherit', fontWeight: 700, whiteSpace: 'normal' }}
+        >
           {branch.connected_to_kitchen ? 'Oshxonaga ulangan' : 'Hamkorlik mavjud emas'}
         </Typography>
       </Stack>
@@ -658,6 +669,10 @@ export function MapOverviewView() {
                   maxWidth="320px"
                   sx={{
                     '& .maplibregl-popup-content': {
+                      width: 320,
+                      maxWidth: 'calc(100vw - 32px)',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden',
                       p: 2,
                       borderRadius: 1.5,
                       boxShadow: '0 18px 48px rgba(20, 26, 33, 0.18)',
@@ -692,6 +707,9 @@ export function MapOverviewView() {
                   bottom: 12,
                   zIndex: 4,
                   p: 2,
+                  maxWidth: 'calc(100% - 24px)',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
                   borderRadius: 1.5,
                   bgcolor: 'background.paper',
                   boxShadow: '0 16px 44px rgba(20, 26, 33, 0.22)',
