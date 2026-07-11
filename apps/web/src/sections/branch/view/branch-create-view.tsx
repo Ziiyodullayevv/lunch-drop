@@ -1,6 +1,6 @@
 'use client';
 
-import type { MapRef, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewState } from 'react-map-gl/maplibre';
 
 import * as z from 'zod';
 import { useSearchParams } from 'next/navigation';
@@ -35,8 +35,8 @@ import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
   Map,
-  MapMarker,
   MapControls,
+  MapCenterPin,
   MapLocateButton,
   type GeolocateCoords,
   MapAddressAutocomplete,
@@ -77,6 +77,7 @@ export function BranchCreateView() {
   const mapRef = useRef<MapRef | null>(null);
   const [marker, setMarker]           = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [hasLocation, setHasLocation] = useState(false);
+  const [isMapMoving, setIsMapMoving] = useState(false);
 
   const { data: companiesData } = useCompanies(undefined, isSuperAdmin);
   const createBranch        = useCreateBranch();
@@ -103,12 +104,12 @@ export function BranchCreateView() {
   const latVal = watch('lat');
   const lngVal = watch('lng');
 
-  const handleMarkerDragEnd = useCallback(
-    (e: MarkerDragEvent) => {
-      const { lat: newLat, lng: newLng } = e.lngLat;
-      setMarker({ latitude: newLat, longitude: newLng });
-      setValue('lat', newLat);
-      setValue('lng', newLng);
+  const handleMapMoveEnd = useCallback(
+    (viewState: ViewState) => {
+      setIsMapMoving(false);
+      setMarker({ latitude: viewState.latitude, longitude: viewState.longitude });
+      setValue('lat', viewState.latitude, { shouldDirty: true, shouldValidate: true });
+      setValue('lng', viewState.longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
     },
     [setValue]
@@ -262,25 +263,21 @@ export function BranchCreateView() {
 
             <Stack spacing={1}>
               <Typography variant="subtitle2" color="text.secondary">
-                Xaritadagi joylashuv — markerni sudrab o&apos;rnating
+                Xaritani surib joylashuvni belgilang
               </Typography>
 
               <Box sx={{ position: 'relative' }}>
                 <Map
                   ref={mapRef}
                   initialViewState={{ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG, zoom: 12 }}
+                  onMoveStart={() => setIsMapMoving(true)}
+                  onMoveEnd={(event) => handleMapMoveEnd(event.viewState)}
                   sx={{ height: 320, borderRadius: 2, overflow: 'hidden' }}
                 >
                   <MapControls hideGeolocate />
-                  <MapMarker
-                    latitude={marker.latitude}
-                    longitude={marker.longitude}
-                    draggable
-                    anchor="bottom"
-                    onDragEnd={handleMarkerDragEnd}
-                    sx={{ color: hasLocation ? '#3B82F6' : '#9CA3AF' }}
-                  />
                 </Map>
+
+                <MapCenterPin moving={isMapMoving} />
 
                 <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
               </Box>
@@ -293,7 +290,7 @@ export function BranchCreateView() {
                   </>
                 ) : (
                   <Typography variant="caption" color="text.disabled">
-                    Markerni sudrab joylashuvni belgilang (majburiy)
+                    Binafsha marker kerakli nuqtada turishi uchun xaritani suring (majburiy)
                   </Typography>
                 )}
               </Box>

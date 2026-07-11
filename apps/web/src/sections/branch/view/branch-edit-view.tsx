@@ -1,6 +1,6 @@
 'use client';
 
-import type { MapRef, MarkerDragEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewState } from 'react-map-gl/maplibre';
 
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,8 +33,8 @@ import { toast } from 'src/components/snackbar';
 import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
-  MapMarker,
   MapControls,
+  MapCenterPin,
   Map as AppMap,
   MapLocateButton,
   type GeolocateCoords,
@@ -82,6 +82,7 @@ export function BranchEditView({ id }: Props) {
   const isSuperAdmin = user?.role === 'super_admin';
   const mapRef = useRef<MapRef | null>(null);
   const [marker, setMarker] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
+  const [isMapMoving, setIsMapMoving] = useState(false);
 
   const superBranch = useBranch(id, isSuperAdmin);
   const companyBranch = useCompanyBranch(id, isCompanyAdmin);
@@ -170,9 +171,10 @@ export function BranchEditView({ id }: Props) {
     [setValue]
   );
 
-  const handleMarkerDragEnd = useCallback(
-    (event: MarkerDragEvent) => {
-      updateLocation(event.lngLat.lat, event.lngLat.lng);
+  const handleMapMoveEnd = useCallback(
+    (viewState: ViewState) => {
+      setIsMapMoving(false);
+      updateLocation(viewState.latitude, viewState.longitude);
     },
     [updateLocation]
   );
@@ -337,7 +339,7 @@ export function BranchEditView({ id }: Props) {
 
             <Stack spacing={1}>
               <Typography variant="subtitle2" color="text.secondary">
-                Xaritadagi joylashuv — markerni sudrab o&apos;rnating
+                Xaritani surib joylashuvni belgilang
               </Typography>
 
               <Box sx={{ position: 'relative' }}>
@@ -348,18 +350,14 @@ export function BranchEditView({ id }: Props) {
                     longitude: marker.longitude,
                     zoom: 14,
                   }}
+                  onMoveStart={() => setIsMapMoving(true)}
+                  onMoveEnd={(event) => handleMapMoveEnd(event.viewState)}
                   sx={{ height: 320, borderRadius: 2, overflow: 'hidden' }}
                 >
                   <MapControls hideGeolocate />
-                  <MapMarker
-                    latitude={marker.latitude}
-                    longitude={marker.longitude}
-                    draggable
-                    anchor="bottom"
-                    onDragEnd={handleMarkerDragEnd}
-                    sx={{ color: '#3B82F6' }}
-                  />
                 </AppMap>
+
+                <MapCenterPin moving={isMapMoving} />
 
                 <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
               </Box>
