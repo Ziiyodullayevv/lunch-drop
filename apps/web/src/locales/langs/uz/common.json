@@ -54,6 +54,48 @@
       "ios": "iOS uchun",
       "download": "Yuklab olish",
       "forWho": "Kimlar uchun?"
+    },
+    "features": {
+      "caption": "Bitta ekotizim", "title": "Har bir tomon uchun", "gradient": "qulay yechim",
+      "description": "Lunch Drop korporativ ovqatlanishdagi barcha ishtirokchilarni bitta boshqaruv tizimida birlashtiradi.",
+      "companyTitle": "Kompaniyalar uchun", "companyDescription": "Filiallar va xodimlarni boshqaring, buyurtmalarni kuzating hamda korporativ ovqatlanish jarayonini shaffof nazorat qiling.",
+      "kitchenTitle": "Oshxonalar uchun", "kitchenDescription": "Menyuni yangilang, kelgan buyurtmalarni qabul qiling, tayyorlash va yetkazib berish holatini real vaqt rejimida boshqaring.",
+      "employeeTitle": "Xodimlar uchun mobil ilova", "employeeDescription": "Xodimlar qulay mobil ilovada menyuni ko‘radi, taom tanlaydi, buyurtma beradi va uning holatini kuzatadi.", "imageAlt": "Lunch Drop boshqaruv paneli"
+    },
+    "workflow": {
+      "caption": "Oddiy va boshqariladigan", "title": "Buyurtmadan", "gradient": "yetkazishgacha",
+      "description": "Har bir bosqich aniq rol va statuslar asosida ishlaydi. Kompaniya, oshxona va xodim bir xil yangilangan ma’lumotni ko‘radi.", "imageAlt": "Lunch Drop ish jarayoni",
+      "steps": [
+        { "title": "Kompaniya tizimni sozlaydi", "description": "Filiallar, xodimlar va ularga xizmat ko‘rsatuvchi oshxonalar biriktiriladi." },
+        { "title": "Xodim mobil ilovada buyurtma beradi", "description": "Mavjud menyudan taom tanlanadi va buyurtma belgilangan vaqtgacha yuboriladi." },
+        { "title": "Oshxona tayyorlaydi va yetkazadi", "description": "Buyurtmalar jamlanadi, tayyorlash holati yangilanadi va kompaniyaga yetkazib beriladi." }
+      ]
+    },
+    "cta": { "title": "Korporativ ovqatlanishni", "today": "bugunoq", "gradient": "raqamlashtiring", "button": "Tizimga kirish", "imageAlt": "Lunch Drop boshqaruv platformasi" },
+    "faq": {
+      "caption": "Ko‘p so‘raladigan savollar", "title": "Muhim savollarga", "gradient": "aniq javoblar",
+      "contactTitle": "Lunch Drop bilan ishlashni boshlang", "contactDescription": "Kompaniya yoki oshxona sifatida tizimga kiring va korporativ ovqatlanishni bitta joydan boshqaring.", "contactButton": "Boshqaruv paneliga kirish",
+      "items": [
+        { "question": "Lunch Drop kimlar uchun mo‘ljallangan?", "answer": "Platforma kompaniyalar, korporativ buyurtmalarni qabul qiluvchi oshxonalar va mobil ilovadan foydalanuvchi xodimlar uchun yaratilgan." },
+        { "question": "Kompaniya platformada nimalarni boshqara oladi?", "answer": "Kompaniya filial va xodimlarni qo‘shadi, oshxonalarni biriktiradi va buyurtmalarni yagona paneldan nazorat qiladi." },
+        { "question": "Oshxona buyurtmalar bilan qanday ishlaydi?", "answer": "Oshxona menyuni boshqaradi, buyurtmalarni qabul qiladi va ularning holatini bosqichma-bosqich yangilaydi." },
+        { "question": "Mobil ilova xodimga nima beradi?", "answer": "Xodim menyuni ko‘radi, taom tanlaydi, buyurtma beradi va uning holati hamda tarixini kuzatadi." },
+        { "question": "Buyurtma holati barcha tomonlarga ko‘rinadimi?", "answer": "Ha. Kompaniya, oshxona va xodim buyurtmaning ayni holatini bir xil ko‘radi." }
+      ]
+    },
+    "testimonials": {
+      "caption": "Mijozlar fikri", "title": "Hamkorlar aytmoqda", "gradient": "natija bor",
+      "delivered": "Yetkazilgan buyurtmalar", "activeUsers": "Faol foydalanuvchilar", "rating": "Mijozlar bahosi",
+      "items": [
+        { "category": "Buyurtma nazorati", "content": "Lunch Drop bilan tushlik jarayoni tartibga tushdi. Xodimlar oson buyurtma beradi, adminlar holatni bir joydan kuzatadi." },
+        { "category": "Qulay interfeys", "content": "Platforma sodda va tushunarli. Filial, oshxona va xodimlar bilan ishlashdagi ortiqcha qadamlar kamaydi." },
+        { "category": "Hisobotlar", "content": "Kunlik buyurtmalar va statuslar tez ko‘rinadi. Jarayon holatini darhol bilamiz." },
+        { "category": "Tezkor boshqaruv", "content": "Xodimlarni tasdiqlash, filialga biriktirish va oshxonalarni ulash ancha tezlashdi." },
+        { "category": "Yetkazish jarayoni", "content": "Buyurtma va yetkazish vaqtlarini belgilash ishni yengillashtirdi." },
+        { "category": "Korporativ ovqatlanish", "content": "Tushlik xarajatlari va filiallar buyurtmalarini boshqarish osonlashdi." },
+        { "category": "Barqaror ish", "content": "Buyurtmalar, statuslar va bildirishnomalar bir tizimda ishlashi jamoamizga qulay." },
+        { "category": "Moslashuvchanlik", "content": "Har bir foydalanuvchi o‘z roliga kerakli bo‘limlarni ko‘radi." }
+      ]
     }
   },
   "mainNav": {

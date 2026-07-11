@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography';
 import { fToNow } from 'src/utils/format-time';
 
 import { _mock } from 'src/_mock';
+import { useTranslate } from 'src/locales';
 
 import { varFade, MotionViewport, AnimateCountUp } from 'src/components/animate';
 import {
@@ -57,6 +58,12 @@ const renderLines = () => (
 );
 
 export function HomeTestimonials({ sx, ...other }: BoxProps) {
+  const { t } = useTranslate();
+  const testimonials = TESTIMONIALS.map((item, index) => ({
+    ...item,
+    category: t(`home.testimonials.items.${index}.category`),
+    content: t(`home.testimonials.items.${index}.content`),
+  }));
   const carousel = useCarousel({
     align: 'start',
     slidesToShow: {
@@ -74,9 +81,9 @@ export function HomeTestimonials({ sx, ...other }: BoxProps) {
 
   const renderDescription = () => (
     <SectionTitle
-      caption="mijozlar fikri"
-      title="Hamkorlar aytmoqda"
-      txtGradient="natija bor"
+      caption={t('home.testimonials.caption')}
+      title={t('home.testimonials.title')}
+      txtGradient={t('home.testimonials.gradient')}
       sx={{ mb: { xs: 5, md: 8 }, textAlign: 'center' }}
     />
   );
@@ -121,7 +128,7 @@ export function HomeTestimonials({ sx, ...other }: BoxProps) {
       {horizontalDivider('top')}
 
       <Carousel carousel={carousel}>
-        {TESTIMONIALS.map((item) => (
+        {testimonials.map((item) => (
           <Stack key={item.id} component={m.div} variants={varFade('in')}>
             <Stack spacing={1} sx={{ typography: 'subtitle2' }}>
               <Rating size="small" name="read-only" value={item.rating} precision={0.5} readOnly />
@@ -181,16 +188,16 @@ export function HomeTestimonials({ sx, ...other }: BoxProps) {
         sx={{ gap: 5, flexDirection: { xs: 'column', md: 'row' } }}
       >
         {[
-          { label: 'Yetkazilgan buyurtmalar', value: 12.121 },
-          { label: 'Faol foydalanuvchilar', value: 160 },
-          { label: 'Mijozlar bahosi', value: 4.9 },
+          { label: t('home.testimonials.delivered'), value: 12.121, unit: 'k+', digits: 1 },
+          { label: t('home.testimonials.activeUsers'), value: 160, unit: '+', digits: 0 },
+          { label: t('home.testimonials.rating'), value: 4.9, unit: '+', digits: 1 },
         ].map((item) => (
           <Stack key={item.label} spacing={2} sx={{ textAlign: 'center', width: 1 }}>
             <m.div variants={varFade('inUp', { distance: 24 })}>
               <AnimateCountUp
                 to={item.value}
-                unit={item.label === 'Yetkazilgan buyurtmalar' ? 'k+' : '+'}
-                toFixed={item.label === 'Faol foydalanuvchilar' ? 0 : 1}
+                unit={item.unit}
+                toFixed={item.digits}
                 sx={[
                   (theme) => ({
                     fontWeight: 'fontWeightBold',
@@ -255,55 +262,12 @@ const createReview = (index: number) => ({
 });
 
 const TESTIMONIALS = [
-  {
-    ...createReview(1),
-    category: 'Buyurtma nazorati',
-    content: `Lunch Drop bilan tushlik jarayoni ancha tartibga tushdi. Xodimlar buyurtmani oson beradi, adminlar esa holatni bir joydan kuzatadi.`,
-    postedAt: 'April 20, 2024 23:15:30',
-  },
-  {
-    ...createReview(2),
-    category: 'Qulay interfeys',
-    content: `Platforma sodda va tushunarli. Filial, oshxona va xodimlar bilan ishlashda ortiqcha qadamlar kamaydi.`,
-    postedAt: 'March 19, 2024 23:15:30',
-  },
-  {
-    ...createReview(3),
-    category: 'Hisobotlar',
-    content: `Kunlik buyurtmalar va statuslar tez ko'rinadi. Qaysi oshxona faol, qaysi yetkazish jarayoni ketayotganini darhol bilamiz.`,
-    postedAt: 'April 19, 2023 23:15:30',
-  },
-  {
-    ...createReview(4),
-    category: 'Tezkor boshqaruv',
-    content: `Xodimlarni tasdiqlash, filialga biriktirish va oshxonalarni ulash jarayoni oldingidan ancha tezlashdi.`,
-    postedAt: 'May 19, 2023 23:15:30',
-  },
-  {
-    ...createReview(5),
-    category: 'Yetkazish jarayoni',
-    content:
-      'Buyurtma va yetkazish vaqtlarini aniq belgilash ishni yengillashtirdi. Tushlik vaqti oldindan rejalashtiriladi.',
-    postedAt: 'June 19, 2023 23:15:30',
-  },
-  {
-    ...createReview(6),
-    category: 'Korporativ ovqatlanish',
-    content: 'Kompaniya uchun tushlik xarajatlari va filiallar kesimidagi buyurtmalarni boshqarish osonlashdi.',
-    postedAt: 'July 19, 2023 23:15:30',
-  },
-  {
-    ...createReview(7),
-    category: 'Barqaror ish',
-    content:
-      "Har kuni takrorlanadigan buyurtmalar, statuslar va bildirishnomalar bir tizimda ishlagani jamoamizga qulay bo'ldi.",
-    postedAt: 'August 19, 2023 23:15:30',
-  },
-  {
-    ...createReview(8),
-    category: 'Moslashuvchanlik',
-    content:
-      "Turli kompaniya, filial va oshxona rollari alohida boshqariladi. Har bir foydalanuvchi o'ziga kerakli bo'limni ko'radi.",
-    postedAt: 'September 19, 2023 23:15:30',
-  },
+  { ...createReview(1), postedAt: 'April 20, 2024 23:15:30' },
+  { ...createReview(2), postedAt: 'March 19, 2024 23:15:30' },
+  { ...createReview(3), postedAt: 'April 19, 2023 23:15:30' },
+  { ...createReview(4), postedAt: 'May 19, 2023 23:15:30' },
+  { ...createReview(5), postedAt: 'June 19, 2023 23:15:30' },
+  { ...createReview(6), postedAt: 'July 19, 2023 23:15:30' },
+  { ...createReview(7), postedAt: 'August 19, 2023 23:15:30' },
+  { ...createReview(8), postedAt: 'September 19, 2023 23:15:30' },
 ];

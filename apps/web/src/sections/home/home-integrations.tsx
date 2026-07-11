@@ -9,6 +9,7 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 
 import { CONFIG } from 'src/global-config';
+import { useTranslate } from 'src/locales';
 
 import { varFade, varScale, MotionViewport } from 'src/components/animate';
 
@@ -44,18 +45,23 @@ const renderLines = () => (
 );
 
 export function HomeIntegrations({ sx, ...other }: BoxProps) {
+  const { t } = useTranslate();
+  const steps = [0, 1, 2].map((index) => ({
+    title: t(`home.workflow.steps.${index}.title`),
+    description: t(`home.workflow.steps.${index}.description`),
+  }));
   const renderDescription = () => (
     <Stack spacing={5}>
       <SectionTitle
-        caption="Oddiy va boshqariladigan"
-        title="Buyurtmadan"
-        txtGradient="yetkazishgacha"
-        description="Har bir bosqich aniq rol va statuslar asosida ishlaydi. Kompaniya, oshxona va xodim bir xil yangilangan ma’lumotni ko‘radi."
+        caption={t('home.workflow.caption')}
+        title={t('home.workflow.title')}
+        txtGradient={t('home.workflow.gradient')}
+        description={t('home.workflow.description')}
         sx={{ textAlign: { xs: 'center', md: 'left' } }}
       />
 
       <Stack spacing={3}>
-        {STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <Stack
             key={step.title}
             component={m.div}
@@ -97,7 +103,7 @@ export function HomeIntegrations({ sx, ...other }: BoxProps) {
       <Box
         component={m.img}
         variants={{ ...varScale('in'), initial: { scale: 0.8, opacity: 0 } }}
-        alt="Lunch Drop ish jarayoni"
+        alt={t('home.workflow.imageAlt')}
         src={`${CONFIG.assetsDir}/assets/illustrations/illustration-integration.webp`}
         sx={{ width: 720, objectFit: 'cover', aspectRatio: '1/1' }}
       />
@@ -127,21 +133,3 @@ export function HomeIntegrations({ sx, ...other }: BoxProps) {
     </Box>
   );
 }
-
-// ----------------------------------------------------------------------
-
-const STEPS = [
-  {
-    title: 'Kompaniya tizimni sozlaydi',
-    description: 'Filiallar, xodimlar va ularga xizmat ko‘rsatuvchi oshxonalar biriktiriladi.',
-  },
-  {
-    title: 'Xodim mobil ilovada buyurtma beradi',
-    description: 'Mavjud menyudan taom tanlanadi va buyurtma belgilangan vaqtgacha yuboriladi.',
-  },
-  {
-    title: 'Oshxona tayyorlaydi va yetkazadi',
-    description:
-      'Buyurtmalar jamlanadi, tayyorlash holati yangilanadi va kompaniyaga yetkazib beriladi.',
-  },
-];

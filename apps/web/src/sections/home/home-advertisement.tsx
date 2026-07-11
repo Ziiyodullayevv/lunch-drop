@@ -11,6 +11,7 @@ import Container from '@mui/material/Container';
 import { paths } from 'src/routes/paths';
 
 import { CONFIG } from 'src/global-config';
+import { useTranslate } from 'src/locales';
 
 import { varFade, MotionViewport } from 'src/components/animate';
 
@@ -19,6 +20,7 @@ import { FloatLine, FloatPlusIcon } from './components/svg-elements';
 // ----------------------------------------------------------------------
 
 export function HomeAdvertisement({ sx, ...other }: BoxProps) {
+  const { t } = useTranslate();
   return (
     <Box
       component="section"
@@ -53,8 +55,8 @@ export function HomeAdvertisement({ sx, ...other }: BoxProps) {
               border: `solid 1px ${theme.vars.palette.grey[800]}`,
             })}
           >
-            {renderImage()}
-            {renderDescription()}
+            {renderImage(t)}
+            {renderDescription(t)}
             {renderBlur()}
           </Box>
         </Container>
@@ -73,7 +75,7 @@ const renderLines = () => (
   </>
 );
 
-const renderDescription = () => (
+const renderDescription = (t: (key: string) => string) => (
   <Stack spacing={4} sx={{ zIndex: 9, minWidth: 0, flex: 1 }}>
     <Box
       component={m.h2}
@@ -87,8 +89,8 @@ const renderDescription = () => (
         fontSize: { xs: 32, sm: 38, md: 42, lg: 48 },
       }}
     >
-      Korporativ ovqatlanishni
-      <br /> bugunoq
+      {t('home.cta.title')}
+      <br /> {t('home.cta.today')}
       <Box
         component="span"
         sx={(theme) => ({
@@ -98,7 +100,7 @@ const renderDescription = () => (
           ml: 1,
         })}
       >
-        raqamlashtiring
+        {t('home.cta.gradient')}
       </Box>
     </Box>
 
@@ -112,7 +114,7 @@ const renderDescription = () => (
     >
       <m.div variants={varFade('inRight', { distance: 24 })}>
         <Button color="primary" size="large" variant="contained" href={paths.dashboard.root}>
-          Tizimga kirish
+          {t('home.cta.button')}
         </Button>
       </m.div>
 
@@ -120,13 +122,13 @@ const renderDescription = () => (
   </Stack>
 );
 
-const renderImage = () => (
+const renderImage = (t: (key: string) => string) => (
   <m.div variants={varFade('inUp')} style={{ flexShrink: 0 }}>
     <Box
       component={m.img}
       animate={{ y: [-20, 0, -20] }}
       transition={{ duration: 4, repeat: Infinity }}
-      alt="Lunch Drop boshqaruv platformasi"
+      alt={t('home.cta.imageAlt')}
       src={`${CONFIG.assetsDir}/assets/illustrations/illustration-dashboard.webp`}
       sx={{
         zIndex: 9,

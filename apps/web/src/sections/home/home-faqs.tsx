@@ -13,6 +13,8 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import Accordion, { accordionClasses } from '@mui/material/Accordion';
 
+import { useTranslate } from 'src/locales';
+
 import { Iconify } from 'src/components/iconify';
 import { varFade, MotionViewport } from 'src/components/animate';
 
@@ -21,58 +23,13 @@ import { FloatLine, FloatPlusIcon, FloatTriangleDownIcon } from './components/sv
 
 // ----------------------------------------------------------------------
 
-const FAQs = [
-  {
-    question: 'Lunch Drop kimlar uchun mo‘ljallangan?',
-    answer: (
-      <Typography>
-        Platforma xodimlarini ovqat bilan ta’minlaydigan kompaniyalar, korporativ buyurtmalarni
-        qabul qiluvchi oshxonalar va mobil ilova orqali taom tanlaydigan xodimlar uchun yaratilgan.
-      </Typography>
-    ),
-  },
-  {
-    question: 'Kompaniya platformada nimalarni boshqara oladi?',
-    answer: (
-      <Typography>
-        Kompaniya filiallar va xodimlarni qo‘shadi, oshxonalarni biriktiradi, buyurtmalarni kuzatadi
-        va korporativ ovqatlanish jarayonini yagona boshqaruv panelidan nazorat qiladi.
-      </Typography>
-    ),
-  },
-  {
-    question: 'Oshxona buyurtmalar bilan qanday ishlaydi?',
-    answer: (
-      <Typography>
-        Oshxona menyu va taomlarni boshqaradi, kompaniyalardan kelgan buyurtmalarni qabul qiladi,
-        ularni tayyorlash bo‘yicha jamlaydi hamda buyurtma holatini bosqichma-bosqich yangilaydi.
-      </Typography>
-    ),
-  },
-  {
-    question: 'Xodimlar uchun mobil ilova qanday imkoniyat beradi?',
-    answer: (
-      <Typography>
-        Xodim o‘z kompaniyasi uchun mavjud oshxona va menyularni ko‘radi, taom tanlaydi, buyurtma
-        beradi, faol buyurtma holatini kuzatadi va buyurtmalar tarixidan foydalanadi.
-      </Typography>
-    ),
-  },
-  {
-    question: 'Buyurtma holati barcha tomonlarga ko‘rinadimi?',
-    answer: (
-      <Typography>
-        Ha. Buyurtmaning qabul qilinishi, tayyorlanishi va keyingi holatlari tizimda yangilanadi.
-        Shu orqali kompaniya, oshxona va xodim jarayonning qaysi bosqichda ekanini kuzata oladi.
-      </Typography>
-    ),
-  },
-];
-
-// ----------------------------------------------------------------------
-
 export function HomeFAQs({ sx, ...other }: BoxProps) {
-  const [expanded, setExpanded] = useState<string | false>(FAQs[0].question);
+  const { t } = useTranslate();
+  const faqs = [0, 1, 2, 3, 4].map((index) => ({
+    question: t(`home.faq.items.${index}.question`),
+    answer: t(`home.faq.items.${index}.answer`),
+  }));
+  const [expanded, setExpanded] = useState<string | false>('0');
 
   const handleChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? panel : false);
@@ -80,9 +37,9 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
 
   const renderDescription = () => (
     <SectionTitle
-      caption="Ko‘p so‘raladigan savollar"
-      title="Muhim savollarga"
-      txtGradient="aniq javoblar"
+      caption={t('home.faq.caption')}
+      title={t('home.faq.title')}
+      txtGradient={t('home.faq.gradient')}
       sx={{ textAlign: 'center' }}
     />
   );
@@ -101,14 +58,14 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
         },
       ]}
     >
-      {FAQs.map((item, index) => (
+      {faqs.map((item, index) => (
         <Accordion
           key={item.question}
           disableGutters
           component={m.div}
           variants={varFade('inUp', { distance: 24 })}
-          expanded={expanded === item.question}
-          onChange={handleChange(item.question)}
+          expanded={expanded === String(index)}
+          onChange={handleChange(String(index))}
           sx={(theme) => ({
             transition: theme.transitions.create(['background-color'], {
               duration: theme.transitions.duration.shorter,
@@ -133,7 +90,7 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
               {item.question}
             </Typography>
           </AccordionSummary>
-          <AccordionDetails>{item.answer}</AccordionDetails>
+          <AccordionDetails><Typography>{item.answer}</Typography></AccordionDetails>
         </Accordion>
       ))}
     </Box>
@@ -151,13 +108,12 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
       ]}
     >
       <m.div variants={varFade('in')}>
-        <Typography variant="h4">Lunch Drop bilan ishlashni boshlang</Typography>
+        <Typography variant="h4">{t('home.faq.contactTitle')}</Typography>
       </m.div>
 
       <m.div variants={varFade('in')}>
         <Typography sx={{ mt: 2, mb: 3, color: 'text.secondary' }}>
-          Kompaniya yoki oshxona sifatida tizimga kiring va korporativ ovqatlanishni bitta joydan
-          boshqaring.
+          {t('home.faq.contactDescription')}
         </Typography>
       </m.div>
 
@@ -168,7 +124,7 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
           href="/dashboard"
           startIcon={<Iconify icon="solar:inbox-in-bold-duotone" />}
         >
-          Boshqaruv paneliga kirish
+          {t('home.faq.contactButton')}
         </Button>
       </m.div>
     </Box>

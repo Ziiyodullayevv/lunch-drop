@@ -54,6 +54,48 @@
       "ios": "For iOS",
       "download": "Download",
       "forWho": "Who is it for?"
+    },
+    "features": {
+      "caption": "One ecosystem", "title": "For every participant", "gradient": "a convenient solution",
+      "description": "Lunch Drop brings everyone involved in corporate catering into one management system.",
+      "companyTitle": "For companies", "companyDescription": "Manage branches and employees, track orders, and transparently control corporate catering.",
+      "kitchenTitle": "For kitchens", "kitchenDescription": "Update menus, accept incoming orders, and manage preparation and delivery in real time.",
+      "employeeTitle": "Mobile app for employees", "employeeDescription": "Employees browse menus, choose meals, place orders, and track their status in the mobile app.", "imageAlt": "Lunch Drop management dashboard"
+    },
+    "workflow": {
+      "caption": "Simple and manageable", "title": "From order", "gradient": "to delivery",
+      "description": "Every stage follows clear roles and statuses. Companies, kitchens, and employees see the same up-to-date information.", "imageAlt": "Lunch Drop workflow",
+      "steps": [
+        { "title": "The company configures the system", "description": "Branches, employees, and the kitchens serving them are connected." },
+        { "title": "The employee orders in the app", "description": "A meal is selected from the available menu and submitted before the cutoff time." },
+        { "title": "The kitchen prepares and delivers", "description": "Orders are consolidated, preparation status is updated, and meals are delivered to the company." }
+      ]
+    },
+    "cta": { "title": "Digitize corporate catering", "today": "starting today", "gradient": "with Lunch Drop", "button": "Sign in", "imageAlt": "Lunch Drop management platform" },
+    "faq": {
+      "caption": "Frequently asked questions", "title": "Clear answers to", "gradient": "important questions",
+      "contactTitle": "Start working with Lunch Drop", "contactDescription": "Sign in as a company or kitchen and manage corporate catering from one place.", "contactButton": "Open dashboard",
+      "items": [
+        { "question": "Who is Lunch Drop for?", "answer": "The platform is built for companies, kitchens accepting corporate orders, and employees using the mobile app." },
+        { "question": "What can a company manage?", "answer": "A company adds branches and employees, connects kitchens, and monitors orders from one dashboard." },
+        { "question": "How does a kitchen process orders?", "answer": "The kitchen manages its menu, accepts orders, and updates their status step by step." },
+        { "question": "What does the mobile app provide employees?", "answer": "Employees browse menus, choose meals, order, and follow their order status and history." },
+        { "question": "Can every party see the order status?", "answer": "Yes. The company, kitchen, and employee all see the same current order status." }
+      ]
+    },
+    "testimonials": {
+      "caption": "Customer feedback", "title": "What partners say", "gradient": "real results",
+      "delivered": "Orders delivered", "activeUsers": "Active users", "rating": "Customer rating",
+      "items": [
+        { "category": "Order control", "content": "Lunch Drop organized our lunch workflow. Employees order easily and admins track status in one place." },
+        { "category": "Easy interface", "content": "The platform is simple and clear, with fewer steps for managing branches, kitchens, and employees." },
+        { "category": "Reports", "content": "Daily orders and statuses are immediately visible, so we always know the current state." },
+        { "category": "Fast management", "content": "Approving employees and connecting branches and kitchens is now much faster." },
+        { "category": "Delivery workflow", "content": "Clear ordering and delivery times have made our work easier." },
+        { "category": "Corporate catering", "content": "Managing lunch expenses and branch orders has become simpler." },
+        { "category": "Reliable operation", "content": "Having orders, statuses, and notifications in one system works well for our team." },
+        { "category": "Flexibility", "content": "Each user sees the sections relevant to their role." }
+      ]
     }
   },
   "mainNav": {

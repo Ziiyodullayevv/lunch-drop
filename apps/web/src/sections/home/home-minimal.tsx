@@ -10,6 +10,7 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 
 import { CONFIG } from 'src/global-config';
+import { useTranslate } from 'src/locales';
 
 import { Iconify } from 'src/components/iconify';
 import { varFade, MotionViewport } from 'src/components/animate';
@@ -30,18 +31,24 @@ const renderLines = () => (
 );
 
 export function HomeMinimal({ sx, ...other }: BoxProps) {
+  const { t } = useTranslate();
+  const items = [
+    { title: t('home.features.companyTitle'), description: t('home.features.companyDescription'), icon: 'solar:case-minimalistic-bold' },
+    { title: t('home.features.kitchenTitle'), description: t('home.features.kitchenDescription'), icon: 'solar:tea-cup-bold' },
+    { title: t('home.features.employeeTitle'), description: t('home.features.employeeDescription'), icon: 'solar:smartphone-2-bold' },
+  ] as const;
   const renderDescription = () => (
     <>
       <SectionTitle
-        caption="Bitta ekotizim"
-        title="Har bir tomon uchun"
-        txtGradient="qulay yechim"
-        description="Lunch Drop korporativ ovqatlanishdagi barcha ishtirokchilarni bitta boshqaruv tizimida birlashtiradi."
+        caption={t('home.features.caption')}
+        title={t('home.features.title')}
+        txtGradient={t('home.features.gradient')}
+        description={t('home.features.description')}
         sx={{ mb: { xs: 5, md: 8 }, textAlign: { xs: 'center', md: 'left' } }}
       />
 
       <Stack spacing={5} sx={{ maxWidth: { sm: 600, md: 460 }, mx: { xs: 'auto', md: 'unset' } }}>
-        {ITEMS.map((item) => (
+        {items.map((item) => (
           <Box
             component={m.div}
             variants={varFade('inUp', { distance: 24 })}
@@ -104,7 +111,7 @@ export function HomeMinimal({ sx, ...other }: BoxProps) {
       >
         <Box
           component="img"
-          alt="Lunch Drop boshqaruv paneli"
+          alt={t('home.features.imageAlt')}
           src={`${CONFIG.assetsDir}/assets/images/home/home-chart.webp`}
           sx={{ width: 720 }}
         />
@@ -143,26 +150,3 @@ export function HomeMinimal({ sx, ...other }: BoxProps) {
     </Box>
   );
 }
-
-// ----------------------------------------------------------------------
-
-const ITEMS = [
-  {
-    title: 'Kompaniyalar uchun',
-    description:
-      'Filiallar va xodimlarni boshqaring, buyurtmalarni kuzating hamda korporativ ovqatlanish jarayonini shaffof nazorat qiling.',
-    icon: 'solar:case-minimalistic-bold',
-  },
-  {
-    title: 'Oshxonalar uchun',
-    description:
-      'Menyuni yangilang, kelgan buyurtmalarni qabul qiling, tayyorlash va yetkazib berish holatini real vaqt rejimida boshqaring.',
-    icon: 'solar:tea-cup-bold',
-  },
-  {
-    title: 'Xodimlar uchun mobil ilova',
-    description:
-      'Xodimlar qulay mobil ilovada menyuni ko‘radi, taom tanlaydi, buyurtma beradi va uning holatini kuzatadi.',
-    icon: 'solar:smartphone-2-bold',
-  },
-] as const;
