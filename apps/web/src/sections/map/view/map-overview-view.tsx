@@ -110,6 +110,17 @@ const PAGE_LIMIT = 100;
 
 const C_KITCHEN = '#FF416D';
 const C_BRANCH = '#10B981';
+const POPUP_OFFSETS = {
+  top: [0, 12] as [number, number],
+  'top-left': [12, 12] as [number, number],
+  'top-right': [-12, 12] as [number, number],
+  bottom: [0, -56] as [number, number],
+  'bottom-left': [12, -56] as [number, number],
+  'bottom-right': [-12, -56] as [number, number],
+  left: [12, 0] as [number, number],
+  right: [-12, 0] as [number, number],
+  center: [0, 0] as [number, number],
+};
 
 // ----------------------------------------------------------------------
 
@@ -667,7 +678,7 @@ export function MapOverviewView() {
                   }}
                   closeOnClick={false}
                   anchor={popupAnchor}
-                  offset={56}
+                  offset={POPUP_OFFSETS}
                   maxWidth="320px"
                   sx={{
                     '& .maplibregl-popup-content': {
