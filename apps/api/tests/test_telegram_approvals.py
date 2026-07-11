@@ -34,6 +34,7 @@ from bot.approvals import (
 from bot.menu import send_employee_menu
 from bot.reports import build_report, current_month, parse_month
 from app.services.kitchen_connection_service import KitchenConnectionService
+from app.services.kitchen_service import KitchenService
 from app.services.auth_service import AuthService
 from app.models.otp_code import OtpCode
 from app.core.security import verify_password
@@ -407,6 +408,13 @@ async def test_kitchen_admin_approves_connection_and_sees_partner_payments() -> 
     assert "48 500 so'm" in summary.text
     assert "Test Company" in partners.text
     assert "HQ" in partners.text
+
+    async with AsyncSessionLocal() as session:
+        map_companies = await KitchenService(session, ids["kitchen_entity"]).list_map_companies()
+    test_company = next(company for company in map_companies if company.name == "Test Company")
+    hq = next(branch for branch in test_company.branches if branch.name == "HQ")
+    assert hq.connected_to_kitchen is True
+    assert test_company.billing_day == 1
 
 
 @pytest.mark.asyncio

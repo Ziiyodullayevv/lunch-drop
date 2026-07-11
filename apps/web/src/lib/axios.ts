@@ -222,6 +222,7 @@ export const endpoints = {
     approveConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/approve`,
     rejectConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/reject`,
     partners: '/api/v1/kitchen/partners',
+    mapCompanies: '/api/v1/kitchen/map-companies',
   },
   // ----------------------------------------------------------------------
   // Company Admin

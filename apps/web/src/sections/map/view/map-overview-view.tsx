@@ -61,12 +61,16 @@ type Company = {
 type CompanyWithBranches = {
   id: string;
   name: string;
+  description: string | null;
+  logo_url: string | null;
+  billing_day: number;
   branches: Array<{
     id: string;
     name: string;
     address: string;
     lat: number;
     lng: number;
+    connected_to_kitchen: boolean;
   }>;
 };
 
@@ -77,6 +81,7 @@ type Branch = {
   company_id: string;
   lat: number | null;
   lng: number | null;
+  connected_to_kitchen?: boolean;
 };
 
 type MarkerItem =
@@ -188,7 +193,7 @@ function BranchPopupCard({
             {branch.name}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Filial
+            {branch.connected_to_kitchen ? 'Hamkor filial' : 'Ulanmagan filial'}
           </Typography>
         </Box>
       </Stack>
@@ -207,13 +212,28 @@ function BranchPopupCard({
       </Stack>
 
       {company && (
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Iconify icon="solar:home-2-outline" width={14} sx={{ color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {company.name}
-          </Typography>
-        </Stack>
+        <>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Iconify icon="solar:home-2-outline" width={14} sx={{ color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {company.name}
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Iconify icon="solar:calendar-date-bold" width={14} sx={{ color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Hisob-kitob kuni: har oyning {company.billing_day}-kuni
+            </Typography>
+          </Stack>
+        </>
       )}
+
+      <Chip
+        size="small"
+        color={branch.connected_to_kitchen ? 'success' : 'default'}
+        label={branch.connected_to_kitchen ? 'Oshxonaga ulangan' : 'Hamkorlik mavjud emas'}
+        sx={{ alignSelf: 'flex-start', height: 22, fontSize: 11 }}
+      />
     </Stack>
   );
 }
@@ -272,20 +292,18 @@ export function MapOverviewView() {
       }
 
       if (isKitchenAdmin) {
-        const kitchenResponse = await axios.get<Kitchen>(endpoints.kitchen.me);
+        const [kitchenResponse, companyResponse] = await Promise.all([
+          axios.get<Kitchen>(endpoints.kitchen.me),
+          axios.get<CompanyWithBranches[]>(endpoints.kitchen.mapCompanies),
+        ]);
 
         setKitchens([kitchenResponse.data]);
-
-        try {
-          const companyResponse = await axios.get<CompanyWithBranches[]>(
-            endpoints.employee.companies
-          );
         const companyItems: Company[] = companyResponse.data.map((company) => ({
           id: company.id,
           name: company.name,
-          description: null,
-          logo_url: null,
-          billing_day: 1,
+          description: company.description,
+          logo_url: company.logo_url,
+          billing_day: company.billing_day,
         }));
         const branchItems: Branch[] = companyResponse.data.flatMap((company) =>
           company.branches.map((branch) => ({
@@ -296,15 +314,6 @@ export function MapOverviewView() {
 
         setCompanies(companyItems);
         setBranches(branchItems);
-        } catch (error) {
-          setCompanies([]);
-          setBranches([]);
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Kompaniya va filiallarni yuklab bo'lmadi"
-          );
-        }
       }
     } catch (error) {
       setCompanies([]);

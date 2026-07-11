@@ -9,9 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.enums import ORDER_STATUS_LABELS, OrderStatus
 from app.models.kitchen import Kitchen
+from app.models.kitchen import BranchKitchen
+from app.models.company import Company
+from app.models.branch import Branch
 from app.models.meal import Meal, MenuCategory, MenuSchedule
 from app.models.order import Order
-from app.schemas.kitchen import KitchenSettingsUpdate
+from app.schemas.kitchen import KitchenMapBranchRead, KitchenMapCompanyRead, KitchenSettingsUpdate
 from app.schemas.meal import MealCreate, MealUpdate, ScheduleMenuRequest
 from app.schemas.order import OrderRead
 from app.services.dashboard import (
@@ -56,6 +59,58 @@ class KitchenService:
             raise ConflictError("Yetkazish boshlanishi tugashidan oldin bo'lsin")
         await self.session.commit()
         return kitchen
+
+    async def list_map_companies(self) -> list[KitchenMapCompanyRead]:
+        companies = list(
+            (
+                await self.session.execute(
+                    select(Company)
+                    .where(Company.deleted_at.is_(None))
+                    .order_by(Company.name)
+                )
+            ).scalars().all()
+        )
+        branches = list(
+            (
+                await self.session.execute(
+                    select(Branch)
+                    .where(Branch.deleted_at.is_(None))
+                    .order_by(Branch.name)
+                )
+            ).scalars().all()
+        )
+        connected_branch_ids = set(
+            (
+                await self.session.execute(
+                    select(BranchKitchen.branch_id).where(
+                        BranchKitchen.kitchen_id == self.kitchen_id
+                    )
+                )
+            ).scalars().all()
+        )
+        branches_by_company: dict[str, list[KitchenMapBranchRead]] = {}
+        for branch in branches:
+            branches_by_company.setdefault(branch.company_id, []).append(
+                KitchenMapBranchRead(
+                    id=branch.id,
+                    name=branch.name,
+                    address=branch.address,
+                    lat=branch.lat,
+                    lng=branch.lng,
+                    connected_to_kitchen=branch.id in connected_branch_ids,
+                )
+            )
+        return [
+            KitchenMapCompanyRead(
+                id=company.id,
+                name=company.name,
+                description=company.description,
+                logo_url=company.logo_url,
+                billing_day=company.billing_day,
+                branches=branches_by_company.get(company.id, []),
+            )
+            for company in companies
+        ]
 
     # --- Categories ---
     async def create_category(self, name: str) -> MenuCategory:

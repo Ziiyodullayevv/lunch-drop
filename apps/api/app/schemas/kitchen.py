@@ -62,3 +62,21 @@ class KitchenRead(BaseModel):
 
 class AssignKitchensRequest(BaseModel):
     kitchen_ids: list[str] = Field(default_factory=list)
+
+
+class KitchenMapBranchRead(BaseModel):
+    id: str
+    name: str
+    address: str
+    lat: float
+    lng: float
+    connected_to_kitchen: bool
+
+
+class KitchenMapCompanyRead(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    logo_url: str | None
+    billing_day: int
+    branches: list[KitchenMapBranchRead]

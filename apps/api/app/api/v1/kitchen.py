@@ -24,7 +24,7 @@ from app.schemas.meal import (
     MenuScheduleRead,
     ScheduleMenuRequest,
 )
-from app.schemas.kitchen import KitchenRead, KitchenSettingsUpdate
+from app.schemas.kitchen import KitchenMapCompanyRead, KitchenRead, KitchenSettingsUpdate
 from app.schemas.kitchen_connection import KitchenConnectionRead, KitchenPartnerReport
 from app.schemas.order import OrderRead, OrderStatusUpdate
 from app.integrations.s3 import upload_image
@@ -63,6 +63,17 @@ async def dashboard(
 @router.get("/me", response_model=KitchenRead, summary="O'z oshxona ma'lumotlari")
 async def get_kitchen(svc: KitchenService = Depends(_svc)) -> KitchenRead:
     return await svc.get_kitchen()
+
+
+@router.get(
+    "/map-companies",
+    response_model=list[KitchenMapCompanyRead],
+    summary="Xarita uchun barcha kompaniya va filiallar",
+)
+async def map_companies(
+    svc: KitchenService = Depends(_svc),
+) -> list[KitchenMapCompanyRead]:
+    return await svc.list_map_companies()
 
 
 @router.patch(
