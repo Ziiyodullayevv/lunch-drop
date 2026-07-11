@@ -11,59 +11,49 @@ import Box from '@mui/material/Box';
 
 export type MapMarkerProps = MarkerProps & {
   sx?: SxProps<Theme>;
+  label?: string;
+  markerColor?: string;
 };
 
-export function MapMarker({ sx, ...other }: MapMarkerProps) {
+export function MapMarker({ sx, label = 'L', markerColor = '#FF5630', anchor = 'bottom', ...other }: MapMarkerProps) {
   return (
-    <Marker {...other}>
+    <Marker anchor={anchor} {...other}>
       <Box
         sx={[
-          { position: 'relative', width: 30, height: 43, cursor: other.draggable ? 'grab' : 'pointer' },
+          { position: 'relative', width: 38, height: 46, cursor: other.draggable ? 'grab' : 'pointer' },
           ...(Array.isArray(sx) ? sx : [sx]),
         ]}
       >
         <Box
           sx={{
             position: 'absolute',
+            top: 1,
             left: '50%',
-            bottom: 0,
-            width: 12,
-            height: 4,
-            borderRadius: '50%',
-            bgcolor: 'rgba(31, 41, 55, 0.20)',
-            filter: 'blur(1.5px)',
-            transform: 'translateX(-50%)',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            left: '50%',
-            bottom: 3,
-            width: 2,
-            height: 16,
-            borderRadius: 4,
-            bgcolor: '#5B3A78',
-            transform: 'translateX(-50%)',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: '50%',
-            width: 30,
-            height: 30,
+            width: 34,
+            height: 34,
             display: 'grid',
             placeItems: 'center',
-            borderRadius: '50%',
-            bgcolor: '#7600FF',
-            border: '2px solid #FFFFFF',
-            boxShadow: '0 4px 11px rgba(118, 0, 255, 0.26)',
-            transform: 'translateX(-50%)',
+            borderRadius: '50% 50% 50% 7px',
+            bgcolor: markerColor,
+            border: '3px solid #FFFFFF',
+            boxShadow: '0 5px 12px rgba(31, 41, 55, 0.28)',
+            transform: 'translateX(-50%) rotate(-45deg)',
           }}
         >
-          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#FFFFFF' }} />
+          <Box
+            component="span"
+            sx={{
+              color: '#FFFFFF',
+              fontSize: 15,
+              lineHeight: 1,
+              fontWeight: 900,
+              textTransform: 'uppercase',
+              transform: 'rotate(45deg)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.16)',
+            }}
+          >
+            {label.slice(0, 1)}
+          </Box>
         </Box>
       </Box>
     </Marker>

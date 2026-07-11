@@ -543,6 +543,8 @@ export function MapOverviewView() {
                   key={`k-${kitchen.id}`}
                   latitude={kitchen.lat!}
                   longitude={kitchen.lng!}
+                  label={kitchen.name}
+                  markerColor="#00A76F"
                   onClick={(event) =>
                     handleMarkerClick(
                       event,
@@ -560,6 +562,8 @@ export function MapOverviewView() {
                   key={`b-${branch.id}`}
                   latitude={branch.lat!}
                   longitude={branch.lng!}
+                  label={companies.find((company) => company.id === branch.company_id)?.name ?? branch.name}
+                  markerColor="#FF5630"
                   onClick={(event) =>
                     handleMarkerClick(
                       event,
