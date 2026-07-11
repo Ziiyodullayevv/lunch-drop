@@ -55,7 +55,6 @@ import {
 
 import { useAuthContext } from 'src/auth/hooks';
 
-import { YandexDelivery } from './yandex-delivery';
 import { OrderAnalytics } from './order-analytics';
 import { OrderStatusTabs } from './order-status-tabs';
 import { filterOrdersForView } from './order-filters-data';
@@ -612,8 +611,6 @@ export function KitchenOrdersView() {
       />
 
       <OrderAnalytics data={analytics} />
-
-      <YandexDelivery orders={kitchenOrders ?? []} kitchen={kitchenMe} />
 
       <Card>
         <OrderStatusTabs
