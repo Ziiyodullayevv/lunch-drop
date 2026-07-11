@@ -12,6 +12,15 @@ export type MapAddressSuggestion = {
   lng: number;
 };
 
+export async function reverseGeocodeAddress(latitude: number, longitude: number) {
+  const params = new URLSearchParams({ lat: String(latitude), lng: String(longitude) });
+  const response = await fetch(`/api/geocode?${params}`);
+  if (!response.ok) return null;
+
+  const data = (await response.json()) as { items?: MapAddressSuggestion[] };
+  return data.items?.[0] ?? null;
+}
+
 type Props = {
   value: string;
   onChange: (value: string) => void;

@@ -39,6 +39,7 @@ import {
   MapCenterPin,
   MapLocateButton,
   type GeolocateCoords,
+  reverseGeocodeAddress,
   MapAddressAutocomplete,
   type MapAddressSuggestion,
 } from 'src/components/map';
@@ -78,6 +79,7 @@ export function BranchCreateView() {
   const [marker, setMarker]           = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [hasLocation, setHasLocation] = useState(false);
   const [isMapMoving, setIsMapMoving] = useState(false);
+  const reverseLookupId = useRef(0);
 
   const { data: companiesData } = useCompanies(undefined, isSuperAdmin);
   const createBranch        = useCreateBranch();
@@ -105,12 +107,17 @@ export function BranchCreateView() {
   const lngVal = watch('lng');
 
   const handleMapMoveEnd = useCallback(
-    (viewState: ViewState) => {
+    async (viewState: ViewState) => {
       setIsMapMoving(false);
       setMarker({ latitude: viewState.latitude, longitude: viewState.longitude });
       setValue('lat', viewState.latitude, { shouldDirty: true, shouldValidate: true });
       setValue('lng', viewState.longitude, { shouldDirty: true, shouldValidate: true });
       setHasLocation(true);
+      const lookupId = ++reverseLookupId.current;
+      const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
+      if (lookupId === reverseLookupId.current && address?.label) {
+        setValue('address', address.label, { shouldDirty: true, shouldValidate: true });
+      }
     },
     [setValue]
   );

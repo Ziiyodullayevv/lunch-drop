@@ -38,6 +38,7 @@ import {
   Map as AppMap,
   MapLocateButton,
   type GeolocateCoords,
+  reverseGeocodeAddress,
   MapAddressAutocomplete,
   type MapAddressSuggestion,
 } from 'src/components/map';
@@ -83,6 +84,7 @@ export function BranchEditView({ id }: Props) {
   const mapRef = useRef<MapRef | null>(null);
   const [marker, setMarker] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const [isMapMoving, setIsMapMoving] = useState(false);
+  const reverseLookupId = useRef(0);
 
   const superBranch = useBranch(id, isSuperAdmin);
   const companyBranch = useCompanyBranch(id, isCompanyAdmin);
@@ -172,11 +174,16 @@ export function BranchEditView({ id }: Props) {
   );
 
   const handleMapMoveEnd = useCallback(
-    (viewState: ViewState) => {
+    async (viewState: ViewState) => {
       setIsMapMoving(false);
       updateLocation(viewState.latitude, viewState.longitude);
+      const lookupId = ++reverseLookupId.current;
+      const address = await reverseGeocodeAddress(viewState.latitude, viewState.longitude);
+      if (lookupId === reverseLookupId.current && address?.label) {
+        setValue('address', address.label, { shouldDirty: true, shouldValidate: true });
+      }
     },
-    [updateLocation]
+    [setValue, updateLocation]
   );
 
   const handleLocate = useCallback(
