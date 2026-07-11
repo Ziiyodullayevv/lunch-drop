@@ -609,8 +609,8 @@ function RegisterFlow({
                       position: 'absolute',
                       top: '50%',
                       left: '50%',
-                      width: 58,
-                      height: 78,
+                      width: 44,
+                      height: 62,
                       zIndex: 2,
                       pointerEvents: 'none',
                       transform: `translate(-50%, ${isMapMoving ? '-108%' : '-100%'})`,
@@ -622,8 +622,8 @@ function RegisterFlow({
                         position: 'absolute',
                         left: '50%',
                         bottom: 1,
-                        width: 22,
-                        height: 7,
+                        width: 17,
+                        height: 6,
                         borderRadius: '50%',
                         bgcolor: 'rgba(31, 41, 55, 0.20)',
                         filter: 'blur(2px)',
@@ -634,9 +634,9 @@ function RegisterFlow({
                       sx={{
                         position: 'absolute',
                         left: '50%',
-                        bottom: 6,
-                        width: 4,
-                        height: 29,
+                        bottom: 5,
+                        width: 3,
+                        height: 23,
                         borderRadius: 4,
                         bgcolor: '#5B3A78',
                         border: '1px solid rgba(255,255,255,0.65)',
@@ -648,18 +648,18 @@ function RegisterFlow({
                         position: 'absolute',
                         top: 0,
                         left: '50%',
-                        width: 58,
-                        height: 58,
+                        width: 44,
+                        height: 44,
                         display: 'grid',
                         placeItems: 'center',
                         borderRadius: '50% 50% 48% 48%',
                         bgcolor: '#7600FF',
-                        border: '3px solid #FFFFFF',
-                        boxShadow: '0 8px 22px rgba(118, 0, 255, 0.34)',
+                        border: '2px solid #FFFFFF',
+                        boxShadow: '0 6px 16px rgba(118, 0, 255, 0.3)',
                         transform: 'translateX(-50%)',
                       }}
                     >
-                      <Box sx={{ width: 13, height: 13, borderRadius: '50%', bgcolor: '#FFFFFF' }} />
+                      <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#FFFFFF' }} />
                     </Box>
                   </Box>
 
