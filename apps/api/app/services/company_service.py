@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -18,7 +18,13 @@ from app.models.order import Order
 from app.models.user import User
 from app.schemas.branch import BranchUpdate, CompanyBranchCreate
 from app.schemas.company import CompanyUpdate
-from app.schemas.company_admin import PendingEmployeeRead
+from app.schemas.company_admin import (
+    BranchOrderSummary,
+    EmployeeOrderSummary,
+    InvoiceRead,
+    OrderReportResponse,
+    PendingEmployeeRead,
+)
 from app.schemas.order import OrderRead
 from app.services.dashboard import (
     build_dashboard,
@@ -313,6 +319,86 @@ class CompanyAdminService:
         await self.session.commit()
         return len(orders)
 
+    async def bulk_confirm_branch_orders(
+        self, branch_id: str, target_date=None
+    ) -> int:
+        """Bitta filialning yetkazilmagan buyurtmalarini bir martada tasdiqlaydi."""
+        branch = await self.session.scalar(
+            select(Branch).where(
+                Branch.id == branch_id,
+                Branch.company_id == self.company_id,
+                Branch.deleted_at.is_(None),
+            )
+        )
+        if branch is None:
+            raise NotFoundError("Filial topilmadi")
+        target_date = target_date or datetime.now(ZoneInfo(settings.timezone)).date()
+        orders = (
+            await self.session.execute(
+                select(Order)
+                .join(User, Order.employee_id == User.id)
+                .where(
+                    Order.branch_id == branch_id,
+                    User.company_id == self.company_id,
+                    Order.target_date == target_date,
+                    Order.status.in_((OrderStatus.CREATED, OrderStatus.PREPARING, OrderStatus.ON_THE_WAY)),
+                )
+            )
+        ).scalars().all()
+        for order in orders:
+            if order.system_fee == 0:
+                order.system_fee = (order.historical_price * Decimal("0.03")).quantize(Decimal("0.01"))
+            order.status = OrderStatus.DELIVERED
+            await notify(self.session, order.employee_id, "order_status", "Buyurtmangiz yetkazildi", "Bugungi buyurtmangiz yetkazildi.")
+        await self.session.commit()
+        return len(orders)
+
+    async def order_report(self, period_start, period_end) -> OrderReportResponse:
+        base = [
+            User.company_id == self.company_id,
+            Order.target_date.between(period_start, period_end),
+        ]
+        branch_rows = (
+            await self.session.execute(
+                select(
+                    Branch.id, Branch.name,
+                    func.count(Order.id),
+                    func.coalesce(func.sum(Order.historical_price), 0),
+                    func.sum(case((Order.status.in_((OrderStatus.CREATED, OrderStatus.PREPARING, OrderStatus.ON_THE_WAY)), 1), else_=0)),
+                )
+                .join(Order, Order.branch_id == Branch.id)
+                .join(User, Order.employee_id == User.id)
+                .where(Branch.company_id == self.company_id, *base)
+                .group_by(Branch.id, Branch.name)
+                .order_by(Branch.name)
+            )
+        ).all()
+        employee_rows = (
+            await self.session.execute(
+                select(
+                    User.id, User.name, Branch.id, Branch.name,
+                    func.count(Order.id),
+                    func.coalesce(func.sum(Order.historical_price), 0),
+                    func.sum(case((Order.status == OrderStatus.DELIVERED, 1), else_=0)),
+                )
+                .join(Order, Order.employee_id == User.id)
+                .join(Branch, Order.branch_id == Branch.id)
+                .where(*base)
+                .group_by(User.id, User.name, Branch.id, Branch.name)
+                .order_by(Branch.name, User.name)
+            )
+        ).all()
+        total_orders = sum(int(row[2]) for row in branch_rows)
+        total_amount = sum((row[3] for row in branch_rows), Decimal("0"))
+        return OrderReportResponse(
+            period_start=period_start,
+            period_end=period_end,
+            branches=[BranchOrderSummary(branch_id=r[0], branch_name=r[1], order_count=r[2], total_amount=r[3], pending_count=r[4] or 0) for r in branch_rows],
+            employees=[EmployeeOrderSummary(employee_id=r[0], employee_name=r[1], branch_id=r[2], branch_name=r[3], order_count=r[4], total_amount=r[5], delivered_count=r[6] or 0) for r in employee_rows],
+            total_orders=total_orders,
+            total_amount=total_amount,
+        )
+
     async def list_orders(
         self,
         target_date=None,
@@ -360,13 +446,27 @@ class CompanyAdminService:
             raise NotFoundError("Buyurtma topilmadi")
         return await build_order_read(self.session, order)
 
-    async def list_invoices(self) -> list[Invoice]:
+    async def list_invoices(self) -> list[InvoiceRead]:
         result = await self.session.execute(
             select(Invoice)
             .where(Invoice.company_id == self.company_id)
             .order_by(Invoice.created_at.desc())
         )
-        return list(result.scalars().all())
+        invoices = list(result.scalars().all())
+        output = []
+        branch_names = {b.id: b.name for b in (await self.session.scalars(select(Branch).where(Branch.company_id == self.company_id))).all()}
+        employee_names = {u.id: u.name for u in (await self.session.scalars(select(User).where(User.company_id == self.company_id))).all()}
+        for invoice in invoices:
+            # Relationship is selectin-loaded; names are resolved in one small query.
+            output.append(InvoiceRead(
+                id=invoice.id, company_id=invoice.company_id, period_start=invoice.period_start,
+                period_end=invoice.period_end, total_company_expense=invoice.total_company_expense,
+                total_system_fee=invoice.total_system_fee, total_kitchen_profit=invoice.total_kitchen_profit,
+                status=invoice.status, created_at=invoice.created_at,
+                branch_summaries=[BranchOrderSummary(branch_id=x.branch_id, branch_name=branch_names.get(x.branch_id, "—"), order_count=x.order_count, total_amount=x.total_amount, pending_count=0) for x in invoice.branch_summaries],
+                employee_summaries=[EmployeeOrderSummary(employee_id=x.employee_id, employee_name=employee_names.get(x.employee_id), branch_id=x.branch_id, branch_name=branch_names.get(x.branch_id, "—"), order_count=x.order_count, total_amount=x.total_amount, delivered_count=x.order_count) for x in invoice.employee_summaries],
+            ))
+        return output
 
     async def dashboard(self, year: int | None = None):
         """Kompaniya bo'yicha analytics (faqat o'z company_id va filiallari)."""

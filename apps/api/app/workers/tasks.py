@@ -4,7 +4,8 @@ Asia/Tashkent bo'yicha. Bu funksiyalar scheduler tomonidan chaqiriladi
 (alohida jarayonda — uvicorn workerlarida emas, takrorlanmasligi uchun).
 """
 
-from datetime import datetime, timedelta
+from calendar import monthrange
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -14,7 +15,8 @@ from app.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.company import Company
 from app.models.enums import ORDER_STATUS_LABELS, InvoiceStatus, OrderStatus
-from app.models.invoice import Invoice
+from app.models.invoice import Invoice, InvoiceBranchSummary, InvoiceEmployeeSummary
+from app.models.branch import Branch
 from app.models.kitchen import Kitchen
 from app.models.order import Order
 from app.models.user import User
@@ -78,7 +80,9 @@ async def generate_invoices() -> dict:
     """Har kuni 23:59: billing_day bugun bo'lgan kompaniyalar uchun invoice yaratadi."""
     now = datetime.now(ZoneInfo(settings.timezone))
     today = now.date()
-    period_start = today - timedelta(days=30)
+    previous_year, previous_month = (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)
+    period_start = today.replace(year=previous_year, month=previous_month, day=1)
+    period_end = today.replace(year=previous_year, month=previous_month, day=monthrange(previous_year, previous_month)[1])
     created = 0
 
     async with AsyncSessionLocal() as session:
@@ -94,7 +98,7 @@ async def generate_invoices() -> dict:
             exists = (
                 await session.execute(
                     select(Invoice.id).where(
-                        Invoice.company_id == company.id, Invoice.period_end == today
+                        Invoice.company_id == company.id, Invoice.period_end == period_end
                     )
                 )
             ).first()
@@ -111,24 +115,40 @@ async def generate_invoices() -> dict:
                     .where(
                         User.company_id == company.id,
                         Order.status == OrderStatus.DELIVERED,
-                        Order.target_date.between(period_start, today),
+                        Order.target_date.between(period_start, period_end),
                     )
                 )
             ).one()
             if expense == 0:
                 continue
 
-            session.add(
-                Invoice(
+            invoice = Invoice(
                     company_id=company.id,
                     period_start=period_start,
-                    period_end=today,
+                    period_end=period_end,
                     total_company_expense=expense,
                     total_system_fee=fee,
                     total_kitchen_profit=expense - fee,
                     status=InvoiceStatus.PENDING,
                 )
-            )
+            session.add(invoice)
+            await session.flush()
+            branch_rows = (await session.execute(
+                select(Order.branch_id, func.count(Order.id), func.sum(Order.historical_price), func.sum(Order.system_fee))
+                .join(User, Order.employee_id == User.id)
+                .where(User.company_id == company.id, Order.status == OrderStatus.DELIVERED, Order.target_date.between(period_start, period_end))
+                .group_by(Order.branch_id)
+            )).all()
+            for branch_id, count, amount, branch_fee in branch_rows:
+                invoice.branch_summaries.append(InvoiceBranchSummary(branch_id=branch_id, order_count=count, total_amount=amount, total_system_fee=branch_fee))
+            employee_rows = (await session.execute(
+                select(Order.employee_id, Order.branch_id, func.count(Order.id), func.sum(Order.historical_price), func.sum(Order.system_fee))
+                .join(User, Order.employee_id == User.id)
+                .where(User.company_id == company.id, Order.status == OrderStatus.DELIVERED, Order.target_date.between(period_start, period_end))
+                .group_by(Order.employee_id, Order.branch_id)
+            )).all()
+            for employee_id, branch_id, count, amount, employee_fee in employee_rows:
+                invoice.employee_summaries.append(InvoiceEmployeeSummary(employee_id=employee_id, branch_id=branch_id, order_count=count, total_amount=amount, total_system_fee=employee_fee))
             created += 1
         await session.commit()
 

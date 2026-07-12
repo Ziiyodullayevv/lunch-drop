@@ -12,6 +12,7 @@ import {
   fetchKitchenMe,
   confirmDelivery,
   fetchOrderDetail,
+  fetchOrderReport,
   fetchKitchenOrder,
   bulkConfirmOrders,
   updateOrderStatus,
@@ -21,6 +22,7 @@ import {
   fetchEmployeeStatus,
   fetchSuperAdminOrder,
   fetchSuperAdminOrders,
+  bulkConfirmBranchOrders,
 } from 'src/lib/api/orders';
 
 // ----------------------------------------------------------------------
@@ -80,6 +82,23 @@ export function useBulkConfirm() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: orderKeys.all });
     },
+  });
+}
+
+export function useBulkConfirmBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ branchId, targetDate }: { branchId: string; targetDate?: string }) =>
+      bulkConfirmBranchOrders(branchId, targetDate),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+  });
+}
+
+export function useOrderReport(periodStart: string, periodEnd: string, enabled = true) {
+  return useQuery({
+    queryKey: [...orderKeys.company(), 'report', periodStart, periodEnd],
+    queryFn: () => fetchOrderReport(periodStart, periodEnd),
+    enabled: enabled && !!periodStart && !!periodEnd,
   });
 }
 

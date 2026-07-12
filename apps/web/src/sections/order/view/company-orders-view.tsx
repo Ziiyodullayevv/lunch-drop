@@ -12,6 +12,7 @@ import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -24,6 +25,7 @@ import { paths } from 'src/routes/paths';
 import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
+import { useTranslate } from 'src/locales';
 import { orderItemsLabel } from 'src/lib/api/orders';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { emptyOrderAnalytics } from 'src/lib/order-analytics';
@@ -40,8 +42,8 @@ import {
 
 import { OrderAnalytics } from './order-analytics';
 import { OrderStatusTabs } from './order-status-tabs';
-import { useCompanyOrders } from '../hooks/use-orders';
 import { buildCompanyOrdersParams } from './company-orders-data';
+import { useOrderReport, useCompanyOrders, useBulkConfirmBranch } from '../hooks/use-orders';
 
 // ----------------------------------------------------------------------
 
@@ -62,25 +64,18 @@ const STATUS_COLOR: Record<string, 'default' | 'warning' | 'info' | 'success' | 
   cancelled:  'error',
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  created:    'Yangi',
-  preparing:  'Tayyorlanmoqda',
-  on_the_way: "Yo'lda",
-  delivered:  'Yetkazildi',
-  cancelled:  'Bekor',
-};
-
 const TABLE_HEAD = [
-  { id: 'employee', label: 'Xodim'   },
-  { id: 'meal',     label: 'Taom',    width: 160 },
-  { id: 'date',     label: 'Sana',    width: 130 },
-  { id: 'price',    label: 'Narx',    width: 120 },
-  { id: 'status',   label: 'Holat',   width: 140 },
+  { id: 'employee', label: 'employee' },
+  { id: 'meal', label: 'meal', width: 160 },
+  { id: 'date', label: 'date', width: 130 },
+  { id: 'price', label: 'price', width: 120 },
+  { id: 'status', label: 'status', width: 140 },
 ];
 
 // ----------------------------------------------------------------------
 
 export function CompanyOrdersView() {
+  const { t } = useTranslate('common');
   const table = useTable({ defaultRowsPerPage: 10 });
   const [tabStatus, setTabStatus] = useState<OrderStatus | 'all'>('all');
   const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
@@ -96,6 +91,10 @@ export function CompanyOrdersView() {
   });
 
   const { data, isLoading, isError, error } = useCompanyOrders(queryParams);
+  const reportStart = (startDate ?? dayjs().startOf('month')).format('YYYY-MM-DD');
+  const reportEnd = (endDate ?? dayjs()).format('YYYY-MM-DD');
+  const { data: report } = useOrderReport(reportStart, reportEnd, !dateError);
+  const bulkBranch = useBulkConfirmBranch();
   const orders    = data?.items ?? [];
   const total     = data?.total ?? 0;
   const statusCounts = data?.status_counts ?? {
@@ -109,26 +108,76 @@ export function CompanyOrdersView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Buyurtmalar"
+        heading={t('order.title')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Buyurtmalar' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('order.title') },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error instanceof Error ? error.message : 'Buyurtmalarni yuklashda xatolik'}
+          {error instanceof Error ? error.message : t('order.loadError')}
         </Alert>
       )}
 
       <OrderAnalytics data={data?.analytics ?? emptyOrderAnalytics()} />
 
+      {!!report?.branches.length && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+          {report.branches.map((branch) => (
+            <Card key={branch.branch_id} sx={{ p: 2.5 }}>
+              <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="subtitle1">{branch.branch_name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {branch.order_count} ta buyurtma · {fCurrency(Number(branch.total_amount))}
+                  </Typography>
+                  <Typography variant="caption" color={branch.pending_count ? 'warning.main' : 'success.main'}>
+                    {branch.pending_count ? `${branch.pending_count} ta tasdiqlanmagan` : 'Barchasi tasdiqlangan'}
+                  </Typography>
+                </Box>
+                {!!branch.pending_count && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => bulkBranch.mutate({ branchId: branch.branch_id, targetDate: endDate?.format('YYYY-MM-DD') })}
+                    disabled={bulkBranch.isPending}
+                  >
+                    Tasdiqlash
+                  </Button>
+                )}
+              </Stack>
+            </Card>
+          ))}
+        </Box>
+      )}
+
+      {!!report?.employees.length && (
+        <Card sx={{ mb: 3, p: 2.5 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>Xodimlar bo‘yicha hisob-kitob</Typography>
+          <Stack spacing={1}>
+            {report.employees.map((employee) => (
+              <Stack key={`${employee.employee_id}-${employee.branch_id}`} direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{employee.employee_name ?? 'Noma’lum xodim'}</Typography>
+                  <Typography variant="caption" color="text.secondary">{employee.branch_name}</Typography>
+                </Box>
+                <Typography variant="body2">{employee.order_count} ta · {fCurrency(Number(employee.total_amount))}</Typography>
+              </Stack>
+            ))}
+          </Stack>
+        </Card>
+      )}
+
       <Card>
         <OrderStatusTabs
           value={tabStatus}
-          tabs={STATUS_TABS}
+          tabs={STATUS_TABS.map((tab) => ({
+            ...tab,
+            label: t(tab.value === 'all' ? 'order.status.all' : `orderExtra.kitchenStatus.${tab.value === 'on_the_way' ? 'onTheWay' : tab.value}`),
+          }))}
           counts={statusCounts}
           onChange={(value) => {
             setTabStatus(value as OrderStatus | 'all');
@@ -146,7 +195,7 @@ export function CompanyOrdersView() {
           }}
         >
           <DatePicker
-            label="Boshlanish sanasi"
+            label={t('orderExtra.startDate')}
             value={startDate}
             maxDate={endDate ?? dayjs()}
             onChange={(value) => {
@@ -158,7 +207,7 @@ export function CompanyOrdersView() {
           />
 
           <DatePicker
-            label="Tugash sanasi"
+            label={t('orderExtra.endDate')}
             value={endDate}
             minDate={startDate ?? undefined}
             maxDate={dayjs()}
@@ -198,10 +247,11 @@ export function CompanyOrdersView() {
             <TableHeadCustom
               order={table.order}
               orderBy={table.orderBy}
-              headCells={TABLE_HEAD}
+              headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: t(`orderCompany.table.${cell.label}`) }))}
               rowCount={orders.length}
               numSelected={table.selected.length}
               onSort={table.onSort}
+              onSelectAllRows={(checked) => table.onSelectAllRows(checked, orders.map((row) => row.id))}
             />
 
             <TableBody>
@@ -213,7 +263,10 @@ export function CompanyOrdersView() {
                 </TableRow>
               ) : (
                 orders.map((row) => (
-                  <TableRow key={row.id} hover>
+                  <TableRow key={row.id} hover selected={table.selected.includes(row.id)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox checked={table.selected.includes(row.id)} onChange={() => table.onSelectRow(row.id)} />
+                    </TableCell>
                     <TableCell>
                       <Stack spacing={0.25}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -241,7 +294,7 @@ export function CompanyOrdersView() {
 
                     <TableCell>
                       <Chip
-                        label={STATUS_LABEL[row.status] ?? row.status}
+                        label={t(`orderExtra.kitchenStatus.${row.status === 'on_the_way' ? 'onTheWay' : row.status}`, { defaultValue: row.status })}
                         color={STATUS_COLOR[row.status] ?? 'default'}
                         size="small"
                         variant="soft"

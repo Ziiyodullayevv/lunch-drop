@@ -78,6 +78,33 @@ export type CompanyOrdersParams = {
   offset?: number;
 };
 
+export type BranchOrderSummary = {
+  branch_id: string;
+  branch_name: string;
+  order_count: number;
+  total_amount: string;
+  pending_count: number;
+};
+
+export type EmployeeOrderSummary = {
+  employee_id: string;
+  employee_name: string | null;
+  branch_id: string;
+  branch_name: string;
+  order_count: number;
+  total_amount: string;
+  delivered_count: number;
+};
+
+export type OrderReport = {
+  period_start: string;
+  period_end: string;
+  branches: BranchOrderSummary[];
+  employees: EmployeeOrderSummary[];
+  total_orders: number;
+  total_amount: string;
+};
+
 export type InvoiceStatus = 'pending' | 'paid';
 
 export type InvoiceRead = {
@@ -90,6 +117,8 @@ export type InvoiceRead = {
   total_kitchen_profit: string;
   status: InvoiceStatus;
   created_at: string;
+  branch_summaries?: BranchOrderSummary[];
+  employee_summaries?: EmployeeOrderSummary[];
 };
 
 export type AccountStatus = 'pending_approval' | 'approved' | 'rejected' | 'inactive';
@@ -182,6 +211,16 @@ export function bulkConfirmOrders() {
   return axiosInstance
     .patch<{ confirmed: number }>(endpoints.company.bulkConfirm)
     .then((r) => r.data);
+}
+
+export function bulkConfirmBranchOrders(branchId: string, targetDate?: string) {
+  return axiosInstance
+    .patch<{ confirmed: number }>(endpoints.company.bulkConfirmBranch(branchId), undefined, { params: targetDate ? { target_date: targetDate } : undefined })
+    .then((r) => r.data);
+}
+
+export function fetchOrderReport(periodStart: string, periodEnd: string) {
+  return fetcher<OrderReport>([endpoints.company.orderReport, { params: { period_start: periodStart, period_end: periodEnd } }]);
 }
 
 export function fetchInvoices() {

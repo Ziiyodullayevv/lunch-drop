@@ -35,4 +35,5 @@ export type IInvoice = {
   createDate: IDateValue;
   invoiceTo: IAddressItem;
   invoiceFrom: IAddressItem;
+  branchSummary?: string;
 };

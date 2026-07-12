@@ -15,6 +15,7 @@ from app.schemas.common import Page
 from app.schemas.company import CompanyRead, CompanyUpdate
 from app.schemas.dashboard import DashboardResponse
 from app.schemas.company_admin import (
+    OrderReportResponse,
     BulkConfirmResponse,
     EmployeeStatusUpdate,
     InvoiceRead,
@@ -61,6 +62,31 @@ async def dashboard(
 @router.get("/me", response_model=CompanyRead, summary="O'z kompaniya ma'lumotlari")
 async def get_company(svc: CompanyAdminService = Depends(_svc)) -> CompanyRead:
     return await svc.get_company()
+
+
+@router.patch(
+    "/branches/{branch_id}/orders/bulk-confirm",
+    response_model=BulkConfirmResponse,
+    summary="Bitta filial buyurtmalarini ommaviy tasdiqlash",
+)
+async def bulk_confirm_branch(
+    branch_id: str,
+    target_date: date | None = Query(None),
+    svc: CompanyAdminService = Depends(_svc),
+) -> BulkConfirmResponse:
+    return BulkConfirmResponse(confirmed=await svc.bulk_confirm_branch_orders(branch_id, target_date))
+
+
+@router.get("/reports/orders", response_model=OrderReportResponse, summary="Filial va xodimlar buyurtma hisoboti")
+async def order_report(
+    period_start: date,
+    period_end: date,
+    svc: CompanyAdminService = Depends(_svc),
+) -> OrderReportResponse:
+    if period_end < period_start:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="period_end period_start dan oldin bo'lishi mumkin emas")
+    return await svc.order_report(period_start, period_end)
 
 
 @router.patch(

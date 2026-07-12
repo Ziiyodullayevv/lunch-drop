@@ -234,6 +234,8 @@ export const endpoints = {
     employeeStatus:   (id: string) => `/api/v1/company/employees/${id}/status`,
     orders:           '/api/v1/company/orders',
     bulkConfirm:      '/api/v1/company/orders/bulk-confirm',
+    bulkConfirmBranch: (id: string) => `/api/v1/company/branches/${id}/orders/bulk-confirm`,
+    orderReport:       '/api/v1/company/reports/orders',
     invoices:         '/api/v1/company/invoices',
     branches:         '/api/v1/company/branches',
     branch:           (id: string) => `/api/v1/company/branches/${id}`,

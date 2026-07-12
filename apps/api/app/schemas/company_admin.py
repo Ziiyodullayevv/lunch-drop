@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import AccountStatus, InvoiceStatus
 
@@ -36,6 +36,33 @@ class BulkConfirmResponse(BaseModel):
     confirmed: int
 
 
+class BranchOrderSummary(BaseModel):
+    branch_id: str
+    branch_name: str
+    order_count: int
+    total_amount: Decimal
+    pending_count: int
+
+
+class EmployeeOrderSummary(BaseModel):
+    employee_id: str
+    employee_name: str | None
+    branch_id: str
+    branch_name: str
+    order_count: int
+    total_amount: Decimal
+    delivered_count: int
+
+
+class OrderReportResponse(BaseModel):
+    period_start: date
+    period_end: date
+    branches: list[BranchOrderSummary]
+    employees: list[EmployeeOrderSummary]
+    total_orders: int
+    total_amount: Decimal
+
+
 class InvoiceRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,3 +75,5 @@ class InvoiceRead(BaseModel):
     total_kitchen_profit: Decimal
     status: InvoiceStatus
     created_at: datetime
+    branch_summaries: list[BranchOrderSummary] = Field(default_factory=list)
+    employee_summaries: list[EmployeeOrderSummary] = Field(default_factory=list)

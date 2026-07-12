@@ -11,7 +11,7 @@ from app.models.enums import (
     OrderStatus,
     UserRole,
 )
-from app.models.invoice import Invoice
+from app.models.invoice import Invoice, InvoiceBranchSummary, InvoiceEmployeeSummary
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.kitchen_connection import KitchenConnectionRequest
 from app.models.meal import Meal, MenuCategory, MenuSchedule
@@ -31,6 +31,8 @@ __all__ = [
     "ConnectionRequestStatus",
     "EmployeeBranch",
     "Invoice",
+    "InvoiceBranchSummary",
+    "InvoiceEmployeeSummary",
     "InvoiceStatus",
     "Kitchen",
     "KitchenConnectionRequest",

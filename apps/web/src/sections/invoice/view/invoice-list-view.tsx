@@ -26,6 +26,7 @@ import { paths } from 'src/routes/paths';
 
 import { fIsAfter, fIsBetween } from 'src/utils/format-time';
 
+import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
@@ -62,6 +63,7 @@ const TABLE_HEAD: TableHeadCellProps[] = [
 // ----------------------------------------------------------------------
 
 export function InvoiceListView() {
+  const { t } = useTranslate('common');
   const theme = useTheme();
 
   const table = useTable({ defaultOrderBy: 'createDate' });
@@ -95,6 +97,7 @@ export function InvoiceListView() {
       addressType: '',
       primary: true,
     },
+    branchSummary: `${inv.branch_summaries?.length ?? 0} ta filial · ${inv.employee_summaries?.length ?? 0} ta xodim`,
     items: [],
     taxes: parseFloat(inv.total_system_fee),
     discount: 0,
@@ -171,14 +174,14 @@ export function InvoiceListView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Hisob-fakturalar"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Hisob-fakturalar' }]}
+        heading={t('invoice.title')}
+        links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('invoice.title') }]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error instanceof Error ? error.message : 'Hisob-fakturalarni yuklashda xatolik'}
+          {error instanceof Error ? error.message : t('invoice.loadError')}
         </Alert>
       )}
 
@@ -189,7 +192,7 @@ export function InvoiceListView() {
             sx={{ py: 2, flexDirection: 'row' }}
           >
             <InvoiceAnalytic
-              title="Jami"
+              title={t('invoice.total')}
               total={tableData.length}
               percent={100}
               price={sumBy(tableData, (invoice) => invoice.totalAmount)}
@@ -198,7 +201,7 @@ export function InvoiceListView() {
             />
 
             <InvoiceAnalytic
-              title="To'langan"
+              title={t('invoice.paid')}
               total={getInvoiceLength('paid')}
               percent={getPercentByStatus('paid')}
               price={getTotalAmount('paid')}
@@ -207,7 +210,7 @@ export function InvoiceListView() {
             />
 
             <InvoiceAnalytic
-              title="Kutilmoqda"
+              title={t('invoice.pending')}
               total={getInvoiceLength('pending')}
               percent={getPercentByStatus('pending')}
               price={getTotalAmount('pending')}
@@ -231,7 +234,7 @@ export function InvoiceListView() {
             <Tab
               key={tab.value}
               value={tab.value}
-              label={tab.label}
+          label={t(`invoice.status.${tab.value}`)}
               iconPosition="end"
               icon={
                 <Label
@@ -269,7 +272,7 @@ export function InvoiceListView() {
               <TableHeadCustom
                 order={table.order}
                 orderBy={table.orderBy}
-                headCells={TABLE_HEAD}
+                headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: t(`invoice.table.${cell.id}`) }))}
                 rowCount={dataFiltered.length}
                 numSelected={0}
                 onSort={table.onSort}

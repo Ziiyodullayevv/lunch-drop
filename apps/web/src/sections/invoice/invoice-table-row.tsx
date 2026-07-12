@@ -28,9 +28,10 @@ export function InvoiceTableRow({ row }: Props) {
           <ListItemText
             primary={row.invoiceTo.name}
             secondary={
-              <Link color="inherit" underline="none">
-                {row.invoiceNumber}
-              </Link>
+              <Box>
+                <Link color="inherit" underline="none">{row.invoiceNumber}</Link>
+                {row.branchSummary && <Box component="span" sx={{ display: 'block', typography: 'caption', color: 'text.disabled' }}>{row.branchSummary}</Box>}
+              </Box>
             }
             slotProps={{
               primary: { noWrap: true, sx: { typography: 'body2' } },

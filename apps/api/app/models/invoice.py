@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, ForeignKey, Numeric, String
+from sqlalchemy import Date, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, enum_column, uuid_pk
@@ -45,3 +45,40 @@ class Invoice(Base, TimestampMixin):
     )
 
     company: Mapped[Company] = relationship(back_populates="invoices")
+    branch_summaries: Mapped[list[InvoiceBranchSummary]] = relationship(
+        back_populates="invoice", cascade="all, delete-orphan", lazy="selectin"
+    )
+    employee_summaries: Mapped[list[InvoiceEmployeeSummary]] = relationship(
+        back_populates="invoice", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class InvoiceBranchSummary(Base, TimestampMixin):
+    __tablename__ = "invoice_branch_summaries"
+
+    id: Mapped[str] = uuid_pk()
+    invoice_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    branch_id: Mapped[str] = mapped_column(String(36), ForeignKey("branches.id"), nullable=False, index=True)
+    order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    total_system_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    invoice: Mapped[Invoice] = relationship(back_populates="branch_summaries")
+
+
+class InvoiceEmployeeSummary(Base, TimestampMixin):
+    __tablename__ = "invoice_employee_summaries"
+
+    id: Mapped[str] = uuid_pk()
+    invoice_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    branch_id: Mapped[str] = mapped_column(String(36), ForeignKey("branches.id"), nullable=False, index=True)
+    order_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    total_system_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    invoice: Mapped[Invoice] = relationship(back_populates="employee_summaries")
