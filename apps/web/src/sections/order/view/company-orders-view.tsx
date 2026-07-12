@@ -248,19 +248,19 @@ export function CompanyOrdersView() {
                   return (
                     <Fragment key={branch.branch_id}>
                       <TableRow hover sx={{ cursor: 'pointer', bgcolor: 'background.neutral' }} onClick={() => setExpandedBranchId(expanded ? null : branch.branch_id)}>
-                        <TableCell>
-                          <IconButton size="small"><Iconify icon={expanded ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'} /></IconButton>
-                        </TableCell>
-                        <TableCell><Typography variant="subtitle2">{branch.branch_name}</Typography></TableCell>
-                        <TableCell colSpan={2}>
-                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <TableCell colSpan={6}>
+                          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 220 }}>
+                              <IconButton size="small"><Iconify icon={expanded ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'} /></IconButton>
+                              <Typography variant="subtitle2">{branch.branch_name}</Typography>
+                            </Stack>
                             <Typography variant="body2">{branch.order_count} ta buyurtma</Typography>
                             <Chip size="small" variant="soft" color={branch.pending_count ? 'warning' : 'success'} label={branch.pending_count ? `${branch.pending_count} ta kutilmoqda` : 'Tasdiqlangan'} />
+                            <Typography variant="subtitle2">{fCurrency(Number(branch.total_amount))}</Typography>
+                            <Box onClick={(event) => event.stopPropagation()}>
+                              {!!branch.pending_count && <Button size="small" variant="contained" onClick={() => bulkBranch.mutate({ branchId: branch.branch_id, targetDate: endDate?.format('YYYY-MM-DD') })} disabled={bulkBranch.isPending}>Tasdiqlash</Button>}
+                            </Box>
                           </Stack>
-                        </TableCell>
-                        <TableCell align="right"><Typography variant="subtitle2">{fCurrency(Number(branch.total_amount))}</Typography></TableCell>
-                        <TableCell align="right" onClick={(event) => event.stopPropagation()}>
-                          {!!branch.pending_count && <Button size="small" variant="contained" onClick={() => bulkBranch.mutate({ branchId: branch.branch_id, targetDate: endDate?.format('YYYY-MM-DD') })} disabled={bulkBranch.isPending}>Tasdiqlash</Button>}
                         </TableCell>
                       </TableRow>
                       <TableRow>
