@@ -49,6 +49,11 @@ jobs:
             cd /opt/launch-drop-admin
             test -f .env || { echo "/opt/launch-drop-admin/.env is missing"; exit 1; }
             echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            WEB_IMAGE="ghcr.io/${OWNER}/lunchdrop-web:latest" docker compose -f web.yml pull
-            WEB_IMAGE="ghcr.io/${OWNER}/lunchdrop-web:latest" docker compose -f web.yml up -d
+            # The API is currently exposed on the production API droplet IP.
+            # Override a stale/missing server .env value so the Next proxy can
+            # reach the API after every web deployment.
+            NEXT_SERVER_API_URL="http://164.90.210.222:8000" \
+              WEB_IMAGE="ghcr.io/${OWNER}/lunchdrop-web:latest" docker compose -f web.yml pull
+            NEXT_SERVER_API_URL="http://164.90.210.222:8000" \
+              WEB_IMAGE="ghcr.io/${OWNER}/lunchdrop-web:latest" docker compose -f web.yml up -d
             docker image prune -f

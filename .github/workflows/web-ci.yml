@@ -6,11 +6,13 @@ on:
     paths:
       - 'apps/web/**'
       - '.github/workflows/web-ci.yml'
+      - '.github/workflows/web-cd.yml'
   pull_request:
     branches: [main]
     paths:
       - 'apps/web/**'
       - '.github/workflows/web-ci.yml'
+      - '.github/workflows/web-cd.yml'
 
 jobs:
   lint-test-build:
