@@ -252,9 +252,11 @@ export function CompanyOrdersView() {
                           <IconButton size="small"><Iconify icon={expanded ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'} /></IconButton>
                         </TableCell>
                         <TableCell><Typography variant="subtitle2">{branch.branch_name}</Typography></TableCell>
-                        <TableCell>{branch.order_count} ta</TableCell>
-                        <TableCell>
-                          <Chip size="small" variant="soft" color={branch.pending_count ? 'warning' : 'success'} label={branch.pending_count ? `${branch.pending_count} ta kutilmoqda` : 'Tasdiqlangan'} />
+                        <TableCell colSpan={2}>
+                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                            <Typography variant="body2">{branch.order_count} ta buyurtma</Typography>
+                            <Chip size="small" variant="soft" color={branch.pending_count ? 'warning' : 'success'} label={branch.pending_count ? `${branch.pending_count} ta kutilmoqda` : 'Tasdiqlangan'} />
+                          </Stack>
                         </TableCell>
                         <TableCell align="right"><Typography variant="subtitle2">{fCurrency(Number(branch.total_amount))}</Typography></TableCell>
                         <TableCell align="right" onClick={(event) => event.stopPropagation()}>
