@@ -35,6 +35,7 @@ import {
 } from 'src/components/map';
 
 import { useKitchenMe, useUpdateKitchenSettings } from 'src/sections/kitchen/hooks/use-kitchens';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
@@ -56,6 +57,7 @@ function dayjsToTime(d: Dayjs | null): string {
 // ----------------------------------------------------------------------
 
 export function KitchenSettingsView() {
+  const { t } = useTranslate('common');
   const mapRef = useRef<MapRef | null>(null);
 
   const { data: kitchen, isLoading, isError } = useKitchenMe();
@@ -127,9 +129,9 @@ export function KitchenSettingsView() {
         delivery_start_time: dayjsToTime(form.delivery_start_time),
         delivery_end_time: dayjsToTime(form.delivery_end_time),
       });
-      toast.success('Vaqt sozlamalari saqlandi');
+      toast.success(t('kitchenSettings.saved'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Saqlashda xatolik yuz berdi';
+      const msg = err instanceof Error ? err.message : t('kitchenSettings.saveError');
       toast.error(msg);
     }
   };
@@ -160,8 +162,16 @@ export function KitchenSettingsView() {
   }, []);
 
   const handleSaveLocation = () => {
-    toast.info("Joylashuvni o'zgartirish super admin orqali amalga oshiriladi");
-    setLocationDirty(false);
+    updateMutation.mutate(
+      { lat: marker.lat, lng: marker.lng },
+      {
+        onSuccess: () => {
+          setLocationDirty(false);
+          toast.success(t('kitchenSettings.locationSaved'));
+        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : t('kitchenSettings.saveError')),
+      }
+    );
   };
 
   if (isLoading) {
@@ -175,7 +185,7 @@ export function KitchenSettingsView() {
   if (isError) {
     return (
       <DashboardContent>
-        <Alert severity="error">Sozlamalar yuklanmadi. Sahifani yangilang.</Alert>
+        <Alert severity="error">{t('kitchenSettings.loadError')}</Alert>
       </DashboardContent>
     );
   }
@@ -183,8 +193,8 @@ export function KitchenSettingsView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Oshxona sozlamalari"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Sozlamalar' }]}
+        heading={t('kitchenSettings.title')}
+        links={[{ name: t('dashboard.title'), href: paths.dashboard.root }, { name: t('kitchenSettings.settings') }]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
@@ -192,9 +202,9 @@ export function KitchenSettingsView() {
         {/* Vaqt sozlamalari */}
         <Card>
           <Box sx={{ px: 3, pt: 3, pb: 1 }}>
-            <Typography variant="h6">Buyurtma va yetkazish vaqtlari</Typography>
+            <Typography variant="h6">{t('kitchenSettings.timesTitle')}</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Mobil ilovada ko&apos;rsatiladigan vaqt oralig&apos;ini belgilang
+              {t('kitchenSettings.timesHint')}
             </Typography>
           </Box>
 
@@ -207,7 +217,7 @@ export function KitchenSettingsView() {
                 sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}
               >
                 <Iconify icon="solar:clock-circle-bold" width={18} />
-                Buyurtma qabul qilish tugashi
+                {t('kitchenSettings.cutoff')}
               </Typography>
               <TimePicker
                 value={form.order_cutoff_time}
@@ -217,7 +227,7 @@ export function KitchenSettingsView() {
                 slotProps={{
                   textField: {
                     fullWidth: true,
-                    helperText: 'Shu vaqtgacha buyurtma qabul qilinadi (masalan: 11:00)',
+                    helperText: t('kitchenSettings.cutoffHint'),
                   },
                 }}
               />
@@ -231,7 +241,7 @@ export function KitchenSettingsView() {
                 sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}
               >
                 <Iconify icon="solar:forward-bold" width={18} />
-                Yetkazish vaqt oralig&apos;i
+                {t('kitchenSettings.deliveryTime')}
               </Typography>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <TimePicker
@@ -239,7 +249,7 @@ export function KitchenSettingsView() {
                   onChange={handleTimeChange('delivery_start_time')}
                   ampm={false}
                   minutesStep={5}
-                  label="Boshlanishi"
+                  label={t('kitchenSettings.start')}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
                 <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
@@ -250,12 +260,12 @@ export function KitchenSettingsView() {
                   onChange={handleTimeChange('delivery_end_time')}
                   ampm={false}
                   minutesStep={5}
-                  label="Tugashi"
+                  label={t('kitchenSettings.end')}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Masalan: 12:30 — 13:00 oralig&apos;ida yetkaziladi
+                {t('kitchenSettings.deliveryHint')}
               </Typography>
             </Box>
 
@@ -271,7 +281,7 @@ export function KitchenSettingsView() {
             >
               <Iconify icon="solar:smartphone-2-bold" width={20} color="text.secondary" />
               <Typography variant="body2" color="text.secondary">
-                Mobil ilovada:{' '}
+                {t('kitchenSettings.mobilePreview')}:{' '}
                 <strong>
                   {dayjsToTime(form.delivery_start_time).slice(0, 5)}
                   {' — '}
@@ -290,7 +300,7 @@ export function KitchenSettingsView() {
               onClick={handleSaveTimes}
               startIcon={<Iconify icon="solar:check-circle-bold" />}
             >
-              Saqlash
+              {t('kitchenSettings.save')}
             </LoadingButton>
           </Box>
         </Card>
@@ -298,9 +308,9 @@ export function KitchenSettingsView() {
         {/* Joylashuv */}
         <Card>
           <Box sx={{ px: 3, pt: 3, pb: 1 }}>
-            <Typography variant="h6">Joylashuv</Typography>
+            <Typography variant="h6">{t('kitchenSettings.location')}</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Oshxonangizning xaritadagi joylashuvi
+              {t('kitchenSettings.locationHint')}
             </Typography>
           </Box>
 
@@ -313,7 +323,7 @@ export function KitchenSettingsView() {
               onSelect={handleAddressSelect}
               latitude={marker.lat}
               longitude={marker.lng}
-              label="Manzil qidirish"
+              label={t('kitchenSettings.searchAddress')}
             />
 
             <Box sx={{ position: 'relative' }}>
@@ -333,14 +343,6 @@ export function KitchenSettingsView() {
               <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                Lat: {marker.lat.toFixed(6)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Lng: {marker.lng.toFixed(6)}
-              </Typography>
-            </Box>
           </Stack>
 
           <Divider />
@@ -352,7 +354,7 @@ export function KitchenSettingsView() {
               onClick={handleSaveLocation}
               startIcon={<Iconify icon={'solar:map-point-bold' as any} />}
             >
-              Joylashuvni saqlash
+              {t('kitchenSettings.saveLocation')}
             </LoadingButton>
           </Box>
         </Card>

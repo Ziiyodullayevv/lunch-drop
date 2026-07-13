@@ -4,7 +4,7 @@ import { it, vi, expect, describe, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('src/lib/api/companies', () => ({
-  fetchBranches:  vi.fn(),
+  fetchBranchesWithKitchenIds: vi.fn(),
   fetchBranch:    vi.fn(),
   createBranch:   vi.fn(),
   updateBranch:   vi.fn(),
@@ -30,7 +30,7 @@ import {
 
 // ----------------------------------------------------------------------
 
-const mockFetchBranches  = vi.mocked(api.fetchBranches);
+const mockFetchBranches  = vi.mocked(api.fetchBranchesWithKitchenIds);
 const mockFetchBranch    = vi.mocked(api.fetchBranch);
 const mockCreateBranch   = vi.mocked(api.createBranch);
 const mockUpdateBranch   = vi.mocked(api.updateBranch);

@@ -28,6 +28,7 @@ import { useAuthContext } from 'src/auth/hooks';
 
 import { AccountButton } from './account-button';
 import { SignOutButton } from './sign-out-button';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
@@ -44,14 +45,15 @@ export function AccountDrawer({ data = [], sx, ...other }: AccountDrawerProps) {
   const pathname = usePathname();
 
   const { user } = useAuthContext();
+  const { t } = useTranslate('common');
 
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
   const ROLE_SHORT: Record<string, string> = {
-    employee: 'Xodim',
-    company_admin: 'Kompaniya',
-    kitchen_admin: 'Oshxona',
-    super_admin: 'Bosh admin',
+    employee: t('user.roles.employee'),
+    company_admin: t('user.roles.company_admin'),
+    kitchen_admin: t('user.roles.kitchen_admin'),
+    super_admin: t('user.roles.super_admin'),
   };
 
   const displayName = user?.name ?? user?.phone ?? '—';
@@ -89,7 +91,7 @@ export function AccountDrawer({ data = [], sx, ...other }: AccountDrawerProps) {
       ]}
     >
       {data.map((option) => {
-        const rootLabel = pathname.includes('/dashboard') ? 'Home' : 'Dashboard';
+        const rootLabel = pathname.includes('/dashboard') ? t('account.home') : t('dashboard.title');
         const rootHref = pathname.includes('/dashboard') ? '/' : paths.dashboard.root;
 
         return (
@@ -114,7 +116,7 @@ export function AccountDrawer({ data = [], sx, ...other }: AccountDrawerProps) {
               {option.icon}
 
               <Box component="span" sx={{ ml: 2 }}>
-                {option.label === 'Home' ? rootLabel : option.label}
+                {option.label === 'Home' ? rootLabel : t(`account.${option.label.toLowerCase()}`)}
               </Box>
 
               {option.info && (

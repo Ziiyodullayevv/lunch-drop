@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales/use-locales';
 
 import { uploadClasses } from '../classes';
 import { RejectedFiles } from '../components/rejected-files';
@@ -33,6 +34,7 @@ export function UploadAvatar({
   hideFilesRejected = false,
   ...dropzoneOptions
 }: UploadProps) {
+  const { t } = useTranslate('common');
   const { getRootProps, getInputProps, isDragActive, isDragReject, fileRejections } = useDropzone({
     disabled,
     multiple: false,
@@ -52,7 +54,7 @@ export function UploadAvatar({
     <PlaceholderContainer className={uploadClasses.placeholder.root}>
       <Iconify icon="solar:camera-add-bold" width={32} className={uploadClasses.placeholder.icon} />
       <Typography variant="caption" className={uploadClasses.placeholder.title}>
-        {hasSelectedFile ? 'Update photo' : 'Upload photo'}
+        {hasSelectedFile ? t('upload.updatePhoto') : t('upload.uploadPhoto')}
       </Typography>
     </PlaceholderContainer>
   );

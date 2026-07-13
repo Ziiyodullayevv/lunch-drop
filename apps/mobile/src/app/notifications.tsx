@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { HeaderBackButton } from '@/components/common/header-back-button';
 import { ILLUSTRATIONS } from '@/constants/illustrations';
 import { listNotifications, markAllRead, markNotificationRead } from '@/lib/api/notifications';
+import { formatUzFullDateTime, formatUzShortDate } from '@/lib/uz-date';
 import type { NotificationItem } from '@/lib/api/notifications';
 
 const ACCENT = '#00A76F';
@@ -42,17 +43,11 @@ function formatTime(iso: string) {
   if (diffMin < 60) return `${diffMin} daq oldin`;
   const diffH = Math.floor(diffMin / 60);
   if (diffH < 24) return `${diffH} soat oldin`;
-  return d.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' });
+  return formatUzShortDate(d);
 }
 
 function formatFullTime(iso: string) {
-  return new Date(iso).toLocaleString('uz-UZ', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatUzFullDateTime(iso);
 }
 
 function NotificationCard({ item, onPress }: { item: NotificationItem; onPress: (item: NotificationItem) => void }) {

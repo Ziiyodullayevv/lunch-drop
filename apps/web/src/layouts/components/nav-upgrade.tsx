@@ -8,21 +8,16 @@ import Typography from '@mui/material/Typography';
 import { getImagePreviewUrl } from 'src/lib/image-url';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super admin',
-  company_admin: 'Company admin',
-  kitchen_admin: 'Kitchen admin',
-  employee: 'Employee',
-};
-
 export function NavUpgrade({ sx, ...other }: BoxProps) {
   const { user } = useAuthContext();
+  const { t } = useTranslate('common');
 
   const displayName = user?.name ?? user?.phone ?? '—';
-  const roleLabel = user?.role ? (ROLE_LABELS[user.role] ?? user.role) : '';
+  const roleLabel = user?.role ? t(`user.roles.${user.role}`) : '';
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
@@ -70,7 +65,7 @@ export function NavUpgrade({ sx, ...other }: BoxProps) {
       </Typography>
 
       <Chip
-        label={roleLabel || 'User'}
+        label={roleLabel || t('user.employee')}
         sx={{
           height: 28,
           borderRadius: 1,

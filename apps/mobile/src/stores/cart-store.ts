@@ -18,6 +18,16 @@ export const useCartStore = create<CartState>()(
       items: [],
       addItem: (menuItem, kitchenName, quantity = 1) =>
         set((state) => {
+          const existingDates = new Set(
+            state.items.map((item) => item.menuItem.targetDate).filter(Boolean),
+          );
+          if (
+            existingDates.size > 0 &&
+            menuItem.targetDate &&
+            !existingDates.has(menuItem.targetDate)
+          ) {
+            return state;
+          }
           const existing = state.items.find((item) => item.menuItem.id === menuItem.id);
 
           if (existing) {

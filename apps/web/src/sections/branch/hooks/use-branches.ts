@@ -7,7 +7,7 @@ import {
   createBranch,
   deleteBranch,
   updateBranch,
-  fetchBranches,
+  fetchBranchesWithKitchenIds,
   assignKitchens,
   fetchCompanyBranch,
   createCompanyBranch,
@@ -36,7 +36,7 @@ export function useBranches(
 ) {
   return useQuery({
     queryKey: branchKeys.list(params),
-    queryFn:  () => fetchBranches(params),
+    queryFn:  () => fetchBranchesWithKitchenIds(params),
     enabled,
   });
 }

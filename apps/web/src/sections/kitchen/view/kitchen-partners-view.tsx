@@ -14,6 +14,8 @@ import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs from 'dayjs';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
@@ -25,10 +27,12 @@ import {
 
 import { toast } from 'src/components/snackbar';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+import { useTranslate } from 'src/locales';
 
 const money = (value: string) => `${Number(value).toLocaleString('uz-UZ')} so‘m`;
 
 export function KitchenPartnersView() {
+  const { t } = useTranslate('common');
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [requests, setRequests] = useState<KitchenConnectionRead[]>([]);
   const [partners, setPartners] = useState<KitchenPartnerReport[]>([]);
@@ -45,7 +49,7 @@ export function KitchenPartnersView() {
       setRequests(requestData);
       setPartners(partnerData);
     } catch {
-      toast.error("Ma'lumotlarni yuklab bo'lmadi");
+      toast.error(t('partners.loadError'));
     } finally {
       setLoading(false);
     }
@@ -60,10 +64,10 @@ export function KitchenPartnersView() {
     try {
       if (approve) await approveKitchenConnection(id);
       else await rejectKitchenConnection(id);
-      toast.success(approve ? 'Ulanish tasdiqlandi' : 'So‘rov rad etildi');
+      toast.success(approve ? t('partners.approved') : t('partners.rejected'));
       await load();
     } catch {
-      toast.error("So'rovni yangilab bo'lmadi");
+      toast.error(t('partners.updateError'));
     } finally {
       setActionId('');
     }
@@ -76,14 +80,14 @@ export function KitchenPartnersView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Hamkorlar va so‘rovlar"
-        links={[{ name: 'Dashboard', href: '/dashboard' }, { name: 'Hamkorlar' }]}
+        heading={t('partners.title')}
+        links={[{ name: t('navigation.dashboard'), href: '/dashboard' }, { name: t('partners.title') }]}
         sx={{ mb: 3 }}
       />
 
       <Stack spacing={3}>
         <Card sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Kutilayotgan ulanish so‘rovlari</Typography>
+          <Typography variant="h6" sx={{ mb: 2 }}>{t('partners.pendingTitle')}</Typography>
           <Stack spacing={2} divider={<Divider flexItem />}>
             {pending.map((request) => (
               <Stack
@@ -94,19 +98,19 @@ export function KitchenPartnersView() {
               >
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="subtitle1">{request.company_name}</Typography>
-                  <Typography variant="body2" color="text.secondary">Filial: {request.branch_name}</Typography>
+                  <Typography variant="body2" color="text.secondary">{t('partners.branch')}: {request.branch_name}</Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
                   <LoadingButton loading={actionId === request.id} variant="contained" onClick={() => review(request.id, true)}>
-                    Tasdiqlash
+                    {t('common.approve')}
                   </LoadingButton>
                   <Button color="error" variant="outlined" disabled={actionId === request.id} onClick={() => review(request.id, false)}>
-                    Rad etish
+                    {t('common.reject')}
                   </Button>
                 </Stack>
               </Stack>
             ))}
-            {!pending.length && <Typography color="text.secondary">Kutilayotgan so‘rovlar yo‘q</Typography>}
+            {!pending.length && <Typography color="text.secondary">{t('partners.noPending')}</Typography>}
           </Stack>
         </Card>
 
@@ -117,12 +121,19 @@ export function KitchenPartnersView() {
             sx={{ mb: 3, justifyContent: 'space-between' }}
           >
             <Box>
-              <Typography variant="h6">Ulangan kompaniya va filiallar</Typography>
+              <Typography variant="h6">{t('partners.connectedTitle')}</Typography>
               <Typography variant="body2" color="text.secondary">
-                Jami to‘lov: {gross.toLocaleString('uz-UZ')} so‘m · Oshxona oladi: {receivable.toLocaleString('uz-UZ')} so‘m
+                {t('partners.summary', { gross: gross.toLocaleString('uz-UZ'), receivable: receivable.toLocaleString('uz-UZ') })}
               </Typography>
             </Box>
-            <TextField type="month" size="small" value={month} onChange={(event) => setMonth(event.target.value)} />
+            <DatePicker
+              label={t('partnersUi.month')}
+              value={dayjs(`${month}-01`)}
+              onChange={(value) => value && setMonth(value.format('YYYY-MM'))}
+              slotProps={{ textField: { size: 'small', sx: { width: 180 } } }}
+              views={['year', 'month']}
+              format="MM/YYYY"
+            />
           </Stack>
           <Stack spacing={2} divider={<Divider flexItem />}>
             {partners.map((row) => (
@@ -134,16 +145,16 @@ export function KitchenPartnersView() {
               >
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="subtitle1">{row.company_name}</Typography>
-                  <Typography variant="body2" color="text.secondary">{row.branch_name} · To‘lov kuni: {row.billing_day}</Typography>
+                  <Typography variant="body2" color="text.secondary">{row.branch_name} · {t('partners.billingDay')}: {row.billing_day}</Typography>
                 </Box>
-                <Chip label={`${row.orders_count} ta buyurtma`} />
+                <Chip label={t('partners.orders', { count: row.orders_count })} />
                 <Box sx={{ minWidth: 190 }}>
-                  <Typography variant="body2">Kompaniya to‘lovi: {money(row.gross_amount)}</Typography>
-                  <Typography variant="body2" color="success.main">Oshxona oladi: {money(row.kitchen_receivable)}</Typography>
+                  <Typography variant="body2">{t('partners.companyPayment')}: {money(row.gross_amount)}</Typography>
+                  <Typography variant="body2" color="success.main">{t('partners.kitchenReceives')}: {money(row.kitchen_receivable)}</Typography>
                 </Box>
               </Stack>
             ))}
-            {!partners.length && !loading && <Typography color="text.secondary">Tasdiqlangan hamkorlar yo‘q</Typography>}
+            {!partners.length && !loading && <Typography color="text.secondary">{t('partners.noPartners')}</Typography>}
           </Stack>
         </Card>
       </Stack>

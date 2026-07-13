@@ -7,6 +7,7 @@ import Box from '@mui/material/Box';
 import Switch from '@mui/material/Switch';
 import TablePagination from '@mui/material/TablePagination';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -20,9 +21,10 @@ export function TablePaginationCustom({
   sx,
   dense,
   onChangeDense,
-  rowsPerPageOptions = [5, 10, 25],
+  rowsPerPageOptions = [10, 20, 30, 50],
   ...other
 }: TablePaginationCustomProps) {
+  const { t } = useTranslate('common');
   return (
     <Box sx={[{ position: 'relative' }, ...(Array.isArray(sx) ? sx : [sx])]}>
       <TablePagination
@@ -34,7 +36,7 @@ export function TablePaginationCustom({
 
       {onChangeDense && (
         <FormControlLabel
-          label="Dense"
+          label={t('common.dense')}
           control={
             <Switch
               checked={dense}

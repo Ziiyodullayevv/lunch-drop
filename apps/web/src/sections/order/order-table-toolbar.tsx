@@ -13,6 +13,7 @@ import FormControl from '@mui/material/FormControl';
 import InputAdornment from '@mui/material/InputAdornment';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function OrderTableToolbar({ filters, options, onResetPage, isSuperAdmin }: Props) {
+  const { t } = useTranslate('common');
   const { state: currentFilters, setState: updateFilters } = filters;
 
   const handleSearch = useCallback(
@@ -68,13 +70,13 @@ export function OrderTableToolbar({ filters, options, onResetPage, isSuperAdmin 
     >
       {isSuperAdmin && (
         <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 200 } }}>
-          <InputLabel>Kompaniya</InputLabel>
+          <InputLabel>{t('map.company')}</InputLabel>
           <Select
-            label="Kompaniya"
+            label={t('map.company')}
             value={currentFilters.company_id}
             onChange={handleCompany}
           >
-            <MenuItem value="">Barchasi</MenuItem>
+            <MenuItem value="">{t('common.all')}</MenuItem>
             {options.companies.map((c) => (
               <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
             ))}
@@ -83,13 +85,13 @@ export function OrderTableToolbar({ filters, options, onResetPage, isSuperAdmin 
       )}
 
       <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 200 } }}>
-        <InputLabel>Filial</InputLabel>
+        <InputLabel>{t('map.branch')}</InputLabel>
         <Select
-          label="Filial"
+          label={t('map.branch')}
           value={currentFilters.branch_id}
           onChange={handleBranch}
         >
-          <MenuItem value="">Barchasi</MenuItem>
+          <MenuItem value="">{t('common.all')}</MenuItem>
           {options.branches.map((b) => (
             <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
           ))}
@@ -100,7 +102,7 @@ export function OrderTableToolbar({ filters, options, onResetPage, isSuperAdmin 
         fullWidth
         value={currentFilters.name}
         onChange={handleSearch}
-        placeholder="Ism yoki telefon bo'yicha qidirish..."
+        placeholder={t('order.search')}
         slotProps={{
           input: {
             startAdornment: (

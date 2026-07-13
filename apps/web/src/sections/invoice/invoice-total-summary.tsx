@@ -3,7 +3,7 @@ import type { Theme, SxProps } from '@mui/material/styles';
 
 import Box from '@mui/material/Box';
 
-import { fPercent, fCurrency } from 'src/utils/format-number';
+import { fCurrency } from 'src/utils/format-number';
 
 // ----------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ export function InvoiceTotalSummary({
     >
       <Box sx={rowStyles}>
         <Box component="span" sx={labelStyles}>
-          Subtotal
+          Oshxona foydasi
         </Box>
         <Box component="span" sx={[valueStyles, { fontWeight: 'fontWeightSemiBold' }]}>
           {fCurrency(subtotal) || '-'}
@@ -64,7 +64,7 @@ export function InvoiceTotalSummary({
 
       <Box sx={rowStyles}>
         <Box component="span" sx={labelStyles}>
-          Shipping
+          Yetkazib berish
         </Box>
         <Box component="span" sx={[{ ...valueStyles }, !!shipping && { color: 'error.main' }]}>
           {shipping ? `- ${fCurrency(shipping)}` : '-'}
@@ -73,7 +73,7 @@ export function InvoiceTotalSummary({
 
       <Box sx={rowStyles}>
         <Box component="span" sx={labelStyles}>
-          Discount
+          Chegirma
         </Box>
 
         <Box component="span" sx={[{ ...valueStyles }, !!discount && { color: 'error.main' }]}>
@@ -83,15 +83,15 @@ export function InvoiceTotalSummary({
 
       <Box sx={rowStyles}>
         <Box component="span" sx={labelStyles}>
-          Taxes
+          Tizim xizmati
         </Box>
         <Box component="span" sx={valueStyles}>
-          {taxes ? fPercent(taxes) : '-'}
+          {taxes ? fCurrency(taxes) : '-'}
         </Box>
       </Box>
 
       <Box sx={[rowStyles, { typography: 'subtitle1' }]}>
-        <Box component="span">Total</Box>
+        <Box component="span">Jami</Box>
         <Box component="span" sx={valueStyles}>
           {fCurrency(totalAmount) || '-'}
         </Box>

@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { router, type Href, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { LayoutAnimation, Platform, ScrollView, TextInput, TouchableOpacity, UIManager, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
@@ -118,7 +118,7 @@ export default function CompaniesScreen() {
 
   const handleBack = useCallback(() => {
     if (returnTo) {
-      router.replace(returnTo as Href);
+      router.back();
       return;
     }
 

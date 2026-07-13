@@ -2,7 +2,7 @@
 
 from datetime import datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class KitchenCreate(BaseModel):
@@ -32,7 +32,7 @@ class KitchenUpdate(BaseModel):
 
 
 class KitchenSettingsUpdate(BaseModel):
-    """Kitchen admin o'z oshxonasi sozlamalari — vaqtlar, nom, holat. Lokatsiya (lat/lng) super_admin'da."""
+    """Kitchen admin o'z oshxonasi sozlamalari, jumladan lokatsiyasi."""
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
@@ -41,6 +41,14 @@ class KitchenSettingsUpdate(BaseModel):
     delivery_start_time: time | None = None
     delivery_end_time: time | None = None
     is_active: bool | None = None
+    lat: float | None = None
+    lng: float | None = None
+
+    @model_validator(mode="after")
+    def validate_coordinates(self):
+        if (self.lat is None) != (self.lng is None):
+            raise ValueError("lat va lng birgalikda yuborilishi kerak")
+        return self
 
 
 class KitchenRead(BaseModel):

@@ -47,6 +47,7 @@ import { OrderStatusTabs } from './order-status-tabs';
 import { PlaceOrderDialog } from '../place-order-dialog';
 import { OrderTableToolbar } from '../order-table-toolbar';
 import { OrderTableFiltersResult } from '../order-table-filters-result';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -82,11 +83,11 @@ type PaginatedResponse = {
 type SelectOption = { id: string; name: string };
 
 const TABLE_HEAD = [
-  { id: 'user', label: 'Foydalanuvchi', width: 160 },
-  { id: 'items', label: 'Taomlar' },
-  { id: 'total_price', label: 'Summa', width: 120 },
-  { id: 'status', label: 'Status', width: 120 },
-  { id: 'created_at', label: 'Sana', width: 160 },
+  { id: 'user', label: 'user', width: 160 },
+  { id: 'items', label: 'items' },
+  { id: 'total_price', label: 'amount', width: 120 },
+  { id: 'status', label: 'status', width: 120 },
+  { id: 'created_at', label: 'date', width: 160 },
 ];
 
 const STATUS_OPTIONS = [
@@ -108,18 +109,10 @@ const statusColor = (s: string) => {
   return 'default';
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Kutilmoqda',
-  grouped: 'Guruhlangan',
-  cooking: 'Tayyorlanmoqda',
-  ready: 'Tayyor',
-  delivered: 'Yetkazildi',
-  cancelled: 'Bekor',
-};
-
 // ----------------------------------------------------------------------
 
 export function OrderListView() {
+  const { t } = useTranslate('common');
   const { user: authUser } = useAuthContext();
   const isSuperAdmin = authUser?.role === 'super_admin';
   const isEmployee   = authUser?.role === 'employee';
@@ -182,7 +175,7 @@ export function OrderListView() {
       setData(res.data.items);
       setTotal(res.data.total);
     } catch {
-      toast.error('Buyurtmalarni yuklashda xatolik');
+      toast.error(t('order.loadError'));
     } finally {
       setLoading(false);
     }
@@ -256,10 +249,10 @@ export function OrderListView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Buyurtmalar"
+        heading={t('order.title')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Buyurtmalar' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('order.title') },
         ]}
         action={
           isEmployee && (
@@ -268,7 +261,7 @@ export function OrderListView() {
               startIcon={<Iconify icon="mingcute:add-line" />}
               onClick={placeOrderDialog.onTrue}
             >
-              Buyurtma berish
+              {t('order.place')}
             </Button>
           )
         }
@@ -286,7 +279,7 @@ export function OrderListView() {
       <Card>
         <OrderStatusTabs
           value={tabStatus}
-          tabs={STATUS_OPTIONS}
+          tabs={STATUS_OPTIONS.map((option) => ({ ...option, label: t(`order.status.${option.value}`) }))}
           counts={statusCounts}
           onChange={(value) => {
             setTabStatus(value);
@@ -316,7 +309,7 @@ export function OrderListView() {
             <TableHeadCustom
               order={table.order}
               orderBy={table.orderBy}
-              headCells={TABLE_HEAD}
+              headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: t(`order.table.${cell.label}`) }))}
               rowCount={data.length}
               numSelected={table.selected.length}
               onSort={table.onSort}
@@ -359,7 +352,7 @@ export function OrderListView() {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={STATUS_LABEL[row.status] ?? row.status}
+                        label={t(`order.status.${row.status}`, { defaultValue: row.status })}
                         color={statusColor(row.status) as any}
                         size="small"
                         variant="soft"

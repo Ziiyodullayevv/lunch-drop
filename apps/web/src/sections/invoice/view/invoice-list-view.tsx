@@ -1,314 +1,335 @@
 'use client';
 
-import type { TableHeadCellProps } from 'src/components/table';
-import type { IInvoice, IInvoiceTableFilters } from 'src/types/invoice';
+import type { InvoiceStatus, InvoiceCustomerRead } from 'src/lib/api/orders';
 
-import { sumBy } from 'es-toolkit';
-import { useCallback } from 'react';
+import dayjs from 'dayjs';
+import { useMemo, useState } from 'react';
 import { varAlpha } from 'minimal-shared/utils';
-import { useSetState } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import Card from '@mui/material/Card';
+import Tabs from '@mui/material/Tabs';
 import Table from '@mui/material/Table';
-import Stack from '@mui/material/Stack';
-import Alert from '@mui/material/Alert';
-import Divider from '@mui/material/Divider';
+import Select from '@mui/material/Select';
+import Avatar from '@mui/material/Avatar';
 import TableRow from '@mui/material/TableRow';
+import MenuItem from '@mui/material/MenuItem';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
+import TextField from '@mui/material/TextField';
 import { useTheme } from '@mui/material/styles';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import ListItemText from '@mui/material/ListItemText';
+import InputAdornment from '@mui/material/InputAdornment';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
+import { useRouter } from 'src/routes/hooks';
 
-import { fIsAfter, fIsBetween } from 'src/utils/format-time';
+import { fCurrency } from 'src/utils/format-number';
 
+import { CONFIG } from 'src/global-config';
 import { useTranslate } from 'src/locales';
+import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
+import { toast } from 'src/components/snackbar';
+import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
   useTable,
-  emptyRows,
   TableNoData,
-  getComparator,
-  TableEmptyRows,
   TableHeadCustom,
   TablePaginationCustom,
 } from 'src/components/table';
 
-import { useInvoices } from '../hooks/use-invoices';
+import { useCompanies } from 'src/sections/company/hooks/use-companies';
+
+import { useAuthContext } from 'src/auth/hooks';
+
 import { InvoiceAnalytic } from '../invoice-analytic';
-import { InvoiceTableRow } from '../invoice-table-row';
-import { InvoiceTableToolbar } from '../invoice-table-toolbar';
-import { InvoiceTableFiltersResult } from '../invoice-table-filters-result';
+import { InvoiceCustomerStatusMenu } from '../invoice-customer-status-menu';
+import {
+  useInvoiceCustomers,
+  useUpdateInvoiceCustomerStatus,
+} from '../hooks/use-invoices';
 
-// ----------------------------------------------------------------------
-
-const TABLE_HEAD: TableHeadCellProps[] = [
-  { id: 'invoiceNumber', label: 'Kompaniya / invoice' },
-  { id: 'createDate', label: 'Boshlanish sanasi' },
-  { id: 'dueDate', label: 'Tugash sanasi' },
-  { id: 'subtotal', label: 'Oshxona foydasi' },
-  { id: 'taxes', label: 'Tizim fee' },
-  { id: 'totalAmount', label: 'Jami xarajat' },
-  { id: 'status', label: 'Holat' },
+const TABLE_HEAD = [
+  { id: 'customer', label: 'Customer', width: 300 },
+  { id: 'branches', label: 'Filiallar', width: 220 },
+  { id: 'month', label: 'Oy', width: 150 },
+  { id: 'orders', label: 'Buyurtmalar', width: 130, align: 'center' as const },
+  { id: 'amount', label: 'Jami summa', width: 170 },
+  { id: 'status', label: 'Holat', width: 210 },
+  { id: 'actions', label: '', width: 64 },
 ];
 
-// ----------------------------------------------------------------------
+const DEMO_CUSTOMERS = [
+  { id: 'demo-employee-1', name: 'Akobir Ziyodullayev', phone: '+998 90 123 45 67', branch: 'Chilonzor filiali', count: 10, amount: 300000 },
+  { id: 'demo-employee-2', name: 'Madina Karimova', phone: '+998 91 234 56 78', branch: 'Chilonzor filiali', count: 8, amount: 240000 },
+  { id: 'demo-employee-3', name: 'Sardor Aliyev', phone: '+998 93 345 67 89', branch: 'Yunusobod filiali', count: 11, amount: 330000 },
+];
+
+const defaultAvatar = (name: string, id: string) => {
+  const surname = name.trim().split(/\s+/).at(-1)?.toLowerCase() ?? id;
+  const hash = Array.from(surname).reduce((total, char) => total + char.charCodeAt(0), 0);
+  const isFemale = surname.endsWith('va');
+  const index = (hash % 12) * 2 + (isFemale ? 1 : 2);
+  return `${CONFIG.assetsDir}/assets/images/mock/avatar/avatar-${index}.webp`;
+};
 
 export function InvoiceListView() {
   const { t } = useTranslate('common');
+  const { user } = useAuthContext();
+  const isSuperAdmin = user?.role === 'super_admin';
+  const scope = isSuperAdmin ? 'super_admin' : 'company';
+  const router = useRouter();
   const theme = useTheme();
+  const table = useTable({ defaultRowsPerPage: 10 });
+  const [month, setMonth] = useState(() => dayjs().startOf('month'));
+  const [search, setSearch] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | InvoiceStatus>('all');
+  const [demoStatuses, setDemoStatuses] = useState<Record<string, InvoiceStatus>>({});
+  const monthParam = month.format('YYYY-MM-DD');
+  const customersQuery = useInvoiceCustomers(monthParam, scope, companyFilter || undefined);
+  const updateStatus = useUpdateInvoiceCustomerStatus(monthParam, scope);
+  const { data: companiesData } = useCompanies({ limit: 100 }, isSuperAdmin);
+  const companies = companiesData?.items ?? [];
+  const useDemo = process.env.NODE_ENV === 'development' && !customersQuery.data?.length;
+  const companyOptions = useDemo
+    ? [
+        { id: 'demo-company-1', name: 'Mars IT' },
+        { id: 'demo-company-2', name: 'Najot Ta’lim' },
+      ]
+    : companies;
 
-  const table = useTable({ defaultOrderBy: 'createDate' });
+  const customers = useMemo<InvoiceCustomerRead[]>(() => {
+    if (!useDemo) return customersQuery.data ?? [];
+    const hasDemoAmount = month.format('YYYY-MM') === '2026-07';
+    return DEMO_CUSTOMERS.map((customer) => ({
+      company_id: customer.id === 'demo-employee-3' ? 'demo-company-2' : 'demo-company-1',
+      company_name: customer.id === 'demo-employee-3' ? 'Najot Ta’lim' : 'Mars IT',
+      employee_id: customer.id,
+      employee_name: customer.name,
+      employee_phone: customer.phone,
+      employee_avatar_url: null,
+      branch_names: [customer.branch],
+      period_month: monthParam,
+      order_count: hasDemoAmount ? customer.count : 0,
+      total_amount: String(hasDemoAmount ? customer.amount : 0),
+      status: demoStatuses[`${monthParam}:${customer.id}`] ?? 'pending',
+    }));
+  }, [customersQuery.data, demoStatuses, month, monthParam, useDemo]);
 
-  const { data: invoicesData, isLoading, isError, error } = useInvoices();
-  const tableData: IInvoice[] = (invoicesData ?? []).map((inv) => ({
-    id: inv.id,
-    invoiceNumber: `INV-${inv.id.slice(0, 6).toUpperCase()}`,
-    createDate: inv.period_start,
-    dueDate: inv.period_end,
-    status: inv.status === 'paid' ? 'paid' : 'pending',
-    totalAmount: parseFloat(inv.total_company_expense),
-    sent: 0,
-    invoiceFrom: {
-      id: '',
-      name: '',
-      email: '',
-      fullAddress: '',
-      phoneNumber: '',
-      company: '',
-      addressType: '',
-      primary: true,
-    },
-    invoiceTo: {
-      id: inv.company_id,
-      name: inv.company_id,
-      email: '',
-      fullAddress: '',
-      phoneNumber: '',
-      company: inv.company_id,
-      addressType: '',
-      primary: true,
-    },
-    branchSummary: `${inv.branch_summaries?.length ?? 0} ta filial · ${inv.employee_summaries?.length ?? 0} ta xodim`,
-    items: [],
-    taxes: parseFloat(inv.total_system_fee),
-    discount: 0,
-    shipping: 0,
-    subtotal: parseFloat(inv.total_kitchen_profit),
-  }));
-
-  const filters = useSetState<IInvoiceTableFilters>({
-    name: '',
-    service: [],
-    status: 'all',
-    startDate: null,
-    endDate: null,
-  });
-  const { state: currentFilters, setState: updateFilters } = filters;
-
-  const dateError = fIsAfter(currentFilters.startDate, currentFilters.endDate);
-
-  const dataFiltered = applyFilter({
-    inputData: tableData,
-    comparator: getComparator(table.order, table.orderBy),
-    filters: currentFilters,
-    dateError,
-  });
-
-  const canReset =
-    !!currentFilters.name ||
-    currentFilters.status !== 'all' ||
-    (!!currentFilters.startDate && !!currentFilters.endDate);
-
-  const notFound = !isLoading && ((!dataFiltered.length && canReset) || !dataFiltered.length);
-
-  const getInvoiceLength = (status: string) =>
-    tableData.filter((item) => item.status === status).length;
-
-  const getTotalAmount = (status: string) =>
-    sumBy(
-      tableData.filter((item) => item.status === status),
-      (invoice) => invoice.totalAmount
-    );
-
-  const getPercentByStatus = (status: string) =>
-    tableData.length ? (getInvoiceLength(status) / tableData.length) * 100 : 0;
-
-  const TABS = [
-    {
-      value: 'all',
-      label: 'Barchasi',
-      color: 'default',
-      count: tableData.length,
-    },
-    {
-      value: 'paid',
-      label: "To'langan",
-      color: 'success',
-      count: getInvoiceLength('paid'),
-    },
-    {
-      value: 'pending',
-      label: 'Kutilmoqda',
-      color: 'warning',
-      count: getInvoiceLength('pending'),
-    },
-  ] as const;
-
-  const handleFilterStatus = useCallback(
-    (event: React.SyntheticEvent, newValue: string) => {
-      table.onResetPage();
-      updateFilters({ status: newValue });
-    },
-    [updateFilters, table]
+  const branches = useMemo(
+    () => Array.from(new Set(
+      customers
+        .filter((customer) => !companyFilter || customer.company_id === companyFilter)
+        .flatMap((customer) => customer.branch_names)
+    )).sort(),
+    [companyFilter, customers]
   );
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return customers.filter((customer) => {
+      if (statusFilter !== 'all' && customer.status !== statusFilter) return false;
+      if (companyFilter && customer.company_id !== companyFilter) return false;
+      if (branchFilter && !customer.branch_names.includes(branchFilter)) return false;
+      if (!term) return true;
+      return [
+        customer.employee_name,
+        customer.employee_phone,
+        ...customer.branch_names,
+      ].some((value) => value?.toLowerCase().includes(term));
+    });
+  }, [branchFilter, companyFilter, customers, search, statusFilter]);
+
+  const paid = customers.filter((customer) => customer.status === 'paid');
+  const pending = customers.filter((customer) => customer.status === 'pending');
+  const totalAmount = customers.reduce((sum, customer) => sum + Number(customer.total_amount), 0);
+
+  const handleStatus = async (customer: InvoiceCustomerRead, status: InvoiceStatus) => {
+    if (useDemo) {
+      setDemoStatuses((current) => ({
+        ...current,
+        [`${monthParam}:${customer.employee_id}`]: status,
+      }));
+      toast.success(t('invoiceCustomers.paymentUpdated'));
+      return;
+    }
+    try {
+      await updateStatus.mutateAsync({ employeeId: customer.employee_id, status });
+      toast.success(t('invoiceCustomers.paymentUpdated'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('invoiceCustomers.updateError'));
+    }
+  };
 
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading={t('invoice.title')}
-        links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('invoice.title') }]}
+        heading={t('invoiceCustomers.title')}
+        links={[
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('invoiceCustomers.invoice') },
+        ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
-      {isError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error instanceof Error ? error.message : t('invoice.loadError')}
-        </Alert>
-      )}
-
-      <Card sx={{ mb: { xs: 3, md: 5 } }}>
+      <Card sx={{ mb: 3 }}>
         <Scrollbar sx={{ minHeight: 108 }}>
-          <Stack
-            divider={<Divider orientation="vertical" flexItem sx={{ borderStyle: 'dashed' }} />}
-            sx={{ py: 2, flexDirection: 'row' }}
-          >
-            <InvoiceAnalytic
-              title={t('invoice.total')}
-              total={tableData.length}
-              percent={100}
-              price={sumBy(tableData, (invoice) => invoice.totalAmount)}
-              icon="solar:bill-list-bold-duotone"
-              color={theme.vars.palette.info.main}
-            />
-
-            <InvoiceAnalytic
-              title={t('invoice.paid')}
-              total={getInvoiceLength('paid')}
-              percent={getPercentByStatus('paid')}
-              price={getTotalAmount('paid')}
-              icon="solar:file-check-bold-duotone"
-              color={theme.vars.palette.success.main}
-            />
-
-            <InvoiceAnalytic
-              title={t('invoice.pending')}
-              total={getInvoiceLength('pending')}
-              percent={getPercentByStatus('pending')}
-              price={getTotalAmount('pending')}
-              icon="solar:sort-by-time-bold-duotone"
-              color={theme.vars.palette.warning.main}
-            />
-          </Stack>
+          <Box sx={{ display: 'flex', py: 2 }}>
+            <InvoiceAnalytic title={t('invoiceCustomers.employees')} total={customers.length} percent={100} price={totalAmount} icon="solar:users-group-rounded-bold-duotone" color={theme.vars.palette.info.main} />
+            <InvoiceAnalytic title={t('invoiceCustomers.paid')} total={paid.length} percent={customers.length ? paid.length / customers.length * 100 : 0} price={paid.reduce((sum, item) => sum + Number(item.total_amount), 0)} icon="solar:file-check-bold-duotone" color={theme.vars.palette.success.main} />
+            <InvoiceAnalytic title={t('invoiceCustomers.pending')} total={pending.length} percent={customers.length ? pending.length / customers.length * 100 : 0} price={pending.reduce((sum, item) => sum + Number(item.total_amount), 0)} icon="solar:sort-by-time-bold-duotone" color={theme.vars.palette.warning.main} />
+          </Box>
         </Scrollbar>
       </Card>
 
       <Card>
         <Tabs
-          value={currentFilters.status}
-          onChange={handleFilterStatus}
-          sx={{
-            px: { md: 2.5 },
-            boxShadow: `inset 0 -2px 0 0 ${varAlpha(theme.vars.palette.grey['500Channel'], 0.08)}`,
-          }}
+          value={statusFilter}
+          onChange={(_, value) => { setStatusFilter(value); table.onResetPage(); }}
+          sx={{ px: 2.5, boxShadow: `inset 0 -2px 0 0 ${varAlpha(theme.vars.palette.grey['500Channel'], 0.08)}` }}
         >
-          {TABS.map((tab) => (
-            <Tab
-              key={tab.value}
-              value={tab.value}
-          label={t(`invoice.status.${tab.value}`)}
-              iconPosition="end"
-              icon={
-                <Label
-                  variant={
-                    ((tab.value === 'all' || tab.value === currentFilters.status) && 'filled') ||
-                    'soft'
-                  }
-                  color={tab.color}
-                >
-                  {tab.count}
-                </Label>
-              }
-            />
+          {[
+            { value: 'all', label: t('invoiceCustomers.all'), count: customers.length, color: 'default' as const },
+            { value: 'paid', label: t('invoiceCustomers.paid'), count: paid.length, color: 'success' as const },
+            { value: 'pending', label: t('invoiceCustomers.pending'), count: pending.length, color: 'warning' as const },
+          ].map((tab) => (
+            <Tab key={tab.value} value={tab.value} label={tab.label} iconPosition="end" icon={<Label variant={tab.value === statusFilter ? 'filled' : 'soft'} color={tab.color}>{tab.count}</Label>} />
           ))}
         </Tabs>
 
-        <InvoiceTableToolbar
-          filters={filters}
-          dateError={dateError}
-          onResetPage={table.onResetPage}
-        />
-
-        {canReset && (
-          <InvoiceTableFiltersResult
-            filters={filters}
-            onResetPage={table.onResetPage}
-            totalResults={dataFiltered.length}
-            sx={{ p: 2.5, pt: 0 }}
+        <Box sx={{ p: 2.5, gap: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', md: isSuperAdmin ? 'repeat(3, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))' } }}>
+          {isSuperAdmin && (
+            <Select
+              displayEmpty
+              value={companyFilter}
+              onChange={(event) => {
+                setCompanyFilter(event.target.value);
+                setBranchFilter('');
+                table.onResetPage();
+              }}
+              renderValue={(selected) => selected
+                ? companyOptions.find((company) => company.id === selected)?.name ?? selected
+                : <Box component="span" sx={{ color: 'text.disabled' }}>{t('invoiceCustomers.company')}</Box>}
+            >
+              <MenuItem value="">{t('invoiceCustomers.allCompanies')}</MenuItem>
+              {companyOptions.map((company) => (
+                <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>
+              ))}
+            </Select>
+          )}
+          <DatePicker
+            views={['year', 'month']}
+            label={t('invoiceCustomers.month')}
+            value={month}
+            onChange={(value) => {
+              if (value?.isValid()) {
+                setMonth(value.startOf('month'));
+                setBranchFilter('');
+              }
+              table.onResetPage();
+            }}
+            slotProps={{ textField: { fullWidth: true } }}
+            sx={{ order: isSuperAdmin ? 3 : 2 }}
           />
-        )}
+          <Select
+            displayEmpty
+            value={branchFilter}
+            onChange={(event) => {
+              setBranchFilter(event.target.value);
+              table.onResetPage();
+            }}
+            renderValue={(selected) => selected || (
+              <Box component="span" sx={{ color: 'text.disabled' }}>{t('invoiceCustomers.branch')}</Box>
+            )}
+            sx={{ width: 1, order: isSuperAdmin ? 2 : 1 }}
+          >
+            <MenuItem value="">{t('invoiceCustomers.allBranches')}</MenuItem>
+            {branches.map((branch) => (
+              <MenuItem key={branch} value={branch}>{branch}</MenuItem>
+            ))}
+          </Select>
+          <TextField
+            fullWidth
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); table.onResetPage(); }}
+            placeholder={t('invoiceCustomers.search')}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} /></InputAdornment> } }}
+            sx={{ gridColumn: '1 / -1', order: 4 }}
+          />
+        </Box>
 
-        <Box sx={{ position: 'relative' }}>
-          <Scrollbar sx={{ minHeight: 444 }}>
-            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 800 }}>
-              <TableHeadCustom
-                order={table.order}
-                orderBy={table.orderBy}
-                headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: t(`invoice.table.${cell.id}`) }))}
-                rowCount={dataFiltered.length}
-                numSelected={0}
-                onSort={table.onSort}
-              />
-
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={TABLE_HEAD.length} align="center" sx={{ py: 8 }}>
-                      <CircularProgress />
+        <Scrollbar sx={{ minHeight: 444 }}>
+          <Table sx={{ minWidth: 980 }}>
+            <TableHeadCustom
+              headCells={TABLE_HEAD.map((cell) => ({
+                ...cell,
+                label: cell.id === 'actions' ? '' : t(`invoiceCustomers.${cell.id}`),
+              }))}
+            />
+            <TableBody>
+              {customersQuery.isLoading ? (
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 8 }}><CircularProgress /></TableCell></TableRow>
+              ) : filtered.slice(table.page * table.rowsPerPage, table.page * table.rowsPerPage + table.rowsPerPage).map((customer) => {
+                const name = customer.employee_name ?? 'Foydalanuvchi';
+                return (
+                  <TableRow key={customer.employee_id} hover>
+                    <TableCell>
+                      <Box sx={{ minWidth: 260, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar src={customer.employee_avatar_url ? getImagePreviewUrl(customer.employee_avatar_url) : defaultAvatar(name, customer.employee_id)} />
+                        <ListItemText
+                          primary={name}
+                          secondary={customer.employee_phone}
+                          slotProps={{
+                            primary: { noWrap: true, sx: { typography: 'body2', fontWeight: 600 } },
+                            secondary: { noWrap: true, sx: { color: 'text.disabled' } },
+                          }}
+                        />
+                      </Box>
+                    </TableCell>
+                    <TableCell>{customer.branch_names.join(', ') || '—'}</TableCell>
+                    <TableCell>{month.format('MMMM YYYY')}</TableCell>
+                    <TableCell align="center">{customer.order_count}</TableCell>
+                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{fCurrency(Number(customer.total_amount), { currency: 'UZS' })}</Typography></TableCell>
+                    <TableCell>
+                      <InvoiceCustomerStatusMenu
+                        status={customer.status}
+                        loading={updateStatus.isPending}
+                        onChange={(status) => handleStatus(customer, status)}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        onClick={() => router.push(
+                          `${paths.dashboard.invoice.details(customer.employee_id)}?month=${monthParam}`
+                        )}
+                      >
+                        <Iconify icon="eva:arrow-ios-forward-fill" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  dataFiltered
-                    .slice(
-                      table.page * table.rowsPerPage,
-                      table.page * table.rowsPerPage + table.rowsPerPage
-                    )
-                    .map((row) => <InvoiceTableRow key={row.id} row={row} />)
-                )}
-
-                <TableEmptyRows
-                  height={table.dense ? 56 : 56 + 20}
-                  emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
-                />
-
-                <TableNoData notFound={notFound} />
-              </TableBody>
-            </Table>
-          </Scrollbar>
-        </Box>
+                );
+              })}
+              {!customersQuery.isLoading && !filtered.length && <TableNoData notFound />}
+            </TableBody>
+          </Table>
+        </Scrollbar>
 
         <TablePaginationCustom
           page={table.page}
           dense={table.dense}
-          count={dataFiltered.length}
+          count={filtered.length}
           rowsPerPage={table.rowsPerPage}
           onPageChange={table.onChangePage}
           onChangeDense={table.onChangeDense}
@@ -317,47 +338,4 @@ export function InvoiceListView() {
       </Card>
     </DashboardContent>
   );
-}
-
-// ----------------------------------------------------------------------
-
-type ApplyFilterProps = {
-  dateError: boolean;
-  inputData: IInvoice[];
-  filters: IInvoiceTableFilters;
-  comparator: (a: any, b: any) => number;
-};
-
-function applyFilter({ inputData, comparator, filters, dateError }: ApplyFilterProps) {
-  const { name, status, startDate, endDate } = filters;
-
-  const stabilizedThis = inputData.map((el, index) => [el, index] as const);
-
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-
-  inputData = stabilizedThis.map((el) => el[0]);
-
-  if (name) {
-    inputData = inputData.filter(({ invoiceNumber, invoiceTo }) =>
-      [invoiceNumber, invoiceTo.name, invoiceTo.company, invoiceTo.phoneNumber].some((field) =>
-        field?.toLowerCase().includes(name.toLowerCase())
-      )
-    );
-  }
-
-  if (status !== 'all') {
-    inputData = inputData.filter((invoice) => invoice.status === status);
-  }
-
-  if (!dateError) {
-    if (startDate && endDate) {
-      inputData = inputData.filter((invoice) => fIsBetween(invoice.createDate, startDate, endDate));
-    }
-  }
-
-  return inputData;
 }

@@ -376,8 +376,6 @@ export function BranchEditView({ id }: Props) {
               </Box>
 
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <Typography variant="caption" color="text.secondary">Lat: {latVal?.toFixed(6)}</Typography>
-                <Typography variant="caption" color="text.secondary">Lng: {lngVal?.toFixed(6)}</Typography>
               </Box>
             </Stack>
 

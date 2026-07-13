@@ -33,6 +33,7 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthSessio
   const dto: AuthResponseDto = {
     ...tokenRes,
     user: meRes.data.user,
+    profiles: meRes.data.profiles,
   };
 
   const session = mapAuthSession(dto);
@@ -87,4 +88,14 @@ export async function savePushToken(token: string): Promise<void> {
 export async function getMe(): Promise<AuthMeResponseDto['user']> {
   const res = await apiClient.get<AuthMeResponseDto>('/auth/me');
   return res.data.user;
+}
+
+export async function switchProfile(
+  profileId: string
+): Promise<{ access_token: string; refresh_token: string }> {
+  const res = await apiClient.post<{ access_token: string; refresh_token: string }>(
+    '/auth/switch-profile',
+    { profile_id: profileId }
+  );
+  return res.data;
 }

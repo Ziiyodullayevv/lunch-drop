@@ -33,6 +33,7 @@ import { UploadAvatar } from 'src/components/upload';
 import { Form, Field } from 'src/components/hook-form';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
@@ -53,13 +54,6 @@ const Schema = z
 
 type FormValues = z.infer<typeof Schema>;
 
-const ROLE_LABELS: Record<AccountUser['role'], string> = {
-  super_admin: 'Super admin',
-  company_admin: 'Company admin',
-  kitchen_admin: 'Kitchen admin',
-  employee: 'Employee',
-};
-
 const ROLE_COLORS: Record<
   AccountUser['role'],
   'error' | 'info' | 'success' | 'warning'
@@ -74,6 +68,7 @@ const ROLE_COLORS: Record<
 
 export function AccountGeneral() {
   const { user, checkUserSession } = useAuthContext();
+  const { t } = useTranslate('common');
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -109,7 +104,7 @@ export function AccountGeneral() {
         if (active) setProfile(nextProfile);
       } catch (err: unknown) {
         if (active) {
-          toast.error(err instanceof Error ? err.message : 'Profil yuklanmadi');
+          toast.error(err instanceof Error ? err.message : t('accountPage.profileLoadError'));
         }
       } finally {
         if (active) setProfileLoading(false);
@@ -135,9 +130,9 @@ export function AccountGeneral() {
         confirmPassword: '',
       });
       await checkUserSession?.();
-      toast.success('Profil yangilandi!');
+      toast.success(t('accountPage.profileUpdated'));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('common.error'));
     }
   });
 
@@ -151,9 +146,9 @@ export function AccountGeneral() {
       const updatedProfile = await updateAccountProfile({ avatar_url: url });
       setProfile(updatedProfile);
       await checkUserSession?.();
-      toast.success('Profil rasmi yangilandi!');
+      toast.success(t('accountPage.avatarUpdated'));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Profil rasmi yangilanmadi');
+      toast.error(err instanceof Error ? err.message : t('accountPage.avatarError'));
     } finally {
       setAvatarUploading(false);
     }
@@ -181,7 +176,7 @@ export function AccountGeneral() {
             }}
           >
             <Chip
-              label={profile?.accountStatus === 'approved' ? 'Faol' : 'Kutilmoqda'}
+              label={profile?.accountStatus === 'approved' ? t('user.statuses.approved') : t('user.statuses.pending_approval')}
               color={profile?.accountStatus === 'approved' ? 'success' : 'warning'}
               variant="soft"
               sx={{
@@ -205,9 +200,9 @@ export function AccountGeneral() {
             </Box>
 
             <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 2 }}>
-              Ruxsat etilgan *.jpeg, *.jpg, *.png, *.gif
+              {t('accountPage.allowedFormats')}
               <br />
-              Maksimal hajm: 3 MB
+              {t('accountPage.maxSize')}
             </Typography>
 
             <Stack spacing={1.25} sx={{ mt: 3.5, alignItems: 'center' }}>
@@ -216,7 +211,7 @@ export function AccountGeneral() {
               </Typography>
               {profile?.role && (
                 <Chip
-                  label={ROLE_LABELS[profile.role]}
+                  label={t(`user.roles.${profile.role}`)}
                   color={ROLE_COLORS[profile.role]}
                   variant="soft"
                   sx={{
@@ -243,30 +238,30 @@ export function AccountGeneral() {
             >
               <Field.Text
                 name="name"
-                label="To'liq ism"
+                label={t('accountPage.fullName')}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
-                label="Telefon raqam"
+                label={t('accountPage.phone')}
                 value={profile?.phone ?? accountUser?.phone ?? ''}
                 disabled
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
-                label="Rol"
-                value={profile?.role.replace(/_/g, ' ') ?? ''}
+                label={t('accountPage.role')}
+                value={profile?.role ? t(`user.roles.${profile.role}`) : ''}
                 disabled
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
-                label="Account holati"
-                value={profile?.isActive ? 'Faol' : 'Faol emas'}
+                label={t('accountPage.status')}
+                value={profile?.isActive ? t('user.statuses.approved') : t('user.statuses.inactive')}
                 disabled
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <Field.Text
                 name="password"
-                label="Yangi parol"
+                label={t('accountPage.newPassword')}
                 type={showPassword.value ? 'text' : 'password'}
                 slotProps={{
                   inputLabel: { shrink: true },
@@ -289,7 +284,7 @@ export function AccountGeneral() {
               />
               <Field.Text
                 name="confirmPassword"
-                label="Yangi parolni tasdiqlang"
+                label={t('accountPage.confirmPassword')}
                 type={showPassword.value ? 'text' : 'password'}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
@@ -297,7 +292,7 @@ export function AccountGeneral() {
 
             <Stack sx={{ mt: 4, alignItems: 'flex-end' }}>
               <Button type="submit" variant="contained" size="large" loading={isSubmitting}>
-                O&apos;zgarishlarni saqlash
+                {t('accountPage.save')}
               </Button>
             </Stack>
           </Card>

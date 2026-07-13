@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated as RNAnimated, KeyboardAvoidingView, Modal, PanResponder, Platform, RefreshControl, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated as RNAnimated, Keyboard, KeyboardAvoidingView, Modal, PanResponder, Platform, RefreshControl, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import ReAnimated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spinner, Text, XStack, YStack } from 'tamagui';
@@ -18,12 +18,14 @@ import { useMonthlyOrders, useOrders } from '@/hooks/use-orders';
 import { useTodayOrderGuard } from '@/hooks/use-today-order-guard';
 import { createOrder } from '@/lib/api/orders';
 import { getTodayDate } from '@/lib/api/kitchens';
+import { formatUzOrderCardDate } from '@/lib/uz-date';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCart, useCartStore } from '@/stores/cart-store';
 import type { BranchInfo, Order } from '@/types/domain';
 
 const ACCENT = '#00A76F';
 const NOTE_MAX_LENGTH = 180;
+const EMPTY_BRANCHES: BranchInfo[] = [];
 const NOTE_PRESETS = [
   "Achchiq bo'lmasin",
   "Ko'kat qo'shmang",
@@ -43,8 +45,10 @@ const ORDER_CARD_SHADOW = {
 function isCutoffPassed(cutoffTime: string): boolean {
   if (!cutoffTime) return false;
   const [h, m] = cutoffTime.split(':').map(Number);
-  const now = new Date();
-  return now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
+  const tashkentNow = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  const currentMinutes = tashkentNow.getUTCHours() * 60 + tashkentNow.getUTCMinutes();
+  return currentMinutes >= h * 60 + m;
 }
 
 const STATUS_LABEL: Record<Order['status'], string> = {
@@ -79,12 +83,6 @@ const STATUS_ICON: Record<Order['status'], string> = {
   cancelled:  'close-circle-outline',
 };
 
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('uz-UZ', { weekday: 'short', day: '2-digit', month: 'short' }) +
-    ' / ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-}
-
 function shortId(id: string) {
   return id.replace(/-/g, '').slice(0, 5).toUpperCase();
 }
@@ -108,26 +106,21 @@ function OrderCard({ order }: { order: Order }) {
                 width: 8, height: 8, borderRadius: 4,
                 backgroundColor: STATUS_COLOR[order.status],
               }} />
-              <Text fontFamily="$heading" fontSize={16} fontWeight="800" color="#1C1C1E">
-                Order #{shortId(order.id)}
-              </Text>
+              <XStack alignItems="baseline" gap={5}>
+                <Text fontFamily="$heading" fontSize={16} fontWeight="800" color="#1C1C1E">
+                  Buyurtma
+                </Text>
+                <Text fontFamily="$heading" fontSize={13} fontWeight="700" color="#8E8E93">
+                  #{shortId(order.id)}
+                </Text>
+              </XStack>
             </XStack>
             <Text fontSize={12} color="#8E8E93" fontWeight="500" marginLeft={15}>
-              {formatDate(order.createdAt)}
+              {formatUzOrderCardDate(order.createdAt)}
             </Text>
           </YStack>
 
           <XStack gap={8}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={{
-                width: 36, height: 36, borderRadius: 10,
-                backgroundColor: '#F2F2F7',
-                alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <MaterialCommunityIcons name="chat-processing-outline" size={18} color="#1C1C1E" />
-            </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => router.push(`/order/${order.id}`)}
@@ -288,20 +281,26 @@ function DraftOrderCard({
 
   const kitchenId = cart.items[0]?.menuItem.kitchenId;
   const kitchen = kitchens.find((k) => k.id === kitchenId);
-  const cutoffPassed = kitchen ? isCutoffPassed(kitchen.cutoffTime) : false;
+  const targetDates = [...new Set(cart.items.map((item) => item.menuItem.targetDate).filter(Boolean))];
+  const targetDate = targetDates[0];
+  const cutoffPassed = targetDate === getTodayDate() && kitchen ? isCutoffPassed(kitchen.cutoffTime) : false;
 
   const effectiveBranchId = branches.length === 1 ? branches[0].id : selectedBranchId;
 
   const handlePlace = async () => {
     if (cutoffPassed) return;
-    if (!cart.items.every((item) => canOrderForDate(item.menuItem.targetDate))) return;
+    if (targetDates.length !== 1 || !targetDate) {
+      showAlert('Sanalar aralashib ketgan', 'Bir buyurtmada faqat bitta kun taomlari bo‘lishi mumkin.', [{ text: 'Tushunarli' }]);
+      return;
+    }
+    if (!cart.items.every((item) => canOrderForDate(item.menuItem.targetDate, item.menuItem.kitchenOrderCutoffTime))) return;
     if (!effectiveBranchId) {
       openBranchSheet();
       return;
     }
     setLoading(true);
     try {
-      await createOrder(cart.items, effectiveBranchId, note, getTodayDate());
+      await createOrder(cart.items, effectiveBranchId, note, targetDate);
       cart.clear();
       onPlaced();
     } catch (e: unknown) {
@@ -358,7 +357,7 @@ function DraftOrderCard({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => {
-                  if (!canOrderForDate(item.menuItem.targetDate)) return;
+                  if (!canOrderForDate(item.menuItem.targetDate, item.menuItem.kitchenOrderCutoffTime)) return;
                   cart.addItem(item.menuItem, item.kitchenName, 1);
                 }}
                 style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}
@@ -532,7 +531,7 @@ export default function MyOrdersScreen() {
   const noteSheetTranslateY = useRef(new RNAnimated.Value(360)).current;
 
   const accountStatus = useAuthStore((s) => s.user?.accountStatus);
-  const branches = useAuthStore((s) => s.user?.branches ?? []);
+  const branches = useAuthStore((s) => s.user?.branches ?? EMPTY_BRANCHES);
   const isPending = accountStatus !== 'approved';
 
   useEffect(() => {
@@ -594,6 +593,47 @@ export default function MyOrdersScreen() {
       }),
     ]).start(() => setNoteSheetMounted(false));
   };
+
+  const notePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderGrant: () => Keyboard.dismiss(),
+      onPanResponderMove: (_, gesture) => {
+        if (gesture.dy <= 0) return;
+        noteSheetTranslateY.setValue(gesture.dy);
+        noteBackdropOpacity.setValue(Math.max(0, 1 - gesture.dy / 320));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > 90 || gesture.vy > 0.65) {
+          closeNoteSheet();
+          return;
+        }
+
+        RNAnimated.parallel([
+          RNAnimated.spring(noteSheetTranslateY, {
+            toValue: 0,
+            damping: 24,
+            stiffness: 260,
+            mass: 0.9,
+            useNativeDriver: true,
+          }),
+          RNAnimated.timing(noteBackdropOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      },
+      onPanResponderTerminate: () => {
+        RNAnimated.parallel([
+          RNAnimated.spring(noteSheetTranslateY, { toValue: 0, useNativeDriver: true }),
+          RNAnimated.timing(noteBackdropOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+        ]).start();
+      },
+    })
+  ).current;
 
   const saveNote = () => {
     setNote(noteDraft.trim());
@@ -749,7 +789,10 @@ export default function MyOrdersScreen() {
             onPress={closeNoteSheet}
           >
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-              <RNAnimated.View style={{ transform: [{ translateY: noteSheetTranslateY }] }}>
+              <RNAnimated.View
+                {...notePanResponder.panHandlers}
+                style={{ transform: [{ translateY: noteSheetTranslateY }] }}
+              >
                 <TouchableOpacity activeOpacity={1} onPress={() => {}}>
                   <RNAnimated.View style={{ opacity: noteBackdropOpacity }}>
                     <View

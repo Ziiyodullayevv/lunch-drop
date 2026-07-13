@@ -6,6 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import AccountStatus, InvoiceStatus
+from app.schemas.order import OrderRead
 
 
 class PendingEmployeeRead(BaseModel):
@@ -77,3 +78,25 @@ class InvoiceRead(BaseModel):
     created_at: datetime
     branch_summaries: list[BranchOrderSummary] = Field(default_factory=list)
     employee_summaries: list[EmployeeOrderSummary] = Field(default_factory=list)
+
+
+class InvoiceCustomerRead(BaseModel):
+    company_id: str
+    company_name: str
+    employee_id: str
+    employee_name: str | None
+    employee_phone: str
+    employee_avatar_url: str | None
+    branch_names: list[str] = Field(default_factory=list)
+    period_month: date
+    order_count: int
+    total_amount: Decimal
+    status: InvoiceStatus
+
+
+class InvoiceCustomerStatusUpdate(BaseModel):
+    status: InvoiceStatus
+
+
+class InvoiceCustomerDetailRead(InvoiceCustomerRead):
+    orders: list[OrderRead] = Field(default_factory=list)

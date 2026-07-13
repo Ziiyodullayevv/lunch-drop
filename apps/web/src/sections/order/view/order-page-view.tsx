@@ -3,9 +3,7 @@
 import { useAuthContext } from 'src/auth/hooks';
 
 import { OrderListView } from './order-list-view';
-import { CompanyOrdersView } from './company-orders-view';
 import { KitchenOrdersView } from './kitchen-orders-view';
-import { SuperAdminOrdersView } from './super-admin-orders-view';
 
 // ----------------------------------------------------------------------
 
@@ -13,11 +11,11 @@ export function OrderPageView() {
   const { user } = useAuthContext();
 
   if (user?.role === 'super_admin') {
-    return <SuperAdminOrdersView />;
+    return <KitchenOrdersView scope="super_admin" />;
   }
 
   if (user?.role === 'company_admin') {
-    return <CompanyOrdersView />;
+    return <KitchenOrdersView scope="company_admin" />;
   }
 
   if (user?.role === 'kitchen_admin') {

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, SoftDeleteMixin, TimestampMixin, enum_column, uuid_pk
@@ -26,10 +26,11 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     """
 
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("phone", "role", name="uq_users_phone_role"),)
 
     id: Mapped[str] = uuid_pk()
     phone: Mapped[str] = mapped_column(
-        String(32), unique=True, nullable=False, index=True
+        String(32), nullable=False, index=True
     )
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)

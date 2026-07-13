@@ -35,6 +35,7 @@ export function LanguagePopover({ data = [], sx, ...other }: LanguagePopoverProp
 
   const handleChangeLang = useCallback(
     (lang: LangCode) => {
+      window.localStorage.setItem('i18nextLng', lang);
       onChangeLang(lang);
       onClose();
     },
@@ -43,17 +44,17 @@ export function LanguagePopover({ data = [], sx, ...other }: LanguagePopoverProp
 
   const renderMenuList = () => (
     <CustomPopover open={open} anchorEl={anchorEl} onClose={onClose}>
-      <MenuList sx={{ p: 1, width: 280 }}>
+      <MenuList sx={{ p: 0.75, width: 170 }}>
         {data?.map((option) => (
           <MenuItem
             key={option.value}
             selected={option.value === currentLang.value}
             onClick={() => handleChangeLang(option.value as LangCode)}
             sx={{
-              gap: 2,
-              minHeight: 58,
-              borderRadius: 1.5,
-              fontSize: 18,
+              gap: 1.25,
+              minHeight: 46,
+              borderRadius: 1,
+              fontSize: 15,
               fontWeight: option.value === currentLang.value ? 700 : 500,
             }}
           >

@@ -1,6 +1,7 @@
 """Company Admin biznes logikasi — company_id bo'yicha izolyatsiya."""
 
-from datetime import UTC, datetime
+from calendar import monthrange
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -11,8 +12,8 @@ from app.config import settings
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.branch import Branch, EmployeeBranch
 from app.models.company import Company
-from app.models.enums import AccountStatus, OrderStatus, UserRole
-from app.models.invoice import Invoice
+from app.models.enums import AccountStatus, InvoiceStatus, OrderStatus, UserRole
+from app.models.invoice import Invoice, EmployeeMonthlyPayment
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.order import Order
 from app.models.user import User
@@ -22,6 +23,8 @@ from app.schemas.company_admin import (
     BranchOrderSummary,
     EmployeeOrderSummary,
     InvoiceRead,
+    InvoiceCustomerRead,
+    InvoiceCustomerDetailRead,
     OrderReportResponse,
     PendingEmployeeRead,
 )
@@ -320,7 +323,11 @@ class CompanyAdminService:
         return len(orders)
 
     async def bulk_confirm_branch_orders(
-        self, branch_id: str, target_date=None
+        self,
+        branch_id: str,
+        target_date: date | None = None,
+        period_start: date | None = None,
+        period_end: date | None = None,
     ) -> int:
         """Bitta filialning yetkazilmagan buyurtmalarini bir martada tasdiqlaydi."""
         branch = await self.session.scalar(
@@ -332,7 +339,21 @@ class CompanyAdminService:
         )
         if branch is None:
             raise NotFoundError("Filial topilmadi")
-        target_date = target_date or datetime.now(ZoneInfo(settings.timezone)).date()
+        if target_date:
+            date_filters = (Order.target_date == target_date,)
+        elif period_start or period_end:
+            date_filters = tuple(
+                condition
+                for condition in (
+                    Order.target_date >= period_start if period_start else None,
+                    Order.target_date <= period_end if period_end else None,
+                )
+                if condition is not None
+            )
+        else:
+            date_filters = (
+                Order.target_date == datetime.now(ZoneInfo(settings.timezone)).date(),
+            )
         orders = (
             await self.session.execute(
                 select(Order)
@@ -340,7 +361,7 @@ class CompanyAdminService:
                 .where(
                     Order.branch_id == branch_id,
                     User.company_id == self.company_id,
-                    Order.target_date == target_date,
+                    *date_filters,
                     Order.status.in_((OrderStatus.CREATED, OrderStatus.PREPARING, OrderStatus.ON_THE_WAY)),
                 )
             )
@@ -467,6 +488,171 @@ class CompanyAdminService:
                 employee_summaries=[EmployeeOrderSummary(employee_id=x.employee_id, employee_name=employee_names.get(x.employee_id), branch_id=x.branch_id, branch_name=branch_names.get(x.branch_id, "—"), order_count=x.order_count, total_amount=x.total_amount, delivered_count=x.order_count) for x in invoice.employee_summaries],
             ))
         return output
+
+    async def list_invoice_customers(self, month: date) -> list[InvoiceCustomerRead]:
+        """Barcha faol xodimlarning tanlangan oydagi buyurtma summasi."""
+        period_month = month.replace(day=1)
+        period_end = period_month.replace(
+            day=monthrange(period_month.year, period_month.month)[1]
+        )
+        employees = list(
+            (
+                await self.session.execute(
+                    select(User)
+                    .where(
+                        User.company_id == self.company_id,
+                        User.role == UserRole.EMPLOYEE,
+                        User.deleted_at.is_(None),
+                        User.is_active.is_(True),
+                        User.account_status == AccountStatus.APPROVED,
+                    )
+                    .order_by(User.name.asc().nulls_last(), User.created_at.asc())
+                )
+            ).scalars().all()
+        )
+        if not employees:
+            return []
+
+        employee_ids = [employee.id for employee in employees]
+        order_rows = (
+            await self.session.execute(
+                select(
+                    Order.employee_id,
+                    func.count(Order.id),
+                    func.coalesce(func.sum(Order.historical_price), 0),
+                )
+                .where(
+                    Order.employee_id.in_(employee_ids),
+                    Order.target_date.between(period_month, period_end),
+                    Order.status != OrderStatus.CANCELLED,
+                )
+                .group_by(Order.employee_id)
+            )
+        ).all()
+        totals = {
+            employee_id: (order_count, total_amount)
+            for employee_id, order_count, total_amount in order_rows
+        }
+
+        branch_rows = (
+            await self.session.execute(
+                select(EmployeeBranch.user_id, Branch.name)
+                .join(Branch, Branch.id == EmployeeBranch.branch_id)
+                .where(
+                    EmployeeBranch.user_id.in_(employee_ids),
+                    Branch.company_id == self.company_id,
+                    Branch.deleted_at.is_(None),
+                )
+                .order_by(Branch.name)
+            )
+        ).all()
+        branches: dict[str, list[str]] = {}
+        for employee_id, branch_name in branch_rows:
+            branches.setdefault(employee_id, []).append(branch_name)
+
+        payments = list(
+            (
+                await self.session.execute(
+                    select(EmployeeMonthlyPayment).where(
+                        EmployeeMonthlyPayment.company_id == self.company_id,
+                        EmployeeMonthlyPayment.period_month == period_month,
+                        EmployeeMonthlyPayment.employee_id.in_(employee_ids),
+                    )
+                )
+            ).scalars().all()
+        )
+        payment_statuses = {payment.employee_id: payment.status for payment in payments}
+        company = await self.get_company()
+
+        return [
+            InvoiceCustomerRead(
+                company_id=self.company_id,
+                company_name=company.name,
+                employee_id=employee.id,
+                employee_name=employee.name,
+                employee_phone=employee.phone,
+                employee_avatar_url=employee.avatar_url,
+                branch_names=branches.get(employee.id, []),
+                period_month=period_month,
+                order_count=totals.get(employee.id, (0, Decimal("0")))[0],
+                total_amount=totals.get(employee.id, (0, Decimal("0")))[1],
+                status=payment_statuses.get(employee.id, InvoiceStatus.PENDING),
+            )
+            for employee in employees
+        ]
+
+    async def update_invoice_customer_status(
+        self,
+        employee_id: str,
+        month: date,
+        status: InvoiceStatus,
+    ) -> InvoiceCustomerRead:
+        period_month = month.replace(day=1)
+        employee = await self.session.scalar(
+            select(User).where(
+                User.id == employee_id,
+                User.company_id == self.company_id,
+                User.role == UserRole.EMPLOYEE,
+                User.deleted_at.is_(None),
+            )
+        )
+        if employee is None:
+            raise NotFoundError("Xodim topilmadi")
+
+        payment = await self.session.scalar(
+            select(EmployeeMonthlyPayment).where(
+                EmployeeMonthlyPayment.company_id == self.company_id,
+                EmployeeMonthlyPayment.employee_id == employee_id,
+                EmployeeMonthlyPayment.period_month == period_month,
+            )
+        )
+        if payment is None:
+            payment = EmployeeMonthlyPayment(
+                company_id=self.company_id,
+                employee_id=employee_id,
+                period_month=period_month,
+                status=status,
+            )
+            self.session.add(payment)
+        else:
+            payment.status = status
+        await self.session.commit()
+
+        customers = await self.list_invoice_customers(period_month)
+        customer = next((item for item in customers if item.employee_id == employee_id), None)
+        if customer is None:
+            raise NotFoundError("Xodim topilmadi")
+        return customer
+
+    async def get_invoice_customer(
+        self, employee_id: str, month: date
+    ) -> InvoiceCustomerDetailRead:
+        period_month = month.replace(day=1)
+        period_end = period_month.replace(
+            day=monthrange(period_month.year, period_month.month)[1]
+        )
+        customers = await self.list_invoice_customers(period_month)
+        customer = next((item for item in customers if item.employee_id == employee_id), None)
+        if customer is None:
+            raise NotFoundError("Xodim topilmadi")
+
+        orders = list(
+            (
+                await self.session.execute(
+                    select(Order)
+                    .where(
+                        Order.employee_id == employee_id,
+                        Order.target_date.between(period_month, period_end),
+                        Order.status != OrderStatus.CANCELLED,
+                    )
+                    .order_by(Order.target_date.desc(), Order.created_at.desc())
+                )
+            ).scalars().all()
+        )
+        return InvoiceCustomerDetailRead(
+            **customer.model_dump(),
+            orders=await build_order_reads(self.session, orders),
+        )
 
     async def dashboard(self, year: int | None = None):
         """Kompaniya bo'yicha analytics (faqat o'z company_id va filiallari)."""

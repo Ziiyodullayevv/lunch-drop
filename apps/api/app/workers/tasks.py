@@ -16,7 +16,6 @@ from app.db.session import AsyncSessionLocal
 from app.models.company import Company
 from app.models.enums import ORDER_STATUS_LABELS, InvoiceStatus, OrderStatus
 from app.models.invoice import Invoice, InvoiceBranchSummary, InvoiceEmployeeSummary
-from app.models.branch import Branch
 from app.models.kitchen import Kitchen
 from app.models.order import Order
 from app.models.user import User
@@ -26,7 +25,7 @@ log = structlog.get_logger()
 
 
 async def transition_order_statuses() -> dict:
-    """Har 1 daqiqada: CREATED→PREPARING (cutoff), PREPARING→ON_THE_WAY (delivery_start)."""
+    """Har 1 daqiqada CREATED buyurtmalarini cutoff vaqtida PREPARING qiladi."""
     now = datetime.now(ZoneInfo(settings.timezone))
     today, current = now.date(), now.time()
 
@@ -51,27 +50,9 @@ async def transition_order_statuses() -> dict:
             )
         await session.flush()
 
-        to_on_the_way = (
-            await session.execute(
-                select(Order)
-                .join(Kitchen, Order.kitchen_id == Kitchen.id)
-                .where(
-                    Order.target_date == today,
-                    Order.status == OrderStatus.PREPARING,
-                    Kitchen.delivery_start_time <= current,
-                )
-            )
-        ).scalars().all()
-        for order in to_on_the_way:
-            order.status = OrderStatus.ON_THE_WAY
-            await notify(
-                session, order.employee_id, "order_status",
-                f"Buyurtma holati: {ORDER_STATUS_LABELS[OrderStatus.ON_THE_WAY]}",
-                "Buyurtmangiz yo'lda.",
-            )
         await session.commit()
 
-    result = {"to_preparing": len(to_preparing), "to_on_the_way": len(to_on_the_way)}
+    result = {"to_preparing": len(to_preparing), "to_on_the_way": 0}
     log.info("status_transitions", **result)
     return result
 

@@ -3,19 +3,19 @@ import { useQuery } from '@tanstack/react-query';
 import { getBranchKitchenSchedules, getEmployeeMenu, weekdayToDate } from '@/lib/api/kitchens';
 import { useAuthStore } from '@/stores/auth-store';
 
-export function useAllFoodItems(weekday?: number) {
+export function useAllFoodItems(weekday?: number, targetDateOverride?: string) {
   const isApproved = useAuthStore(
     (s) => s.user?.status === 'active' && s.user?.accountStatus === 'approved'
   );
   const branchId = useAuthStore((s) => s.user?.branchId ?? '');
 
-  const targetDate = weekday !== undefined ? weekdayToDate(weekday) : weekdayToDate(
+  const targetDate = targetDateOverride ?? (weekday !== undefined ? weekdayToDate(weekday) : weekdayToDate(
     (() => {
       const d = new Date(Date.now() + 5 * 60 * 60 * 1000);
       const j = d.getUTCDay();
       return j === 0 ? 7 : j;
     })()
-  );
+  ));
 
   const menuQuery = useQuery({
     queryKey: ['employee-menu', targetDate],
@@ -46,7 +46,7 @@ export function useAllFoodItems(weekday?: number) {
       ...item,
       kitchenName: item.kitchenName || info.name,
       kitchenDeliveryWindow: item.kitchenDeliveryWindow || info.deliveryWindow,
-      kitchenOrderCutoffTime: info.orderCutoffTime,
+      kitchenOrderCutoffTime: info.orderCutoffTime || item.kitchenOrderCutoffTime,
       kitchenDeliveryStartTime: info.deliveryStartTime,
       kitchenDeliveryEndTime: info.deliveryEndTime,
     };

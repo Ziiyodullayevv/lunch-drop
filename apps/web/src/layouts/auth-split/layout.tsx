@@ -22,6 +22,7 @@ import { AuthSplitSection } from './section';
 import { AuthSplitContent } from './content';
 import { SettingsButton } from '../components/settings-button';
 import { MainSection, LayoutSection, HeaderSection } from '../core';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -44,6 +45,7 @@ export function AuthSplitLayout({
   slotProps,
   layoutQuery = 'md',
 }: AuthSplitLayoutProps) {
+  const { t } = useTranslate('common');
   const authMethods = [
     {
       label: 'Jwt',
@@ -98,7 +100,7 @@ export function AuthSplitLayout({
             color="inherit"
             sx={{ typography: 'subtitle2' }}
           >
-            Need help?
+            {t('auth.needHelp')}
           </Link>
 
           {/** @slot Settings button */}

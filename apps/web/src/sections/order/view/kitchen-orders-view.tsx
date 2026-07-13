@@ -1,6 +1,5 @@
 'use client';
 
-import type { SelectChangeEvent } from '@mui/material/Select';
 import type { OrderStatus } from 'src/lib/api/orders';
 
 import dayjs from 'dayjs';
@@ -9,12 +8,16 @@ import { useBoolean, usePopover, useDebounce } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import Select from '@mui/material/Select';
 import Avatar from '@mui/material/Avatar';
 import Drawer from '@mui/material/Drawer';
 import Divider from '@mui/material/Divider';
+import Tooltip from '@mui/material/Tooltip';
+import SvgIcon from '@mui/material/SvgIcon';
+import Checkbox from '@mui/material/Checkbox';
 import Collapse from '@mui/material/Collapse';
 import MenuItem from '@mui/material/MenuItem';
 import MenuList from '@mui/material/MenuList';
@@ -23,22 +26,22 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
-import InputLabel from '@mui/material/InputLabel';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
-import FormControl from '@mui/material/FormControl';
+import ListItemText from '@mui/material/ListItemText';
 import InputAdornment from '@mui/material/InputAdornment';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
-import { useRouter } from 'src/routes/hooks';
 
-import { fDateTime } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
+import { fDate, fDateTime } from 'src/utils/format-time';
 
+import { useTranslate } from 'src/locales';
+import { CONFIG } from 'src/global-config';
+import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { calculateOrderAnalytics } from 'src/lib/order-analytics';
 
 import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
@@ -50,29 +53,85 @@ import {
   useTable,
   TableNoData,
   TableHeadCustom,
+  TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
 
 import { useAuthContext } from 'src/auth/hooks';
 
-import { OrderAnalytics } from './order-analytics';
 import { OrderStatusTabs } from './order-status-tabs';
 import { filterOrdersForView } from './order-filters-data';
-import { useKitchenMe, useKitchenOrders, useUpdateOrderStatus } from '../hooks/use-orders';
+import {
+  useKitchenMe,
+  useKitchenOrders,
+  useCompanyOrders,
+  useSuperAdminOrders,
+  useUpdateOrderStatus,
+  useUpdateSuperAdminOrderStatus,
+} from '../hooks/use-orders';
 
 // ----------------------------------------------------------------------
 
 const fSom = (v: number) => fCurrency(v, { currency: 'UZS' });
 
+const getDefaultAvatar = (fullName: string | null | undefined, id: string) => {
+  const surname = fullName?.trim().split(/\s+/).at(-1)?.toLocaleLowerCase('uz') ?? '';
+  const hashSource = surname || id;
+  const hash = Array.from(hashSource).reduce(
+    (total, char) => (total * 31 + char.charCodeAt(0)) % 2147483647,
+    0
+  );
+  const isFemale = surname.endsWith('va');
+  const index = (hash % 12) * 2 + (isFemale ? 1 : 2);
+
+  return `${CONFIG.assetsDir}/assets/images/mock/avatar/avatar-${index}.webp`;
+};
+
+function NextStageIcon() {
+  return (
+    <SvgIcon viewBox="0 0 48 48">
+      <path d="M0 0h48v48H0z" fill="none" />
+      <path
+        d="M4 40.836q7.34-8.96 13.036-10.168t10.846-.365V41L44 23.545L27.882 7v10.167Q18.359 17.242 11.69 24Q5.023 30.758 4 40.836Z"
+        fill="currentColor"
+        fillRule="evenodd"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="4"
+        clipRule="evenodd"
+      />
+    </SvgIcon>
+  );
+}
+
+function DeliveryIcon() {
+  return (
+    <SvgIcon viewBox="0 0 24 24">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M1.75 13.325q-.425 0-.712-.287t-.288-.713t.288-.712t.712-.288h3.5q.425 0 .713.288t.287.712t-.288.713t-.712.287zm3.125 5.8Q4 18.25 4 17H2.75q-.5 0-.8-.375t-.175-.85l.225-.95h3.125q1.05 0 1.775-.725t.725-1.775q0-.325-.075-.6t-.2-.55h.95q1.05 0 1.775-.725t.725-1.775T8.3 6.175H4.5l.15-.6q.15-.7.688-1.137T6.6 4h10.15q.5 0 .8.375t.175.85L17.075 8H19q.475 0 .9.213t.7.587l1.875 2.475q.275.35.35.763t0 .837L22.15 16.2q-.075.35-.35.575t-.625.225H20q0 1.25-.875 2.125T17 20t-2.125-.875T14 17h-4q0 1.25-.875 2.125T7 20t-2.125-.875M3.75 9.675q-.425 0-.712-.288t-.288-.712t.288-.712t.712-.288h4.5q.425 0 .713.288t.287.712t-.288.713t-.712.287zM7 18q.425 0 .713-.288T8 17t-.288-.712T7 16t-.712.288T6 17t.288.713T7 18m10 0q.425 0 .713-.288T18 17t-.288-.712T17 16t-.712.288T16 17t.288.713T17 18m-1.075-5h4.825l.1-.525L19 10h-2.375z"
+      />
+    </SvgIcon>
+  );
+}
+
 // ----------------------------------------------------------------------
 
-type OrderItem = { id: string; name: string; quantity: number; price: number };
+type OrderItem = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  quantity: number;
+  price: number;
+};
 
 type Order = {
   id: string;
   user_id: string;
   user_name: string | null;
   user_phone: string | null;
+  user_avatar_url: string | null;
   total_price: number;
   note: string | null;
   status: string;
@@ -100,36 +159,41 @@ type StatusConfig = {
 };
 
 const STATUS_MAP: Record<string, StatusConfig> = {
-  created:    { label: 'Yangi',           color: 'warning' },
-  preparing:  { label: 'Tayyorlanmoqda',  color: 'warning' },
-  on_the_way: { label: "Yo'lda",          color: 'info'    },
-  delivered:  { label: 'Yetkazildi',      color: 'success' },
-  cancelled:  { label: 'Bekor qilindi',   color: 'error'   },
+  created:    { label: 'created', color: 'warning' },
+  preparing:  { label: 'preparing', color: 'warning' },
+  on_the_way: { label: 'onTheWay', color: 'info' },
+  delivered:  { label: 'delivered', color: 'success' },
+  cancelled:  { label: 'cancelled', color: 'error' },
+  mixed:      { label: 'Aralash holat', color: 'default' },
 };
 
 const getStatus = (s: string): StatusConfig =>
   STATUS_MAP[s] ?? { label: s, color: 'default' };
 
 const isActive   = (s: string) => s === 'created' || s === 'preparing';
+const hasActiveOrders = (group: GroupedOrder) =>
+  group.orders?.some((order) => isActive(order.status)) ?? false;
+const canAdvanceOrders = (group: GroupedOrder) =>
+  group.orders?.some((order) => ['created', 'preparing', 'on_the_way'].includes(order.status)) ?? false;
 
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
-  { id: 'company',   label: 'Kompaniya',    width: 200 },
-  { id: 'employee',  label: 'Buyurtmachi',  width: 180 },
-  { id: 'meal',      label: 'Taom',         width: 120 },
-  { id: 'status',    label: 'Holat',        width: 150 },
-  { id: 'delivery',  label: 'Yetkazish',    width: 130 },
-  { id: 'amount',    label: 'Summa',        width: 150 },
-  { id: 'actions',   label: '',             width: 56  },
+  { id: 'order', label: 'order', width: 130 },
+  { id: 'customer', label: 'customer' },
+  { id: 'date', label: 'date', width: 150 },
+  { id: 'items', label: 'items', width: 110, align: 'center' as const },
+  { id: 'price', label: 'price', width: 150 },
+  { id: 'status', label: 'status', width: 150 },
+  { id: 'actions', label: '', width: 96 },
 ];
 
 const STATUS_TABS = [
-  { value: 'all',        label: 'Barchasi',   color: 'default' as const },
-  { value: 'active',     label: 'Aktiv',      color: 'warning' as const },
-  { value: 'on_the_way', label: "Yo'lda",     color: 'info' as const },
-  { value: 'delivered',  label: 'Yetkazildi', color: 'success' as const },
-  { value: 'cancelled',  label: 'Bekor',      color: 'error' as const },
+  { value: 'all', label: 'all', color: 'default' as const },
+  { value: 'active', label: 'active', color: 'warning' as const },
+  { value: 'on_the_way', label: 'onTheWay', color: 'info' as const },
+  { value: 'delivered', label: 'delivered', color: 'success' as const },
+  { value: 'cancelled', label: 'cancelled', color: 'error' as const },
 ];
 
 // ----------------------------------------------------------------------
@@ -225,12 +289,11 @@ function DrawerOrderRow({ order }: { order: Order }) {
 function OrderDetailDrawer({
   row,
   onClose,
-  onStatusChange,
 }: {
   row: GroupedOrder | null;
   onClose: () => void;
-  onStatusChange: () => void;
 }) {
+  const { t } = useTranslate('common');
   const [busyStatus, setBusyStatus] = useState<string | null>(null);
   const updateOrderStatusMutation = useUpdateOrderStatus();
 
@@ -238,12 +301,19 @@ function OrderDetailDrawer({
     if (!row) return;
     setBusyStatus(status);
     try {
-      await updateOrderStatusMutation.mutateAsync({
-        id: row.id,
-        status: status as OrderStatus,
-      });
-      toast.success(getStatus(status).label);
-      onStatusChange();
+      const targets = (row.orders ?? []).filter((order) => isActive(order.status));
+      await Promise.all(
+        targets.map((order) =>
+          updateOrderStatusMutation.mutateAsync({
+            id: order.id,
+            status: status as OrderStatus,
+          })
+        )
+      );
+      const statusConfig = getStatus(status);
+      toast.success(
+        t(`orderExtra.kitchenStatus.${statusConfig.label}`, { defaultValue: statusConfig.label })
+      );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xatolik');
     } finally {
@@ -282,7 +352,7 @@ function OrderDetailDrawer({
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           {cfg && (
             <Label variant="soft" color={cfg.color} sx={{ px: 1.5 }}>
-              {cfg.label}
+              {t(`orderExtra.kitchenStatus.${cfg.label}`, { defaultValue: cfg.label })}
             </Label>
           )}
           <IconButton onClick={onClose} size="small">
@@ -300,7 +370,7 @@ function OrderDetailDrawer({
               sx={{ mb: 3, p: 2, bgcolor: 'background.neutral', borderRadius: 1.5 }}
             >
               <Box sx={{ flex: 1 }}>
-                <Typography variant="caption" color="text.secondary">Buyurtmachi</Typography>
+                <Typography variant="caption" color="text.secondary">{t('orderExtra.employee')}</Typography>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                   {row.orders?.[0]?.user_name ?? '—'}
                 </Typography>
@@ -317,7 +387,7 @@ function OrderDetailDrawer({
               </Box>
             </Stack>
 
-            {isActive(row.status) && (
+            {hasActiveOrders(row) && (
               <Stack spacing={1} sx={{ mb: 3 }}>
                 <LoadingButton
                   fullWidth
@@ -325,10 +395,10 @@ function OrderDetailDrawer({
                   color="info"
                   size="large"
                   loading={busyStatus === 'on_the_way'}
-                  startIcon={<Iconify icon="mdi:motorbike" />}
+                  startIcon={<DeliveryIcon />}
                   onClick={() => updateStatus('on_the_way')}
                 >
-                  Yo&apos;lga chiqdi
+                  {t('orderExtra.onTheWayAction')}
                 </LoadingButton>
               </Stack>
             )}
@@ -365,133 +435,240 @@ function OrderDetailDrawer({
 function GroupedOrderRow({
   row,
   busy,
-  onSelect,
+  selected,
+  selectable,
+  canManage,
+  onSelectRow,
   onMenuOpen,
 }: {
   row: GroupedOrder;
   busy: boolean;
-  onSelect: () => void;
+  selected: boolean;
+  selectable: boolean;
+  canManage: boolean;
+  onSelectRow: () => void;
   onMenuOpen: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const { t } = useTranslate('common');
   const cfg = getStatus(row.status);
-
-  const employeeName = row.orders?.[0]?.user_name ?? '—';
+  const expanded = useBoolean();
+  const orderNumber = row.orders?.[0]?.id.slice(0, 8).toUpperCase() ?? row.id.slice(0, 8);
+  const expandedItems = (row.orders ?? []).flatMap((order) => order.items);
+  const customer = row.orders?.[0];
+  const customerAvatar = customer?.user_avatar_url
+    ? getImagePreviewUrl(customer.user_avatar_url)
+    : getDefaultAvatar(customer?.user_name, customer?.user_id ?? row.id);
 
   return (
-    <TableRow hover sx={{ cursor: 'pointer' }} onClick={onSelect}>
-      {/* Kompaniya + Filial */}
-      <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {row.branch.company_name ?? '—'}
-        </Typography>
-        <Typography variant="caption" color="text.disabled">
-          {row.branch.name !== '—' ? row.branch.name : ''}
-        </Typography>
-      </TableCell>
+    <>
+      <TableRow hover selected={selected}>
+        {canManage && (
+          <TableCell padding="checkbox">
+            <Checkbox checked={selected} disabled={!selectable} onChange={onSelectRow} />
+          </TableCell>
+        )}
 
-      {/* Buyurtmachi (employee) */}
-      <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          {employeeName}
-        </Typography>
-      </TableCell>
+        <TableCell>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 500 }}
+          >
+            #{orderNumber}
+          </Typography>
+        </TableCell>
 
-      {/* Taom soni */}
-      <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {row.total_orders} ta
-        </Typography>
-      </TableCell>
+        <TableCell>
+          <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
+            <Avatar
+              alt={customer?.user_name ?? 'Foydalanuvchi'}
+              src={customerAvatar}
+              sx={{ width: 40, height: 40 }}
+            />
+            <ListItemText
+              primary={customer?.user_name ?? 'Foydalanuvchi'}
+              secondary={customer?.user_phone ?? '—'}
+              slotProps={{
+                primary: { noWrap: true, sx: { typography: 'body2' } },
+                secondary: { noWrap: true, sx: { color: 'text.disabled' } },
+              }}
+            />
+          </Box>
+        </TableCell>
 
-      <TableCell>
-        <Label variant="soft" color={cfg.color}>
-          {cfg.label}
-        </Label>
-      </TableCell>
+        <TableCell>
+          <ListItemText
+            primary={fDate(row.delivery_time)}
+            secondary={fDateTime(row.created_at, 'HH:mm')}
+            slotProps={{
+              primary: { noWrap: true, sx: { typography: 'body2' } },
+              secondary: { sx: { mt: 0.5, typography: 'caption' } },
+            }}
+          />
+        </TableCell>
 
-      <TableCell>
-        <Typography variant="body2">{fDateTime(row.delivery_time, 'HH:mm')}</Typography>
-        <Typography variant="caption" color="text.disabled">{fDateTime(row.created_at, 'HH:mm')}</Typography>
-      </TableCell>
+        <TableCell align="center">{row.total_items}</TableCell>
 
-      <TableCell>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-          {fSom(row.total_amount)}
-        </Typography>
-      </TableCell>
+        <TableCell>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {fSom(row.total_amount)}
+          </Typography>
+        </TableCell>
 
-      <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-        <IconButton size="small" onClick={onMenuOpen} disabled={busy}>
-          {busy
-            ? <CircularProgress size={18} />
-            : <Iconify icon="eva:more-vertical-fill" />
-          }
-        </IconButton>
-      </TableCell>
-    </TableRow>
+        <TableCell>
+          <Label variant="soft" color={cfg.color}>
+            {t(`orderExtra.kitchenStatus.${cfg.label}`, { defaultValue: cfg.label })}
+          </Label>
+        </TableCell>
+
+        <TableCell align="right" sx={{ px: 1, whiteSpace: 'nowrap' }}>
+          <IconButton
+            color={expanded.value ? 'inherit' : 'default'}
+            onClick={expanded.onToggle}
+            sx={{ ...(expanded.value && { bgcolor: 'action.hover' }) }}
+          >
+            <Iconify
+              icon="eva:arrow-ios-downward-fill"
+              sx={{
+                transition: 'transform 0.2s',
+                transform: expanded.value ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          </IconButton>
+          {canManage && (
+            <IconButton size="small" onClick={onMenuOpen} disabled={busy}>
+              {busy ? <CircularProgress size={18} /> : <Iconify icon="eva:more-vertical-fill" />}
+            </IconButton>
+          )}
+        </TableCell>
+      </TableRow>
+
+      <TableRow>
+        <TableCell colSpan={canManage ? 8 : 7} sx={{ p: 0, border: 'none' }}>
+          <Collapse
+            in={expanded.value}
+            timeout="auto"
+            unmountOnExit
+            sx={{ bgcolor: 'background.neutral' }}
+          >
+            <Paper sx={{ m: 1.5, overflow: 'hidden' }}>
+              {expandedItems.map((item, index) => (
+                <Box
+                  key={`${item.id}-${index}`}
+                  sx={(theme) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: theme.spacing(1.5, 2, 1.5, 1.5),
+                    '&:not(:last-of-type)': {
+                      borderBottom: `solid 2px ${theme.vars.palette.background.neutral}`,
+                    },
+                  })}
+                >
+                  <Avatar
+                    src={item.imageUrl ? getImagePreviewUrl(item.imageUrl) : undefined}
+                    variant="rounded"
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      mr: 2,
+                      bgcolor: 'primary.lighter',
+                      color: 'primary.dark',
+                    }}
+                  >
+                    <Iconify icon="solar:tea-cup-bold" width={20} />
+                  </Avatar>
+
+                  <ListItemText
+                    primary={item.name}
+                    secondary={`#${item.id.slice(0, 8).toUpperCase()}`}
+                    slotProps={{
+                      primary: { sx: { typography: 'body2' } },
+                      secondary: { sx: { color: 'text.disabled' } },
+                    }}
+                  />
+
+                  <Box sx={{ minWidth: 48, textAlign: 'right' }}>×{item.quantity}</Box>
+                  <Box sx={{ width: 130, textAlign: 'right', fontWeight: 500 }}>
+                    {fSom(item.price)}
+                  </Box>
+                </Box>
+              ))}
+            </Paper>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
   );
 }
 
 // ----------------------------------------------------------------------
 
-export function KitchenOrdersView() {
-  useAuthContext();
-  const router = useRouter();
+type OrdersViewScope = 'kitchen' | 'super_admin' | 'company_admin';
 
-  const table = useTable({ defaultRowsPerPage: 10 });
+export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewScope }) {
+  const { t } = useTranslate('common');
+  useAuthContext();
+  const canManageOrders = scope !== 'company_admin';
+  const table = useTable({ defaultRowsPerPage: 5 });
 
   const [tabStatus, setTabStatus] = useState('all');
   const [selectedRow, setSelectedRow] = useState<GroupedOrder | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRow, setActiveRow] = useState<GroupedOrder | null>(null);
   const rowMenu = usePopover();
+  const toolbarMenu = usePopover();
 
   const [searchText, setSearchText] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
-  const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
-  const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(dayjs());
+  const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(() => dayjs());
+  const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(() => dayjs());
   const debouncedSearch = useDebounce(searchText, 300);
 
-  const { data: kitchenOrders, isLoading: loading } = useKitchenOrders();
-  const { data: kitchenMe } = useKitchenMe();
-  const updateOrderStatus = useUpdateOrderStatus();
+  const allOrdersParams = {
+    start_date: startDate?.isValid() ? startDate.format('YYYY-MM-DD') : '1900-01-01',
+    end_date: endDate?.isValid() ? endDate.format('YYYY-MM-DD') : '2100-12-31',
+    limit: 1_000_000,
+    offset: 0,
+  };
+  const kitchenQuery = useKitchenOrders(undefined, scope === 'kitchen');
+  const companyQuery = useCompanyOrders(allOrdersParams, scope === 'company_admin');
+  const superAdminQuery = useSuperAdminOrders(allOrdersParams, scope === 'super_admin');
+  const { data: kitchenMe } = useKitchenMe(scope === 'kitchen');
+  const kitchenStatusMutation = useUpdateOrderStatus();
+  const superAdminStatusMutation = useUpdateSuperAdminOrderStatus();
+
+  const kitchenOrders = scope === 'kitchen'
+    ? kitchenQuery.data
+    : scope === 'super_admin'
+      ? superAdminQuery.data?.items
+      : companyQuery.data?.items;
+  const loading = scope === 'kitchen'
+    ? kitchenQuery.isLoading
+    : scope === 'super_admin'
+      ? superAdminQuery.isLoading
+      : companyQuery.isLoading;
 
   const kitchenName = kitchenMe?.name ?? '—';
 
   const companies = useMemo(() => {
-    const seen = new Set<string>();
-    const list: { id: string; name: string }[] = [];
+    const companyMap = new Map<string, string>();
     (kitchenOrders ?? []).forEach((order) => {
-      if (order.company_id && !seen.has(order.company_id)) {
-        seen.add(order.company_id);
-        list.push({
-          id: order.company_id,
-          name: order.company_name ?? order.company_id,
-        });
+      if (order.company_id) {
+        companyMap.set(order.company_id, order.company_name ?? order.company_id);
       }
     });
-    return list;
+    return Array.from(companyMap, ([id, name]) => ({ id, name }));
   }, [kitchenOrders]);
 
   const branches = useMemo(() => {
-    const seen = new Set<string>();
-    const list: { id: string; name: string }[] = [];
+    const branchMap = new Map<string, string>();
     (kitchenOrders ?? []).forEach((order) => {
-      if (
-        order.branch_id &&
-        !seen.has(order.branch_id) &&
-        (!companyFilter || order.company_id === companyFilter)
-      ) {
-        seen.add(order.branch_id);
-        list.push({
-          id: order.branch_id,
-          name: order.branch_name ?? order.branch_id,
-        });
+      if (order.branch_id && (!companyFilter || order.company_id === companyFilter)) {
+        branchMap.set(order.branch_id, order.branch_name ?? order.branch_id);
       }
     });
-    return list;
-  }, [kitchenOrders, companyFilter]);
+    return Array.from(branchMap, ([id, name]) => ({ id, name }));
+  }, [companyFilter, kitchenOrders]);
 
   const filteredOrders = useMemo(
     () =>
@@ -512,62 +689,69 @@ export function KitchenOrdersView() {
     ]
   );
 
-  const groupedOrders: GroupedOrder[] = filteredOrders.map((o) => ({
-    id: o.id,
-    status: o.status,
-    total_orders: 1,
-    total_items: o.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 1,
-    total_amount: parseFloat(o.historical_price),
-    delivery_time: o.target_date,
-    created_at: o.created_at,
-    branch: {
-      id: o.branch_id ?? o.kitchen_id,
-      name: o.branch_name ?? '—',
-      company_id: o.company_id ?? '',
-      company_name: o.company_name,
-    },
-    kitchen: { id: o.kitchen_id, name: kitchenName },
-    orders: [{
-      id: o.id,
-      user_id: o.employee_id,
-      user_name: o.employee_name,
-      user_phone: null,
-      total_price: parseFloat(o.historical_price),
-      note: null,
-      status: o.status,
-      items: o.items?.length
-        ? o.items.map((item) => ({
+  const groupedOrders = useMemo(() => {
+    const rows: GroupedOrder[] = filteredOrders.map((order) => {
+      const branchId = order.branch_id ?? order.kitchen_id;
+      const items = order.items?.length
+        ? order.items.map((item) => ({
             id: item.meal_id,
             name: item.meal_name ?? 'Taom',
+            imageUrl: item.meal_image_url,
             quantity: item.quantity,
             price: parseFloat(item.historical_price),
           }))
-        : o.meal_name
-          ? [{ id: o.meal_id, name: o.meal_name, quantity: 1, price: parseFloat(o.historical_price) }]
-          : [],
-    }],
-  }));
+        : order.meal_name
+          ? [{
+              id: order.meal_id,
+              name: order.meal_name,
+              imageUrl: order.meal_image_url,
+              quantity: 1,
+              price: parseFloat(order.historical_price),
+            }]
+          : [];
+      const childOrder: Order = {
+        id: order.id,
+        user_id: order.employee_id,
+        user_name: order.employee_name,
+        user_phone: order.employee_phone,
+        user_avatar_url: order.employee_avatar_url,
+        total_price: parseFloat(order.historical_price),
+        note: null,
+        status: order.status,
+        items,
+      };
 
-  const analytics = useMemo(
-    () =>
-      calculateOrderAnalytics(
-        filteredOrders.map((order) => ({
-          status: order.status,
-          amount: order.historical_price,
-        }))
-      ),
-    [filteredOrders]
-  );
+      return {
+        id: order.id,
+        status: order.status,
+        total_orders: 1,
+        total_items: items.reduce((sum, item) => sum + item.quantity, 0),
+        total_amount: parseFloat(order.historical_price),
+        delivery_time: order.target_date,
+        created_at: order.created_at,
+        branch: {
+          id: branchId,
+          name: order.branch_name ?? '—',
+          company_id: order.company_id ?? '',
+          company_name: order.company_name,
+        },
+        kitchen: { id: order.kitchen_id, name: order.kitchen_name ?? kitchenName },
+        orders: [childOrder],
+      };
+    });
+
+    return rows;
+  }, [filteredOrders, kitchenName]);
 
   const tabCount = (val: string) => {
     if (val === 'all')    return groupedOrders.length;
-    if (val === 'active') return groupedOrders.filter((g) => isActive(g.status)).length;
+    if (val === 'active') return groupedOrders.filter(hasActiveOrders).length;
     return groupedOrders.filter((g) => g.status === val).length;
   };
 
   const filtered = useMemo(() => {
     let result = groupedOrders;
-    if (tabStatus === 'active') result = result.filter((g) => isActive(g.status));
+    if (tabStatus === 'active') result = result.filter(hasActiveOrders);
     else if (tabStatus !== 'all') result = result.filter((g) => g.status === tabStatus);
     return result;
   }, [groupedOrders, tabStatus]);
@@ -577,20 +761,75 @@ export function KitchenOrdersView() {
     table.page * table.rowsPerPage + table.rowsPerPage
   );
 
-  const handleUpdate = useCallback(async (id: string, status: string) => {
-    setBusyId(id);
+  const selectableIds = canManageOrders
+    ? filtered.filter(canAdvanceOrders).map((row) => row.id)
+    : [];
+  const selectedAdvanceIds = table.selected.filter((id) => selectableIds.includes(id));
+  const handleBulkNextStatus = useCallback(async () => {
+    const ids = selectedAdvanceIds;
+    if (!ids.length) return;
+    setBusyId('bulk');
     try {
-      await updateOrderStatus.mutateAsync({
-        id,
-        status: status as OrderStatus,
-      });
-      toast.success(getStatus(status).label);
+      await Promise.all(ids.map((id) => {
+        const group = groupedOrders.find((item) => item.id === id);
+        if (!group) return Promise.resolve({ updated: 0 });
+        const status: OrderStatus = group.orders?.some((order) => order.status === 'created')
+          ? 'preparing'
+          : group.orders?.some((order) => order.status === 'preparing')
+            ? 'on_the_way'
+            : 'delivered';
+        const sourceStatus = status === 'preparing'
+          ? 'created'
+          : status === 'on_the_way'
+            ? 'preparing'
+            : 'on_the_way';
+        return Promise.all(
+          (group.orders ?? [])
+            .filter((order) => order.status === sourceStatus)
+            .map((order) => (scope === 'super_admin'
+              ? superAdminStatusMutation.mutateAsync({ id: order.id, status })
+              : kitchenStatusMutation.mutateAsync({ id: order.id, status })))
+        );
+      }));
+      table.onSelectAllRows(false, []);
+      toast.success('Tanlangan buyurtmalar keyingi bosqichga o‘tkazildi');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('common.error'));
+    } finally {
+      setBusyId(null);
+    }
+  }, [
+    groupedOrders,
+    kitchenStatusMutation,
+    scope,
+    selectedAdvanceIds,
+    superAdminStatusMutation,
+    table,
+    t,
+  ]);
+
+  const handleUpdate = useCallback(async (group: GroupedOrder, status: OrderStatus) => {
+    setBusyId(group.id);
+    try {
+      const sourceStatuses = status === 'preparing'
+        ? ['created']
+        : status === 'on_the_way'
+          ? ['preparing']
+          : ['created', 'preparing', 'on_the_way'];
+      const targets = (group.orders ?? []).filter((order) => sourceStatuses.includes(order.status));
+      await Promise.all(
+        targets.map((order) => (scope === 'super_admin'
+          ? superAdminStatusMutation.mutateAsync({ id: order.id, status })
+          : kitchenStatusMutation.mutateAsync({ id: order.id, status })))
+      );
+      const updated = targets.length;
+      toast.success(`${updated} ta buyurtma holati yangilandi`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xatolik');
     } finally {
       setBusyId(null);
     }
-  }, [updateOrderStatus]);
+  }, [kitchenStatusMutation, scope, superAdminStatusMutation]);
 
   const handleMenuOpen = useCallback((row: GroupedOrder, e: React.MouseEvent<HTMLButtonElement>) => {
     setActiveRow(row);
@@ -605,17 +844,15 @@ export function KitchenOrdersView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Buyurtmalar"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Buyurtmalar' }]}
+        heading={t('order.title')}
+        links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('order.title') }]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
-
-      <OrderAnalytics data={analytics} />
 
       <Card>
         <OrderStatusTabs
           value={tabStatus}
-          tabs={STATUS_TABS}
+          tabs={STATUS_TABS.map((tab) => ({ ...tab, label: t(`orderExtra.tabs.${tab.label}`) }))}
           counts={Object.fromEntries(
             STATUS_TABS.map((tab) => [tab.value, tabCount(tab.value)])
           )}
@@ -625,57 +862,63 @@ export function KitchenOrdersView() {
           }}
         />
 
-        {/* Filters toolbar */}
         <Box
           sx={{
             p: 2.5,
             gap: 2,
             display: 'grid',
             gridTemplateColumns: {
-              xs: '1fr',
+              xs: 'minmax(0, 1fr)',
               sm: 'repeat(2, minmax(0, 1fr))',
               lg: 'repeat(4, minmax(0, 1fr))',
             },
-            alignItems: 'center',
           }}
         >
-          <FormControl fullWidth>
-            <InputLabel>Kompaniya</InputLabel>
-            <Select
-              label="Kompaniya"
-              value={companyFilter}
-              onChange={(e: SelectChangeEvent<string>) => {
-                setCompanyFilter(e.target.value);
-                setBranchFilter('');
-                table.onResetPage();
-              }}
-            >
-              <MenuItem value="">Barchasi</MenuItem>
-              {companies.map((c) => (
-                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Select
+            displayEmpty
+            value={companyFilter}
+            onChange={(event) => {
+              setCompanyFilter(event.target.value);
+              setBranchFilter('');
+              table.onResetPage();
+            }}
+            renderValue={(selected) => {
+              if (!selected) {
+                return <Box component="span" sx={{ color: 'text.disabled' }}>Kompaniya</Box>;
+              }
+              return companies.find((company) => company.id === selected)?.name ?? selected;
+            }}
+            sx={{ width: 1 }}
+          >
+            <MenuItem value="">{t('common.all')}</MenuItem>
+            {companies.map((company) => (
+              <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>
+            ))}
+          </Select>
 
-          <FormControl fullWidth>
-            <InputLabel>Filial</InputLabel>
-            <Select
-              label="Filial"
-              value={branchFilter}
-              onChange={(e: SelectChangeEvent<string>) => {
-                setBranchFilter(e.target.value);
-                table.onResetPage();
-              }}
-            >
-              <MenuItem value="">Barchasi</MenuItem>
-              {branches.map((b) => (
-                <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Select
+            displayEmpty
+            value={branchFilter}
+            onChange={(event) => {
+              setBranchFilter(event.target.value);
+              table.onResetPage();
+            }}
+            renderValue={(selected) => {
+              if (!selected) {
+                return <Box component="span" sx={{ color: 'text.disabled' }}>Filial</Box>;
+              }
+              return branches.find((branch) => branch.id === selected)?.name ?? selected;
+            }}
+            sx={{ width: 1 }}
+          >
+            <MenuItem value="">{t('common.all')}</MenuItem>
+            {branches.map((branch) => (
+              <MenuItem key={branch.id} value={branch.id}>{branch.name}</MenuItem>
+            ))}
+          </Select>
 
           <DatePicker
-            label="Boshlanish sanasi"
+            label={t('orderExtra.startDate')}
             value={startDate}
             maxDate={endDate ?? dayjs()}
             onChange={(value) => {
@@ -687,7 +930,7 @@ export function KitchenOrdersView() {
           />
 
           <DatePicker
-            label="Tugash sanasi"
+            label={t('orderExtra.endDate')}
             value={endDate}
             minDate={startDate ?? undefined}
             maxDate={dayjs()}
@@ -699,61 +942,86 @@ export function KitchenOrdersView() {
             sx={{ width: 1 }}
           />
 
-          <TextField
-            value={searchText}
-            onChange={(e) => { setSearchText(e.target.value); table.onResetPage(); }}
-            placeholder="Kompaniya, filial, xodim yoki taom bo'yicha..."
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: searchText ? (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchText('')}>
-                      <Iconify icon="solar:close-circle-bold" width={16} />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null,
-              },
+          <Box
+            sx={{
+              gap: 1,
+              width: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gridColumn: '1 / -1',
             }}
-            sx={{ gridColumn: '1 / -1' }}
-          />
-
-          {(companyFilter ||
-            branchFilter ||
-            searchText ||
-            startDate ||
-            !endDate ||
-            !endDate.isSame(dayjs(), 'day')) && (
-            <LoadingButton
-              color="inherit"
-              startIcon={<Iconify icon="solar:restart-bold" />}
-              onClick={() => {
-                setCompanyFilter('');
-                setBranchFilter('');
-                setSearchText('');
-                setStartDate(null);
-                setEndDate(dayjs());
-                table.onResetPage();
+          >
+            <TextField
+              fullWidth
+              value={searchText}
+              onChange={(e) => { setSearchText(e.target.value); table.onResetPage(); }}
+              placeholder={t('orderExtra.kitchenSearch')}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Iconify icon="eva:search-fill" sx={{ color: 'text.disabled' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchText ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearchText('')}>
+                        <Iconify icon="solar:close-circle-bold" width={16} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+                },
               }}
-            >
-              Tozalash
-            </LoadingButton>
-          )}
+            />
+
+            <IconButton onClick={toolbarMenu.onOpen}>
+              <Iconify icon="eva:more-vertical-fill" />
+            </IconButton>
+          </Box>
         </Box>
 
-        <Scrollbar sx={{ minHeight: 444 }}>
-          <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 900 }}>
+        <Box sx={{ position: 'relative' }}>
+          {canManageOrders && (
+            <TableSelectedAction
+              dense={table.dense}
+              numSelected={selectedAdvanceIds.length}
+              rowCount={selectableIds.length}
+              onSelectAllRows={(checked) => table.onSelectAllRows(checked, selectableIds)}
+              action={
+                <Tooltip title="Keyingi bosqich">
+                  <span>
+                    <IconButton
+                      color="primary"
+                      disabled={busyId === 'bulk'}
+                      onClick={handleBulkNextStatus}
+                    >
+                      {busyId === 'bulk'
+                        ? <CircularProgress size={20} color="inherit" />
+                        : <NextStageIcon />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              }
+            />
+          )}
+
+          <Scrollbar sx={{ minHeight: 444 }}>
+            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
             <TableHeadCustom
               order={table.order}
               orderBy={table.orderBy}
-              headCells={TABLE_HEAD}
-              rowCount={filtered.length}
-              numSelected={table.selected.length}
+              headCells={TABLE_HEAD.map((cell) => ({
+                ...cell,
+                label: cell.label
+                  ? t(`orderExtra.kitchenTable.${cell.label}`, { defaultValue: cell.label })
+                  : '',
+              }))}
+              rowCount={selectableIds.length}
+              numSelected={selectedAdvanceIds.length}
               onSort={table.onSort}
+              onSelectAllRows={canManageOrders
+                ? (checked) => table.onSelectAllRows(checked, selectableIds)
+                : undefined}
             />
             <TableBody>
               {loading ? (
@@ -762,21 +1030,23 @@ export function KitchenOrdersView() {
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
-              ) : (
-                paged.map((row) => (
-                  <GroupedOrderRow
-                    key={row.id}
-                    row={row}
-                    busy={busyId === row.id}
-                    onSelect={() => router.push(paths.dashboard.order.details(row.id))}
-                    onMenuOpen={(e) => handleMenuOpen(row, e)}
-                  />
-                ))
-              )}
+              ) : paged.map((row) => (
+                <GroupedOrderRow
+                  key={row.id}
+                  row={row}
+                  busy={busyId === row.id}
+                  selected={table.selected.includes(row.id)}
+                  selectable={canAdvanceOrders(row)}
+                  canManage={canManageOrders}
+                  onSelectRow={() => table.onSelectRow(row.id)}
+                  onMenuOpen={(e) => handleMenuOpen(row, e)}
+                />
+              ))}
               {!loading && filtered.length === 0 && <TableNoData notFound />}
             </TableBody>
-          </Table>
-        </Scrollbar>
+            </Table>
+          </Scrollbar>
+        </Box>
 
         <TablePaginationCustom
           page={table.page}
@@ -790,36 +1060,71 @@ export function KitchenOrdersView() {
       </Card>
 
       <CustomPopover
+        open={toolbarMenu.open}
+        anchorEl={toolbarMenu.anchorEl}
+        onClose={toolbarMenu.onClose}
+        slotProps={{ arrow: { placement: 'right-top' } }}
+      >
+        <MenuList>
+          <MenuItem
+            onClick={() => {
+              toolbarMenu.onClose();
+              window.print();
+            }}
+          >
+            <Iconify icon="solar:printer-minimalistic-bold" />
+            Print
+          </MenuItem>
+
+          <MenuItem onClick={toolbarMenu.onClose}>
+            <Iconify icon="solar:import-bold" />
+            Import
+          </MenuItem>
+
+          <MenuItem onClick={toolbarMenu.onClose}>
+            <Iconify icon="solar:export-bold" />
+            Export
+          </MenuItem>
+        </MenuList>
+      </CustomPopover>
+
+      <CustomPopover
         open={rowMenu.open}
         anchorEl={rowMenu.anchorEl}
         onClose={handleMenuClose}
         slotProps={{ arrow: { placement: 'right-top' } }}
       >
         <MenuList sx={{ minWidth: 160 }}>
-          <MenuItem
-            onClick={() => {
-              if (activeRow) router.push(paths.dashboard.order.details(activeRow.id));
-              handleMenuClose();
-            }}
-          >
-            <Iconify icon="solar:eye-bold" sx={{ mr: 1 }} />
-            Ko&apos;rish
-          </MenuItem>
+          {activeRow?.orders?.some((order) => order.status === 'created') && (
+            <MenuItem onClick={() => { handleUpdate(activeRow, 'preparing'); handleMenuClose(); }}>
+              <Iconify icon="solar:tea-cup-bold" sx={{ mr: 1 }} />
+              {t('orderExtra.actions.prepare')}
+            </MenuItem>
+          )}
 
-          {activeRow && isActive(activeRow.status) && (
-            <MenuItem onClick={() => { if (activeRow) handleUpdate(activeRow.id, 'on_the_way'); handleMenuClose(); }}>
-              <Iconify icon="mdi:motorbike" sx={{ mr: 1 }} />
-              Yo&apos;lga chiqdi
+          {activeRow?.orders?.some((order) => order.status === 'preparing') &&
+            !activeRow.orders.some((order) => order.status === 'created') && (
+            <MenuItem onClick={() => { handleUpdate(activeRow, 'on_the_way'); handleMenuClose(); }}>
+              <DeliveryIcon />
+              {t('orderExtra.actions.sendOnWay')}
+            </MenuItem>
+          )}
+
+          {activeRow?.orders?.some((order) => order.status === 'on_the_way') &&
+            !activeRow.orders.some((order) => ['created', 'preparing'].includes(order.status)) && (
+            <MenuItem onClick={() => { handleUpdate(activeRow, 'delivered'); handleMenuClose(); }}>
+              <Iconify icon="solar:box-minimalistic-bold" sx={{ mr: 1 }} />
+              {t('orderExtra.actions.markDelivered')}
             </MenuItem>
           )}
 
           {activeRow && !['delivered', 'cancelled'].includes(activeRow.status) && (
             <MenuItem
               sx={{ color: 'error.main' }}
-              onClick={() => { if (activeRow) handleUpdate(activeRow.id, 'cancelled'); handleMenuClose(); }}
+              onClick={() => { if (activeRow) handleUpdate(activeRow, 'cancelled'); handleMenuClose(); }}
             >
               <Iconify icon="solar:close-circle-bold" sx={{ mr: 1 }} />
-              Bekor qilish
+              {t('common.cancel')}
             </MenuItem>
           )}
         </MenuList>
@@ -828,7 +1133,6 @@ export function KitchenOrdersView() {
       <OrderDetailDrawer
         row={selectedRow}
         onClose={() => setSelectedRow(null)}
-        onStatusChange={() => {}}
       />
     </DashboardContent>
   );

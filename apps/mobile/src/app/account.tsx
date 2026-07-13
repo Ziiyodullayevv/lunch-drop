@@ -321,6 +321,7 @@ export default function AccountScreen() {
               icon="wallet-outline"
               label="Oylik xarajat"
               subtitle={formatMoney(monthlyTotal)}
+              onPress={() => router.push('/expenses')}
             />
           </Card>
         )}

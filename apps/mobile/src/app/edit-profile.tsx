@@ -1,10 +1,10 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { BackHandler, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input, Spinner, Text, XStack, YStack } from 'tamagui';
 
@@ -12,9 +12,14 @@ import { HeaderBackButton } from '@/components/common/header-back-button';
 import { ProfileAvatar } from '@/components/common/profile-avatar';
 import { useCustomAlert } from '@/components/ui/custom-alert';
 import { useWorkplaceInfoBackfill } from '@/hooks/use-workplace-info';
+import { joinBranches } from '@/lib/api/onboarding';
 import { type UploadImageFile, uploadImage } from '@/lib/api/uploads';
 import { updateMe } from '@/lib/api/users';
 import { useAuthStore } from '@/stores/auth-store';
+import {
+  type WorkplaceDraft,
+  useWorkplaceDraftStore,
+} from '@/stores/workplace-draft-store';
 
 const SCREEN_BG = '#FFFFFF';
 const SECTION_BG = '#FFFFFF';
@@ -37,7 +42,10 @@ const CARD_SHADOW = {
 
 type SelectedAvatar = Pick<ImagePicker.ImagePickerAsset, 'uri' | 'fileName' | 'mimeType' | 'file'>;
 type UpdateProfilePayload = { name: string; avatar_url?: string };
-type UpdateProfileVariables = { data: UpdateProfilePayload };
+type UpdateProfileVariables = {
+  data: UpdateProfilePayload;
+  workplace: WorkplaceDraft | null;
+};
 
 function getAvatarFileName(asset: SelectedAvatar) {
   if (asset.fileName) return asset.fileName;
@@ -50,14 +58,18 @@ function getAvatarFileName(asset: SelectedAvatar) {
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const { showAlert } = useCustomAlert();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const workplaceDraft = useWorkplaceDraftStore((state) => state.draft);
+  const setWorkplaceDraft = useWorkplaceDraftStore((state) => state.setDraft);
+  const clearWorkplaceDraft = useWorkplaceDraftStore((state) => state.clearDraft);
   useWorkplaceInfoBackfill();
   const [name, setName] = useState(user?.fullName ?? '');
   const [selectedAvatar, setSelectedAvatar] = useState<SelectedAvatar | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
-  const primaryBranch = useMemo(() => {
+  const savedPrimaryBranch = useMemo(() => {
     return user?.branches?.[0] ?? (
       user?.branchName || user?.branchAddress
         ? { id: user.branchId, name: user.branchName || 'Filial', address: user.branchAddress }
@@ -65,13 +77,45 @@ export default function EditProfileScreen() {
     );
   }, [user?.branchAddress, user?.branchId, user?.branchName, user?.branches]);
 
+  const displayedCompanyName = workplaceDraft?.companyName || user?.companyName;
+  const displayedPrimaryBranch = workplaceDraft?.branches[0] ?? savedPrimaryBranch;
+  const workplaceChanged = useMemo(() => {
+    if (!workplaceDraft || !user) return false;
+    const savedBranchIds = user.branches.map((branch) => branch.id).sort().join(',');
+    const draftBranchIds = workplaceDraft.branches.map((branch) => branch.id).sort().join(',');
+    return workplaceDraft.companyId !== user.companyId || draftBranchIds !== savedBranchIds;
+  }, [user, workplaceDraft]);
+
   const updateMutation = useMutation({
-    mutationFn: ({ data }: UpdateProfileVariables) => updateMe(data),
-    onSuccess: (updatedUser, variables) => {
+    mutationFn: async ({ data, workplace }: UpdateProfileVariables) => {
+      const workplaceStatus = workplace
+        ? await joinBranches(workplace.branches.map((branch) => branch.id))
+        : null;
+      const updatedUser = await updateMe(data);
+      return { updatedUser, workplaceStatus };
+    },
+    onSuccess: ({ updatedUser, workplaceStatus }, variables) => {
+      const primaryBranch = variables.workplace?.branches[0];
       updateUser({
         fullName: updatedUser.fullName,
         avatarUrl: updatedUser.avatarUrl ?? variables.data.avatar_url ?? user?.avatarUrl,
+        ...(variables.workplace
+          ? {
+              accountStatus: workplaceStatus?.account_status ?? user?.accountStatus,
+              companyId: workplaceStatus?.company_id ?? variables.workplace.companyId,
+              companyName: variables.workplace.companyName,
+              branchId: primaryBranch?.id ?? '',
+              branchName: primaryBranch?.name ?? '',
+              branchAddress: primaryBranch?.address ?? '',
+              branches: variables.workplace.branches,
+            }
+          : {}),
       });
+      if (variables.workplace) {
+        void queryClient.invalidateQueries({ queryKey: ['employee-menu'] });
+        void queryClient.invalidateQueries({ queryKey: ['workplace-info'] });
+      }
+      clearWorkplaceDraft();
       setSelectedAvatar(null);
       setIsUploadingAvatar(false);
       router.back();
@@ -85,11 +129,39 @@ export default function EditProfileScreen() {
   const isSaving = updateMutation.isPending || isUploadingAvatar;
 
   const openWorkplacePicker = () => {
+    if (!workplaceDraft && user) {
+      setWorkplaceDraft({
+        companyId: user.companyId,
+        companyName: user.companyName,
+        branches: user.branches.length
+          ? user.branches
+          : savedPrimaryBranch
+            ? [savedPrimaryBranch]
+            : [],
+      });
+    }
     router.push({
       pathname: '/(onboarding)/companies',
       params: { returnTo: '/edit-profile' },
     });
   };
+
+  const handleBack = useCallback(() => {
+    clearWorkplaceDraft();
+    router.back();
+  }, [clearWorkplaceDraft]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        handleBack();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [handleBack])
+  );
+
+  useEffect(() => () => clearWorkplaceDraft(), [clearWorkplaceDraft]);
 
   const pickAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -146,7 +218,10 @@ export default function EditProfileScreen() {
         payload.avatar_url = uploadedImage.url;
       }
 
-      updateMutation.mutate({ data: payload });
+      updateMutation.mutate({
+        data: payload,
+        workplace: workplaceChanged ? workplaceDraft : null,
+      });
     } catch (error) {
       showAlert('Xatolik', error instanceof Error ? error.message : 'Rasm yuklanmadi');
       setIsUploadingAvatar(false);
@@ -169,7 +244,7 @@ export default function EditProfileScreen() {
         justifyContent="space-between"
         pointerEvents="box-none"
       >
-        <HeaderBackButton onPress={() => router.back()} />
+        <HeaderBackButton onPress={handleBack} />
 
         <YStack
           minWidth={74}
@@ -294,9 +369,9 @@ export default function EditProfileScreen() {
                 <Text fontFamily="$body" fontSize={15} fontWeight="700" color={TEXT}>
                   Kompaniya
                 </Text>
-                {user?.companyName ? (
+                {displayedCompanyName ? (
                   <Text fontFamily="$body" fontSize={12} fontWeight="500" color={MUTED} numberOfLines={1}>
-                    {user.companyName}
+                    {displayedCompanyName}
                   </Text>
                 ) : user?.companyId ? (
                   <Spinner color={PROFILE_BUTTON_COLOR} size="small" />
@@ -324,7 +399,7 @@ export default function EditProfileScreen() {
                   Filial
                 </Text>
                 <Text fontFamily="$body" fontSize={12} fontWeight="500" color={MUTED} numberOfLines={1}>
-                  {primaryBranch?.name || 'Filial tanlanmagan'}
+                  {displayedPrimaryBranch?.name || 'Filial tanlanmagan'}
                 </Text>
               </YStack>
             </XStack>

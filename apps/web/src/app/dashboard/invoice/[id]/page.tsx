@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 
 import { CONFIG } from 'src/global-config';
-import { _invoices } from 'src/_mock/_invoice';
 
 import { InvoiceDetailsView } from 'src/sections/invoice/view';
+
+import { PageRoleGuard } from 'src/auth/guard/page-role-guard';
 
 // ----------------------------------------------------------------------
 
@@ -11,14 +12,18 @@ export const metadata: Metadata = { title: `Invoice details | Dashboard - ${CONF
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ month?: string }>;
 };
 
-export default async function Page({ params }: Props) {
+export default async function Page({ params, searchParams }: Props) {
   const { id } = await params;
+  const { month } = await searchParams;
 
-  const currentInvoice = _invoices.find((invoice) => invoice.id === id);
-
-  return <InvoiceDetailsView invoice={currentInvoice} />;
+  return (
+    <PageRoleGuard allowedRoles={['company_admin', 'super_admin']}>
+      <InvoiceDetailsView employeeId={id} month={month} />
+    </PageRoleGuard>
+  );
 }
 
 export const dynamic = 'force-dynamic';

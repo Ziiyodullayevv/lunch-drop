@@ -180,6 +180,7 @@ export const endpoints = {
     refreshToken:  '/api/v1/auth/refresh-token',
     logout:        '/api/v1/auth/logout',
     me:            '/api/v1/auth/me',
+    switchProfile: '/api/v1/auth/switch-profile',
   },
   // ----------------------------------------------------------------------
   // Super Admin
@@ -201,6 +202,11 @@ export const endpoints = {
     blockUser:      (id: string) => `/api/v1/super-admin/users/${id}/block`,
     orders:         '/api/v1/super-admin/orders',
     order:          (id: string) => `/api/v1/super-admin/orders/${id}`,
+    orderStatus:    (id: string) => `/api/v1/super-admin/orders/${id}/status`,
+    branchOrderStatus: (id: string) => `/api/v1/super-admin/branches/${id}/orders/status`,
+    invoiceCustomers: '/api/v1/super-admin/invoice-customers',
+    invoiceCustomer: (id: string) => `/api/v1/super-admin/invoice-customers/${id}`,
+    invoiceCustomerStatus: (id: string) => `/api/v1/super-admin/invoice-customers/${id}/status`,
   },
   // ----------------------------------------------------------------------
   // Kitchen Admin
@@ -218,6 +224,7 @@ export const endpoints = {
     orders:       '/api/v1/kitchen/orders',
     order:        (id: string) => `/api/v1/kitchen/orders/${id}`,
     orderStatus:  (id: string) => `/api/v1/kitchen/orders/${id}/status`,
+    branchOrderStatus: (id: string) => `/api/v1/kitchen/branches/${id}/orders/status`,
     connectionRequests: '/api/v1/kitchen/connection-requests',
     approveConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/approve`,
     rejectConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/reject`,
@@ -237,6 +244,9 @@ export const endpoints = {
     bulkConfirmBranch: (id: string) => `/api/v1/company/branches/${id}/orders/bulk-confirm`,
     orderReport:       '/api/v1/company/reports/orders',
     invoices:         '/api/v1/company/invoices',
+    invoiceCustomers: '/api/v1/company/invoice-customers',
+    invoiceCustomer: (id: string) => `/api/v1/company/invoice-customers/${id}`,
+    invoiceCustomerStatus: (id: string) => `/api/v1/company/invoice-customers/${id}/status`,
     branches:         '/api/v1/company/branches',
     branch:           (id: string) => `/api/v1/company/branches/${id}`,
     branchKitchens:   (id: string) => `/api/v1/company/branches/${id}/kitchens`,

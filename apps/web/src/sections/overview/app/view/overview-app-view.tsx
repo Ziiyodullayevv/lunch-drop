@@ -22,6 +22,7 @@ import { fetchDashboard } from 'src/lib/api/dashboard';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales';
 
 import { AppAreaInstalled } from '../app-area-installed';
 import { AppWidgetSummary } from '../app-widget-summary';
@@ -29,36 +30,36 @@ import { AppCurrentDownload } from '../app-current-download';
 
 // ----------------------------------------------------------------------
 
-const MONTHS = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
 const SUMMARY_META: Record<
   DashboardSummaryKey,
   { title: string; color: 'primary' | 'info' | 'warning' | 'success' | 'error'; currency?: boolean }
 > = {
-  orders_today: { title: 'Bugungi buyurtmalar', color: 'primary' },
-  delivered_today: { title: 'Bugun yetkazildi', color: 'success' },
-  cancelled_today: { title: 'Bugun bekor qilindi', color: 'error' },
-  orders_total: { title: 'Umumiy buyurtmalar', color: 'primary' },
-  revenue_total: { title: 'Umumiy aylanma', color: 'info', currency: true },
-  active_companies: { title: 'Faol kompaniyalar', color: 'success' },
-  companies_total: { title: 'Jami kompaniyalar', color: 'primary' },
-  active_kitchens: { title: 'Faol oshxonalar', color: 'warning' },
-  lunch_subscribers_today: { title: 'Bugungi tushlik xodimlari', color: 'primary' },
-  monthly_cost: { title: 'Oylik xarajat', color: 'info', currency: true },
-  delivered_total: { title: 'Yetkazilgan tushliklar', color: 'success' },
-  branches_total: { title: 'Jami filiallar', color: 'warning' },
-  active_employees: { title: 'Faol xodimlar', color: 'primary' },
-  portions_today: { title: 'Bugungi porsiyalar', color: 'primary' },
-  weekly_revenue: { title: 'Haftalik tushum', color: 'info', currency: true },
-  connected_companies: { title: 'Biriktirilgan kompaniyalar', color: 'warning' },
+  orders_today: { title: 'ordersToday', color: 'primary' },
+  delivered_today: { title: 'deliveredToday', color: 'success' },
+  cancelled_today: { title: 'cancelledToday', color: 'error' },
+  orders_total: { title: 'ordersTotal', color: 'primary' },
+  revenue_total: { title: 'revenueTotal', color: 'info', currency: true },
+  active_companies: { title: 'activeCompanies', color: 'success' },
+  companies_total: { title: 'companiesTotal', color: 'primary' },
+  active_kitchens: { title: 'activeKitchens', color: 'warning' },
+  lunch_subscribers_today: { title: 'lunchSubscribersToday', color: 'primary' },
+  monthly_cost: { title: 'monthlyCost', color: 'info', currency: true },
+  delivered_total: { title: 'deliveredTotal', color: 'success' },
+  branches_total: { title: 'branchesTotal', color: 'warning' },
+  active_employees: { title: 'activeEmployees', color: 'primary' },
+  portions_today: { title: 'portionsToday', color: 'primary' },
+  weekly_revenue: { title: 'weeklyRevenue', color: 'info', currency: true },
+  connected_companies: { title: 'connectedCompanies', color: 'warning' },
 };
 
 const STATUS_META = [
-  { key: 'created', label: 'Yangi' },
-  { key: 'preparing', label: 'Tayyorlanmoqda' },
-  { key: 'on_the_way', label: "Yo'lda" },
-  { key: 'delivered', label: 'Yetkazildi' },
-  { key: 'cancelled', label: 'Bekor qilindi' },
+  { key: 'created', label: 'new' },
+  { key: 'preparing', label: 'preparing' },
+  { key: 'on_the_way', label: 'onTheWay' },
+  { key: 'delivered', label: 'delivered' },
+  { key: 'cancelled', label: 'cancelled' },
 ] as const;
 
 const SUPER_ADMIN_HIDDEN_SUMMARY_KEYS: DashboardSummaryKey[] = [
@@ -79,6 +80,7 @@ function summaryCategories(card: DashboardSummaryCard) {
 // ----------------------------------------------------------------------
 
 export function OverviewAppView() {
+  const { t } = useTranslate('common');
   const theme = useTheme();
   const { user } = useAuthContext();
   const role = isDashboardRole(user?.role) ? user.role : null;
@@ -99,7 +101,7 @@ export function OverviewAppView() {
 
   const statusSeries = data
     ? STATUS_META.map(({ key, label }) => ({
-        label,
+        label: t(`dashboard.status.${label}`),
         value: data.order_status_totals[key],
       }))
     : [];
@@ -111,25 +113,25 @@ export function OverviewAppView() {
 
   const monthlyChart = data
     ? {
-        categories: MONTHS,
+        categories: MONTH_KEYS.map((key) => t(`dashboard.months.${key}`)),
         series: [
           {
             name: String(data.monthly_orders.year),
             data: [
-              { name: 'Yetkazildi', data: data.monthly_orders.delivered },
-              { name: 'Bekor qilindi', data: data.monthly_orders.cancelled },
+              { name: t('dashboard.status.delivered'), data: data.monthly_orders.delivered },
+              { name: t('dashboard.status.cancelled'), data: data.monthly_orders.cancelled },
             ],
           },
         ],
       }
     : {
-        categories: MONTHS,
+        categories: MONTH_KEYS.map((key) => t(`dashboard.months.${key}`)),
         series: [
           {
             name: String(new Date().getFullYear()),
             data: [
-              { name: 'Yetkazildi', data: Array(12).fill(0) },
-              { name: 'Bekor qilindi', data: Array(12).fill(0) },
+              { name: t('dashboard.status.delivered'), data: Array(12).fill(0) },
+              { name: t('dashboard.status.cancelled'), data: Array(12).fill(0) },
             ],
           },
         ],
@@ -139,18 +141,18 @@ export function OverviewAppView() {
     <DashboardContent maxWidth="xl">
       <Stack spacing={0.75} sx={{ mb: 3 }}>
         <Typography variant="h4">
-          {user?.name ? `Xush kelibsiz, ${user.name}` : 'Dashboard'}
+          {user?.name ? `${t('dashboard.welcome')}, ${user.name}` : t('dashboard.title')}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           {data
-            ? `${data.year}-yil statistikasi. Yangilandi: ${fDateTime(data.generated_at)}`
-            : "Asosiy ko'rsatkichlar va buyurtmalar statistikasi"}
+            ? t('dashboard.updated', { year: data.year, date: fDateTime(data.generated_at) })
+            : t('dashboard.subtitle')}
         </Typography>
       </Stack>
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error instanceof Error ? error.message : "Dashboard ma'lumotlarini yuklab bo'lmadi"}
+          {error instanceof Error ? error.message : t('dashboard.loadError')}
         </Alert>
       )}
 
@@ -167,7 +169,7 @@ export function OverviewAppView() {
               return (
                 <Grid key={card.key} size={{ xs: 12, sm: 6, lg: 4 }}>
                   <AppWidgetSummary
-                    title={meta.title}
+                    title={t(`dashboard.summary.${meta.title}`)}
                     percent={card.trend_percent}
                     total={card.value}
                     valueFormatter={meta.currency ? fCurrency : fNumber}
@@ -184,7 +186,7 @@ export function OverviewAppView() {
 
         {!isLoading && !isError && summaryCards?.length === 0 && (
           <Grid size={{ xs: 12 }}>
-            <Alert severity="info">Dashboard statistikasi hozircha mavjud emas.</Alert>
+            <Alert severity="info">{t('dashboard.noStats')}</Alert>
           </Grid>
         )}
 
@@ -192,8 +194,8 @@ export function OverviewAppView() {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
               <AppCurrentDownload
-                title="Buyurtmalar holati"
-                subheader={data ? `${data.year}-yil bo'yicha` : undefined}
+                title={t('dashboard.orderStatus')}
+                subheader={data ? t('dashboard.year', { year: data.year }) : undefined}
                 chart={{
                   colors: [
                     theme.palette.grey[400],
@@ -210,8 +212,8 @@ export function OverviewAppView() {
 
             <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
               <AppAreaInstalled
-                title="Buyurtmalar dinamikasi"
-                subheader={data ? `${data.monthly_orders.year}-yil, oylar kesimida` : undefined}
+                title={t('dashboard.orderTrend')}
+                subheader={data ? t('dashboard.monthly', { year: data.monthly_orders.year }) : undefined}
                 chart={{
                   colors: [theme.palette.success.main, theme.palette.error.main],
                   ...monthlyChart,

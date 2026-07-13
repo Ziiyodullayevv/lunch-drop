@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Date, ForeignKey, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, enum_column, uuid_pk
@@ -82,3 +82,29 @@ class InvoiceEmployeeSummary(Base, TimestampMixin):
     total_system_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     invoice: Mapped[Invoice] = relationship(back_populates="employee_summaries")
+
+
+class EmployeeMonthlyPayment(Base, TimestampMixin):
+    """Kompaniya xodimining muayyan oy uchun to'lov holati."""
+
+    __tablename__ = "employee_monthly_payments"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id", "employee_id", "period_month",
+            name="uq_employee_monthly_payment",
+        ),
+    )
+
+    id: Mapped[str] = uuid_pk()
+    company_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    period_month: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[InvoiceStatus] = mapped_column(
+        enum_column(InvoiceStatus, "employee_monthly_payment_status"),
+        default=InvoiceStatus.PENDING,
+        nullable=False,
+    )

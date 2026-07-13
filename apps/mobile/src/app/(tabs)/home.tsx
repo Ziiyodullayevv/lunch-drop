@@ -22,6 +22,7 @@ import { FoodCard } from "@/components/kitchen/food-card";
 import { FoodCardSkeleton } from "@/components/kitchen/food-card-skeleton";
 import { ErrorState } from "@/components/ui";
 import { ILLUSTRATIONS } from "@/constants/illustrations";
+import { DANGER } from "@/constants/theme";
 import { useAllFoodItems } from "@/hooks/use-all-food-items";
 import { useActiveOrder } from "@/hooks/use-orders";
 import { getMe } from "@/lib/api/auth";
@@ -42,6 +43,7 @@ const TAB_BAR_HEIGHT = 49;
 const ACTIVE_ORDER_BAR_SCROLL_SPACE = 76;
 const FLOATING_CART_SCROLL_SPACE = 88;
 const HOME_ILLUSTRATION_STYLE = { width: 320, height: 240 };
+const EMPTY_KITCHEN_NAMES: string[] = [];
 
 function isOfflineError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
@@ -70,7 +72,7 @@ export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const accountStatus = useAuthStore((s) => s.user?.accountStatus);
 	const updateUser = useAuthStore((s) => s.updateUser);
-	const storedKitchenNames = useAuthStore((s) => s.user?.kitchenNames ?? []);
+	const storedKitchenNames = useAuthStore((s) => s.user?.kitchenNames ?? EMPTY_KITCHEN_NAMES);
 	const cartSubtotal = useCartStore(
 		(s) => s.items.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0)
 	);
@@ -382,47 +384,51 @@ export default function HomeScreen() {
 								</YStack>
 						</XStack>
 
-						{/* Bell */}
-						<TouchableOpacity
-							activeOpacity={0.7}
-							onPress={() => router.push('/notifications')}
-							style={{
-								width: 42,
-								height: 42,
-								borderRadius: 12,
-								backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-							>
-								<Image
-									source={require('@/assets/images/home/notification.png')}
-									style={{ width: 26, height: 26 }}
-									contentFit="contain"
-								/>
-							{unreadCount > 0 && (
-								<View
+							{/* Bell */}
+							<View style={{ width: 50, height: 50 }}>
+								<TouchableOpacity
+									activeOpacity={0.7}
+									onPress={() => router.push('/notifications')}
 									style={{
 										position: 'absolute',
-										top: 5,
-										right: 5,
-										minWidth: 16,
-										height: 16,
-										borderRadius: 8,
-										backgroundColor: ACCENT,
+										left: 0,
+										bottom: 0,
+										width: 42,
+										height: 42,
+										borderRadius: 12,
+										backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
+										alignItems: 'center',
+										justifyContent: 'center',
+									}}
+								>
+									<Image
+										source={require('@/assets/images/home/notification.png')}
+										style={{ width: 26, height: 26 }}
+										contentFit="contain"
+									/>
+								</TouchableOpacity>
+								{unreadCount > 0 && (
+									<View
+										pointerEvents="none"
+										style={{
+											position: 'absolute',
+											top: 3,
+											right: 3,
+										minWidth: 20,
+										height: 20,
+										borderRadius: 10,
+										backgroundColor: DANGER,
 										alignItems: 'center',
 										justifyContent: 'center',
 										paddingHorizontal: 3,
-										borderWidth: 1.5,
-										borderColor: isDark ? '#2C2C2E' : '#F2F2F7',
 									}}
 								>
-										<Text fontFamily="$heading" style={{ color: '#FFFFFF' }} fontSize={9} fontWeight="700" lineHeight={12}>
+										<Text fontFamily="$heading" style={{ color: '#FFFFFF' }} fontSize={11} fontWeight="700" lineHeight={14}>
 										{unreadCount > 99 ? '99+' : String(unreadCount)}
 									</Text>
-								</View>
-							)}
-						</TouchableOpacity>
+									</View>
+								)}
+							</View>
 				</Animated.View>
 
 				{/* Day selector */}

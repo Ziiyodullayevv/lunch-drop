@@ -27,6 +27,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
+import { useTranslate } from 'src/locales';
 import axios, { endpoints } from 'src/lib/axios';
 
 import { Form, Field } from 'src/components/hook-form';
@@ -48,37 +49,24 @@ import { FormHead } from '../../components/form-head';
 
 const DEFAULT_LAT = 41.2995;
 const DEFAULT_LNG = 69.2401;
+const SIGNUP_SESSION_TTL_MS = 15 * 60 * 1000;
 
 // Step 1: Phone + OTP
-const Step1Schema = z.object({
-  phone: z.string().min(1, { message: 'Telefon raqam majburiy' }),
+const createSchemas = (t: (key: string) => string) => ({
+  step1: z.object({ phone: z.string().min(1, { message: t('auth.phoneRequired') }) }),
+  step2: z.object({ code: z.string().length(6, { message: t('auth.codeRequired') }) }),
+  step3: z.object({
+    full_name: z.string().min(1, { message: t('auth.fullNameRequired') }),
+    password: z.string().min(6, { message: t('auth.passwordShort') }),
+    confirm_password: z.string().min(1, { message: t('auth.confirmPasswordRequired') }),
+    name: z.string().min(1, { message: t('auth.organizationNameRequired') }), description: z.string().optional(), institution_phone: z.string().optional(), lat: z.number().optional(), lng: z.number().optional(),
+  }).refine((data) => data.password === data.confirm_password, { path: ['confirm_password'], message: t('auth.passwordsMismatch') }),
 });
 
 // Step 2: OTP verify
-const Step2Schema = z.object({
-  code: z.string().length(6, { message: '6 xonali kodni kiriting' }),
-});
-
-// Step 3: Register details
-const Step3Schema = z
-  .object({
-    full_name:         z.string().min(1, { message: 'Ism majburiy' }),
-    password:          z.string().min(6, { message: 'Parol kamida 6 ta belgi' }),
-    confirm_password:  z.string().min(1, { message: 'Parolni tasdiqlang' }),
-    name:              z.string().min(1, { message: 'Tashkilot nomi majburiy' }),
-    description:       z.string().optional(),
-    institution_phone: z.string().optional(),
-    lat:               z.number().optional(),
-    lng:               z.number().optional(),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    path: ['confirm_password'],
-    message: 'Parollar mos emas',
-  });
-
-type Step1Values = z.infer<typeof Step1Schema>;
-type Step2Values = z.infer<typeof Step2Schema>;
-type Step3Values = z.infer<typeof Step3Schema>;
+type Step1Values = z.infer<ReturnType<typeof createSchemas>['step1']>;
+type Step2Values = z.infer<ReturnType<typeof createSchemas>['step2']>;
+type Step3Values = z.infer<ReturnType<typeof createSchemas>['step3']>;
 type RegisterStep = 'phone' | 'otp' | 'personal' | 'organization' | 'location';
 
 // ----------------------------------------------------------------------
@@ -90,6 +78,8 @@ function RegisterFlow({
   role: 'kitchen_admin' | 'company_admin';
   onLockChange: (locked: boolean) => void;
 }) {
+  const { t } = useTranslate('common');
+  const schemas = createSchemas(t);
   const mapRef = useRef<MapRef | null>(null);
   const submittedOtpRef = useRef('');
   const [activeStep, setActiveStep] = useState<RegisterStep>('phone');
@@ -110,10 +100,10 @@ function RegisterFlow({
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const reverseLookupId = useRef(0);
 
-  const step1 = useForm<Step1Values>({ resolver: zodResolver(Step1Schema), defaultValues: { phone: '' } });
-  const step2 = useForm<Step2Values>({ resolver: zodResolver(Step2Schema), defaultValues: { code: '' } });
+  const step1 = useForm<Step1Values>({ resolver: zodResolver(schemas.step1), defaultValues: { phone: '' } });
+  const step2 = useForm<Step2Values>({ resolver: zodResolver(schemas.step2), defaultValues: { code: '' } });
   const step3 = useForm<Step3Values>({
-    resolver: zodResolver(Step3Schema),
+    resolver: zodResolver(schemas.step3),
     defaultValues: {
       full_name: '',
       password: '',
@@ -126,7 +116,37 @@ function RegisterFlow({
     },
   });
 
+  const { setValue: setStep1Value } = step1;
   const { setValue: setStep3Value } = step3;
+  const signupSessionKey = `lunchdrop-admin-signup:${role}`;
+
+  useEffect(() => {
+    try {
+      const savedSession = window.sessionStorage.getItem(signupSessionKey);
+
+      if (!savedSession) return;
+
+      const parsed = JSON.parse(savedSession) as {
+        phone?: string;
+        telegramUrl?: string;
+        savedAt?: number;
+      };
+
+      const isExpired = !parsed.savedAt || Date.now() - parsed.savedAt > SIGNUP_SESSION_TTL_MS;
+
+      if (!parsed.phone || isExpired) {
+        window.sessionStorage.removeItem(signupSessionKey);
+        return;
+      }
+
+      setPhone(parsed.phone);
+      setTelegramUrl(parsed.telegramUrl ?? '');
+      setStep1Value('phone', parsed.phone);
+      setActiveStep('otp');
+    } catch {
+      window.sessionStorage.removeItem(signupSessionKey);
+    }
+  }, [setStep1Value, signupSessionKey]);
 
   const handleMapMoveEnd = useCallback(
     async (nextViewState: ViewState) => {
@@ -178,23 +198,28 @@ function RegisterFlow({
     try {
       setError(null);
       const response = await axios.post(endpoints.auth.sendOtp, { phone: data.phone });
+      const nextTelegramUrl = response.data.telegram_url ?? '';
+
       setPhone(data.phone);
-      setTelegramUrl(response.data.telegram_url ?? '');
+      setTelegramUrl(nextTelegramUrl);
+      window.sessionStorage.setItem(
+        signupSessionKey,
+        JSON.stringify({ phone: data.phone, telegramUrl: nextTelegramUrl, savedAt: Date.now() })
+      );
       setActiveStep('otp');
     } catch (err) { setError(getErrorMessage(err)); }
   });
 
   const openTelegramApp = useCallback(() => {
     if (!telegramUrl) return;
-    const url = new URL(telegramUrl);
-    const start = url.searchParams.get('start');
-    const username = url.pathname.replace(/^\//, '');
-    const appUrl = `tg://resolve?domain=${encodeURIComponent(username)}${start ? `&start=${encodeURIComponent(start)}` : ''}`;
 
-    window.location.href = appUrl;
-    window.setTimeout(() => {
-      if (document.visibilityState === 'visible') window.location.href = telegramUrl;
-    }, 1200);
+    const link = document.createElement('a');
+    link.href = telegramUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }, [telegramUrl]);
 
   const verifyOtp = useCallback(
@@ -208,15 +233,16 @@ function RegisterFlow({
         setIsOtpVerifying(true);
         const res = await axios.post(endpoints.auth.verifyOtp, { phone, code });
         setRegToken(res.data.registration_token);
+        window.sessionStorage.removeItem(signupSessionKey);
         setActiveStep('personal');
       } catch (err) {
         const status = typeof err === 'object' && err !== null ? (err as { status?: number }).status : undefined;
-        setError(status === 401 ? 'Tasdiqlash kodi noto‘g‘ri. Qayta urinib ko‘ring.' : getErrorMessage(err));
+        setError(status === 401 ? t('auth.invalidCode') : getErrorMessage(err));
       } finally {
         setIsOtpVerifying(false);
       }
     },
-    [isOtpVerifying, phone]
+    [isOtpVerifying, phone, signupSessionKey, t]
   );
 
   const onStep2 = step2.handleSubmit(async (data) => {
@@ -240,7 +266,7 @@ function RegisterFlow({
 
   const onStep3 = step3.handleSubmit(async (data) => {
     if (role === 'kitchen_admin' && (!hasLocation || data.lat == null || data.lng == null)) {
-      setError('Oshxona joylashuvini xaritada belgilang.');
+      setError(t('auth.locationRequired'));
       return;
     }
 
@@ -261,18 +287,18 @@ function RegisterFlow({
   });
 
   const flowSteps: { key: RegisterStep; label: string; icon: IconifyName }[] = [
-    { key: 'phone', label: 'Telefon', icon: 'solar:phone-bold' },
-    { key: 'otp', label: 'Tasdiqlash', icon: 'solar:shield-check-bold' },
-    { key: 'personal', label: 'Profil', icon: 'solar:user-rounded-bold' },
+    { key: 'phone', label: t('auth.phoneStep'), icon: 'solar:phone-bold' },
+    { key: 'otp', label: t('auth.verification'), icon: 'solar:shield-check-bold' },
+    { key: 'personal', label: t('auth.profile'), icon: 'solar:user-rounded-bold' },
     {
       key: 'organization',
-      label: role === 'kitchen_admin' ? 'Oshxona' : 'Kompaniya',
+      label: role === 'kitchen_admin' ? t('auth.kitchen') : t('auth.company'),
       icon: role === 'kitchen_admin' ? 'solar:cup-star-bold' : 'solar:home-angle-bold-duotone',
     },
   ];
 
   if (role === 'kitchen_admin') {
-    flowSteps.push({ key: 'location', label: 'Joylashuv', icon: 'mingcute:location-fill' });
+    flowSteps.push({ key: 'location', label: t('auth.location'), icon: 'mingcute:location-fill' });
   }
 
   const activeStepIndex = flowSteps.findIndex((item) => item.key === activeStep);
@@ -283,6 +309,9 @@ function RegisterFlow({
     const prevStep = flowSteps[activeStepIndex - 1]?.key;
 
     if (prevStep) {
+      if (activeStep === 'otp') {
+        window.sessionStorage.removeItem(signupSessionKey);
+      }
       setActiveStep(prevStep);
     }
   };
@@ -313,8 +342,7 @@ function RegisterFlow({
     return (
       <Stack spacing={2.5}>
         <Alert severity="success">
-          Arizangiz qabul qilindi. Ma&apos;lumotlar tekshirilib, akkauntingiz tasdiqlangach
-          tizimga kirishingiz mumkin bo&apos;ladi.
+          {t('auth.success')}
         </Alert>
 
         <Button
@@ -324,13 +352,13 @@ function RegisterFlow({
           component={RouterLink}
           href={paths.auth.jwt.signIn}
         >
-          Login qismiga qaytish
+          {t('auth.returnToSignIn')}
         </Button>
       </Stack>
     );
   }
 
-  const entityLabel = role === 'kitchen_admin' ? 'Oshxona nomi' : 'Kompaniya nomi';
+  const entityLabel = role === 'kitchen_admin' ? t('auth.kitchenName') : t('auth.companyName');
   const isDetailsStep = activeStep === 'personal' || activeStep === 'organization' || activeStep === 'location';
   const isFinalStep = (activeStep === 'organization' && role === 'company_admin') || activeStep === 'location';
   const isLocationSubmitDisabled =
@@ -427,7 +455,7 @@ function RegisterFlow({
       {activeStep === 'phone' && (
         <Form methods={step1} onSubmit={onStep1}>
           <Stack spacing={2.5}>
-            <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
+            <Field.Phone name="phone" label={t('auth.phone')} placeholder={t('auth.phonePlaceholder')} country="UZ" />
             <Button
               fullWidth
               size="large"
@@ -436,7 +464,7 @@ function RegisterFlow({
               loading={step1.formState.isSubmitting}
               sx={{ borderRadius: 1 }}
             >
-              Telegram orqali davom etish
+              {t('auth.sendViaTelegram')}
             </Button>
           </Stack>
         </Form>
@@ -470,13 +498,9 @@ function RegisterFlow({
                 </Box>
 
                 <Stack spacing={0.35} sx={{ minWidth: 0 }}>
-                  <Typography variant="subtitle1">Kod Telegram bot orqali beriladi</Typography>
+                  <Typography variant="subtitle1">{t('auth.telegramCodeTitle')}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Botda{' '}
-                    <Box component="span" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                      {phone}
-                    </Box>{' '}
-                    raqamingizni tasdiqlang.
+                    {t('auth.telegramCodeWithPhone', { phone })}
                   </Typography>
                 </Stack>
               </Stack>
@@ -496,14 +520,14 @@ function RegisterFlow({
                     '&:hover': { bgcolor: '#1689C2', boxShadow: 'none' },
                   }}
                 >
-                  Botni ochish
+                  {t('auth.openBot')}
                 </Button>
               )}
             </Stack>
 
             <Stack spacing={1}>
               <Typography variant="subtitle2" sx={{ textAlign: 'center' }}>
-                Bot yuborgan 6 xonali kodni kiriting
+                {t('auth.enterTelegramCode')}
               </Typography>
             <Field.Code
               name="code"
@@ -538,7 +562,7 @@ function RegisterFlow({
                 '&:hover': { bgcolor: 'action.selected' },
               }}
             >
-              Orqaga
+              {t('auth.back')}
             </Button>
           </Stack>
         </Form>
@@ -549,11 +573,11 @@ function RegisterFlow({
           <Stack spacing={2.5}>
             {activeStep === 'personal' && (
               <>
-                <Field.Text name="full_name" label="Ism Familiya" slotProps={{ inputLabel: { shrink: true } }} />
+                <Field.Text name="full_name" label={t('auth.fullName')} slotProps={{ inputLabel: { shrink: true } }} />
 
                 <Field.Text
                   name="password"
-                  label="Parol"
+                  label={t('auth.password')}
                   type={showPassword.value ? 'text' : 'password'}
                   slotProps={{
                     inputLabel: { shrink: true },
@@ -571,7 +595,7 @@ function RegisterFlow({
 
                 <Field.Text
                   name="confirm_password"
-                  label="Parolni tasdiqlash"
+                  label={t('auth.confirmPassword')}
                   type={showPassword.value ? 'text' : 'password'}
                   slotProps={{
                     inputLabel: { shrink: true },
@@ -592,8 +616,8 @@ function RegisterFlow({
             {activeStep === 'organization' && (
               <>
                 <Field.Text name="name" label={entityLabel} slotProps={{ inputLabel: { shrink: true } }} />
-                <Field.Text name="description" label="Tavsif (ixtiyoriy)" multiline rows={2} slotProps={{ inputLabel: { shrink: true } }} />
-                <Field.Phone name="institution_phone" label="Tashkilot telefoni (ixtiyoriy)" country="UZ" />
+                <Field.Text name="description" label={t('auth.description')} multiline rows={2} slotProps={{ inputLabel: { shrink: true } }} />
+                <Field.Phone name="institution_phone" label={t('auth.organizationPhone')} country="UZ" />
               </>
             )}
 
@@ -605,7 +629,7 @@ function RegisterFlow({
                   onSelect={handleAddressSelect}
                   latitude={marker.latitude}
                   longitude={marker.longitude}
-                  label="Manzil qidirish"
+                  label={t('auth.searchAddress')}
                 />
 
                 <Box sx={{ position: 'relative' }}>
@@ -697,8 +721,8 @@ function RegisterFlow({
                   <Iconify icon={hasLocation ? 'eva:checkmark-fill' : 'mingcute:location-fill'} />
                   <Typography variant="caption" sx={{ color: 'inherit', fontWeight: 600 }}>
                     {hasLocation
-                      ? 'Joylashuv belgilandi. Aniqlashtirish uchun xaritani suring.'
-                      : 'Binafsha marker kerakli nuqtada turishi uchun xaritani suring.'}
+                      ? t('auth.locationSet')
+                      : t('auth.locationHint')}
                   </Typography>
                 </Stack>
               </Stack>
@@ -708,7 +732,7 @@ function RegisterFlow({
 
             <Stack direction="row" spacing={1.5}>
               <Button fullWidth size="large" color="inherit" variant="outlined" onClick={handleBack}>
-                Orqaga
+                {t('auth.back')}
               </Button>
 
               {isFinalStep ? (
@@ -720,11 +744,11 @@ function RegisterFlow({
                   disabled={isLocationSubmitDisabled}
                   loading={step3.formState.isSubmitting}
                 >
-                  Ariza yuborish
+                  {t('auth.submitApplication')}
                 </Button>
               ) : (
                 <Button fullWidth size="large" type="button" variant="contained" onClick={handleDetailsNext}>
-                  Davom etish
+                  {t('auth.continue')}
                 </Button>
               )}
             </Stack>
@@ -738,6 +762,7 @@ function RegisterFlow({
 // ----------------------------------------------------------------------
 
 export function JwtSignUpView() {
+  const { t } = useTranslate('common');
   const [tab, setTab] = useState<'kitchen' | 'company'>('kitchen');
   const [roleLocked, setRoleLocked] = useState(false);
   const handleRoleLockChange = useCallback((locked: boolean) => {
@@ -747,12 +772,12 @@ export function JwtSignUpView() {
   return (
     <>
       <FormHead
-        title="Ro‘yxatdan o‘tish"
+        title={t('auth.signUpTitle')}
         description={
           <>
-            Akkauntingiz bormi?{' '}
+            {t('auth.signUpDescription')}{' '}
             <Link component={RouterLink} href={paths.auth.jwt.signIn} variant="subtitle2">
-              Kirish
+              {t('auth.signIn')}
             </Link>
           </>
         }
@@ -792,12 +817,12 @@ export function JwtSignUpView() {
         >
           <Tab value="kitchen" label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Iconify icon="solar:cup-star-bold" /> Oshxona admin
+              <Iconify icon="solar:cup-star-bold" /> {t('auth.kitchenAdmin')}
             </Box>
           } disabled={roleLocked && tab !== 'kitchen'} />
           <Tab value="company" label={
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Iconify icon="solar:home-angle-bold-duotone" /> Kompaniya admin
+              <Iconify icon="solar:home-angle-bold-duotone" /> {t('auth.companyAdmin')}
             </Box>
           } disabled={roleLocked && tab !== 'company'} />
         </Tabs>

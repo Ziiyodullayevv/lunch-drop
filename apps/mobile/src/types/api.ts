@@ -28,11 +28,21 @@ export type AuthTokenDto = {
 
 export type AuthMeResponseDto = {
   user: AuthUserDto;
+  profiles?: AuthRoleProfileDto[];
+};
+
+export type AuthRoleProfileDto = {
+  id: string;
+  role: string;
+  name: string | null;
+  company_id: string | null;
+  kitchen_id: string | null;
 };
 
 // Internal composite type used in mappers (assembled after login + /auth/me)
 export type AuthResponseDto = AuthTokenDto & {
   user: AuthUserDto;
+  profiles?: AuthRoleProfileDto[];
 };
 
 // ─── Employee ────────────────────────────────────────────────────────────────
@@ -78,6 +88,7 @@ export type EmployeeMenuItemDto = {
   description: string | null;
   price: string;
   image_url: string | null;
+  order_cutoff_time?: string | null;
   delivery_start_time?: string | null;
   delivery_end_time?: string | null;
 };

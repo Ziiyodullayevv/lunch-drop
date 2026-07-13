@@ -21,6 +21,7 @@ import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 
 import { useCreateCompany } from '../hooks/use-companies';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -36,6 +37,7 @@ type FormValues = z.infer<typeof CompanySchema>;
 // ----------------------------------------------------------------------
 
 export function CompanyCreateView() {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const createCompany = useCreateCompany();
 
@@ -54,21 +56,21 @@ export function CompanyCreateView() {
         logo_url:    data.logo_url    || null,
         billing_day: data.billing_day ?? undefined,
       });
-      toast.success('Kompaniya yaratildi!');
+      toast.success(t('company.created'));
       router.push(paths.dashboard.company.root);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Xato yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('company.error'));
     }
   });
 
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Yangi kompaniya"
+        heading={t('company.new')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Kompaniyalar', href: paths.dashboard.company.root },
-          { name: 'Yangi' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('company.title'), href: paths.dashboard.company.root },
+          { name: t('company.new') },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
@@ -76,17 +78,17 @@ export function CompanyCreateView() {
       <Card sx={{ p: 3, maxWidth: 600, width: '100%', mx: 'auto' }}>
         <Form methods={methods} onSubmit={onSubmit}>
           <Stack spacing={3}>
-            <Field.Text name="name" label="Kompaniya nomi" slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.Text name="description" label="Tavsif" multiline rows={3} slotProps={{ inputLabel: { shrink: true } }} />
-            <Field.ImageUpload name="logo_url" label="Logo" />
-            <Field.BillingDayPicker name="billing_day" label="To'lov kuni" />
+            <Field.Text name="name" label={t('company.name')} slotProps={{ inputLabel: { shrink: true } }} />
+            <Field.Text name="description" label={t('company.description')} multiline rows={3} slotProps={{ inputLabel: { shrink: true } }} />
+            <Field.ImageUpload name="logo_url" label={t('company.logo')} />
+            <Field.BillingDayPicker name="billing_day" label={t('company.billingDay')} />
 
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button component={RouterLink} href={paths.dashboard.company.root} variant="outlined" color="inherit">
-                Bekor qilish
+                {t('common.cancel')}
               </Button>
               <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
-                Yaratish
+                {t('common.create')}
               </LoadingButton>
             </Box>
           </Stack>

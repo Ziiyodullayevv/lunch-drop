@@ -40,6 +40,7 @@ from app.schemas.auth import (
     AdminRegisterRequest,
     OTPSendResponse,
     RegisterResponse,
+    RoleProfileRead,
     TokenResponse,
     VerifyOtpResponse,
 )
@@ -70,6 +71,40 @@ class AuthService:
         refresh, jti, expires_at = create_refresh_token(user.id)
         await self.auth.save_refresh_jti(user.id, jti, expires_at)
         return TokenResponse(access_token=access, refresh_token=refresh)
+
+    @staticmethod
+    def _profile_available(user: User) -> bool:
+        if not user.is_active or user.deleted_at is not None:
+            return False
+        if user.role == UserRole.SUPER_ADMIN:
+            return True
+        return user.account_status == AccountStatus.APPROVED
+
+    async def list_profiles(self, user: User) -> list[RoleProfileRead]:
+        profiles = await self.users.list_by_phone(user.phone)
+        return [
+            RoleProfileRead(
+                id=profile.id,
+                role=profile.role,
+                name=profile.name,
+                company_id=profile.company_id,
+                kitchen_id=profile.kitchen_id,
+            )
+            for profile in profiles
+            if self._profile_available(profile)
+        ]
+
+    async def switch_profile(self, user: User, profile_id: str) -> TokenResponse:
+        profile = await self.users.get_by_id(profile_id)
+        if (
+            profile is None
+            or profile.phone != user.phone
+            or not self._profile_available(profile)
+        ):
+            raise PermissionDeniedError("Rol profili mavjud emas yoki faol emas")
+        tokens = await self._issue_tokens(profile)
+        await self.session.commit()
+        return tokens
 
     def _is_test_phone(self, phone: str) -> bool:
         return bool(settings.test_phone and phone == settings.test_phone)
@@ -130,13 +165,11 @@ class AuthService:
     # --- Employee login (telefon + OTP → JWT) ---
     async def employee_login(self, phone: str, code: str) -> TokenResponse:
         await self._consume_otp(phone, code)
-        user = await self.users.get_by_phone(phone)
+        user = await self.users.get_by_phone_and_role(phone, UserRole.EMPLOYEE)
         if user is None:
             user = User(phone=phone, role=UserRole.EMPLOYEE, is_active=True)
             await self.users.add(user)
             log.info("employee_created", user_id=user.id)
-        elif user.role != UserRole.EMPLOYEE:
-            raise AuthError("Bu raqam admin akkaunti — parol bilan kiring")
         if not user.is_active or user.account_status == AccountStatus.INACTIVE:
             raise PermissionDeniedError("Hisob faol emas")
         tokens = await self._issue_tokens(user)
@@ -154,8 +187,8 @@ class AuthService:
             raise AuthError("Token turi noto'g'ri")
         phone = payload["sub"]
 
-        if await self.users.get_by_phone(phone) is not None:
-            raise ConflictError("Bu telefon raqami allaqachon ro'yxatdan o'tgan")
+        if await self.users.get_by_phone_and_role(phone, data.role) is not None:
+            raise ConflictError("Bu telefon raqami ushbu rol bilan ro'yxatdan o'tgan")
 
         kitchen_id = company_id = None
         if data.role == UserRole.KITCHEN_ADMIN:
@@ -198,9 +231,38 @@ class AuthService:
         return RegisterResponse()
 
     # --- Admin login ---
-    async def login(self, phone: str, password: str) -> TokenResponse:
-        user = await self.users.get_by_phone(phone)
-        if user is None or not user.password_hash:
+    async def login(
+        self,
+        phone: str,
+        password: str,
+        role: UserRole | None = None,
+        profile_id: str | None = None,
+    ) -> TokenResponse:
+        candidates = [
+            user
+            for user in await self.users.list_by_phone(phone)
+            if user.password_hash
+            and user.role != UserRole.EMPLOYEE
+            and (role is None or user.role == role)
+            and (profile_id is None or user.id == profile_id)
+        ]
+        user = next(
+            (
+                candidate
+                for candidate in candidates
+                if verify_password(password, candidate.password_hash or "")
+            ),
+            None,
+        )
+        if user is None:
+            if candidates:
+                candidates[0].failed_login_attempts += 1
+                if candidates[0].failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
+                    candidates[0].locked_until = datetime.now(UTC) + timedelta(
+                        minutes=LOGIN_LOCK_MINUTES
+                    )
+                    candidates[0].failed_login_attempts = 0
+                await self.session.commit()
             raise AuthError("Telefon yoki parol noto'g'ri")
 
         now = datetime.now(UTC)
@@ -208,14 +270,6 @@ class AuthService:
             raise PermissionDeniedError(
                 "Hisob ko'p marta xato urinish tufayli vaqtincha bloklangan. Keyinroq urinib ko'ring"
             )
-
-        if not verify_password(password, user.password_hash):
-            user.failed_login_attempts += 1
-            if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
-                user.locked_until = now + timedelta(minutes=LOGIN_LOCK_MINUTES)
-                user.failed_login_attempts = 0
-            await self.session.commit()
-            raise AuthError("Telefon yoki parol noto'g'ri")
 
         # To'g'ri parol — hisoblagichni tozalash
         user.failed_login_attempts = 0

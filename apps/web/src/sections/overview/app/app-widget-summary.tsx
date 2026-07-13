@@ -9,6 +9,7 @@ import { fNumber, fPercent } from 'src/utils/format-number';
 
 import { Iconify } from 'src/components/iconify';
 import { Chart, useChart } from 'src/components/chart';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -35,6 +36,7 @@ export function AppWidgetSummary({
   ...other
 }: Props) {
   const theme = useTheme();
+  const { t } = useTranslate('common');
 
   const chartColors = chart.colors ?? [theme.palette.primary.main];
 
@@ -52,7 +54,7 @@ export function AppWidgetSummary({
 
   const renderTrending = () => percent === null ? (
     <Box component="span" sx={{ typography: 'body2', color: 'text.secondary' }}>
-      Taqqoslash uchun ma&apos;lumot yetarli emas
+      {t('dashboard.noComparison')}
     </Box>
   ) : (
     <Box sx={{ gap: 0.5, display: 'flex', alignItems: 'center' }}>
@@ -76,7 +78,7 @@ export function AppWidgetSummary({
       </Box>
 
       <Box component="span" sx={{ typography: 'body2', color: 'text.secondary' }}>
-        oxirgi 7 kun
+        {t('dashboard.last7Days')}
       </Box>
     </Box>
   );

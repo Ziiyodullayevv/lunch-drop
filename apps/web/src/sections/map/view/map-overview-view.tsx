@@ -33,6 +33,7 @@ import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { Map, MapPopup, MapMarker, MAP_STYLES, MapControls } from 'src/components/map';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -181,6 +182,7 @@ function MapInfoRow({ icon, label, children }: { icon: ReactNode; label: string;
 }
 
 function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
+  const { t } = useTranslate('common');
   return (
     <Stack spacing={1.75} sx={{ width: 1, minWidth: 0, maxWidth: 1, overflow: 'hidden' }}>
       <Stack direction="row" spacing={1.5} sx={{ pr: 5, minWidth: 0, alignItems: 'center' }}>
@@ -193,7 +195,7 @@ function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
           </Typography>
           <Chip
             size="small"
-            label={kitchen.is_active ? 'Faol' : 'Nofaol'}
+            label={kitchen.is_active ? t('map.active') : t('map.inactive')}
             color={kitchen.is_active ? 'success' : 'default'}
             sx={{ height: 20, fontSize: 11 }}
           />
@@ -203,16 +205,16 @@ function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
       <Divider />
 
       {kitchen.phone && (
-        <MapInfoRow icon={<Iconify icon="solar:phone-bold" width={16} />} label="Telefon">
+        <MapInfoRow icon={<Iconify icon="solar:phone-bold" width={16} />} label={t('map.phone')}>
           <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
             {kitchen.phone}
           </Typography>
         </MapInfoRow>
       )}
 
-      <MapInfoRow icon={<Iconify icon="solar:clock-circle-bold" width={16} />} label="Buyurtma qabul qilish">
+      <MapInfoRow icon={<Iconify icon="solar:clock-circle-bold" width={16} />} label={t('map.orderCutoff')}>
         <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-          {kitchen.order_cutoff_time} gacha
+          {kitchen.order_cutoff_time} {t('mapExtra.until')}
         </Typography>
       </MapInfoRow>
     </Stack>
@@ -226,13 +228,14 @@ function BranchPopupCard({
   branch: Branch;
   companies: Company[];
 }) {
+  const { t } = useTranslate('common');
   const company = companies.find((item) => item.id === branch.company_id);
   const connectedKitchenNames = branch.connected_kitchen_names ?? [];
   const connectionLabel = connectedKitchenNames.length
     ? `${connectedKitchenNames.join(', ')} bilan hamkor`
-    : branch.connected_to_kitchen
-      ? 'Hamkor filial'
-      : 'Ulanmagan filial';
+      : branch.connected_to_kitchen
+      ? t('map.partnerBranch')
+      : t('map.unconnectedBranch');
 
   return (
     <Stack spacing={1.75} sx={{ width: 1, minWidth: 0, maxWidth: 1, overflow: 'hidden' }}>
@@ -260,7 +263,7 @@ function BranchPopupCard({
 
       <Divider />
 
-      <MapInfoRow icon={<Iconify icon="mingcute:location-fill" width={16} />} label="Manzil">
+      <MapInfoRow icon={<Iconify icon="mingcute:location-fill" width={16} />} label={t('map.address')}>
         <Typography
           variant="body2"
           sx={{
@@ -279,14 +282,14 @@ function BranchPopupCard({
 
       {company && (
         <>
-          <MapInfoRow icon={<Iconify icon="solar:home-2-outline" width={16} />} label="Kompaniya">
+          <MapInfoRow icon={<Iconify icon="solar:home-2-outline" width={16} />} label={t('map.company')}>
             <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }} noWrap>
               {company.name}
             </Typography>
           </MapInfoRow>
-          <MapInfoRow icon={<Iconify icon="solar:calendar-date-bold" width={16} />} label="Hisob-kitob kuni">
+          <MapInfoRow icon={<Iconify icon="solar:calendar-date-bold" width={16} />} label={t('map.billingDay')}>
             <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
-              Har oyning {company.billing_day}-kuni
+              {t('mapExtra.monthlyDay', { day: company.billing_day })}
             </Typography>
           </MapInfoRow>
         </>
@@ -313,10 +316,10 @@ function BranchPopupCard({
           sx={{ minWidth: 0, color: 'inherit', fontWeight: 700, whiteSpace: 'normal' }}
         >
           {branch.connected_to_kitchen
-            ? connectedKitchenNames.length
-              ? `${connectedKitchenNames.join(', ')} oshxonasiga ulangan`
-              : 'Oshxonaga ulangan'
-            : 'Hamkorlik mavjud emas'}
+              ? connectedKitchenNames.length
+              ? t('map.connectedTo', { names: connectedKitchenNames.join(', ') })
+              : t('map.connectedToKitchen')
+            : t('map.noPartnership')}
         </Typography>
       </Stack>
     </Stack>
@@ -326,6 +329,7 @@ function BranchPopupCard({
 // ----------------------------------------------------------------------
 
 export function MapOverviewView() {
+  const { t } = useTranslate('common');
   const mapRef = useRef<MapRef | null>(null);
   const isCompactMap = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { user } = useAuthContext();
@@ -548,39 +552,55 @@ export function MapOverviewView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Xarita"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Xarita' }]}
+        heading={t('map.title')}
+        links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('map.title') }]}
         sx={{ mb: 3 }}
       />
 
-      <Card sx={{ p: 2.5, mb: 2 }}>
+      <Box
+        sx={{
+          mb: 2,
+          '& .MuiInputLabel-root:not(.MuiInputLabel-shrink)': {
+            transform: 'translate(14px, 7px) scale(1)',
+          },
+          '& .MuiSelect-select': {
+            display: 'flex',
+            alignItems: 'center',
+            minHeight: 'unset',
+          },
+        }}
+      >
         <Stack
-          spacing={2}
+          spacing={1.5}
           direction={{ xs: 'column', lg: 'row' }}
           sx={{ alignItems: { xs: 'stretch', lg: 'center' } }}
         >
           <FormControl sx={{ minWidth: { xs: 1, sm: 190 } }}>
-            <InputLabel>Ko&apos;rinish</InputLabel>
+            <InputLabel>{t('map.view')}</InputLabel>
             <Select
-              label="Ko'rinish"
+              size="small"
+              label={t('map.view')}
               value={entityType}
               onChange={handleEntityTypeChange}
+              sx={{ '& .MuiSelect-select': { display: 'flex', alignItems: 'center' } }}
             >
-              <MenuItem value="all">Barchasi</MenuItem>
-              <MenuItem value="branch">Faqat filiallar</MenuItem>
-              <MenuItem value="kitchen">Faqat oshxonalar</MenuItem>
+              <MenuItem value="all">{t('map.all')}</MenuItem>
+              <MenuItem value="branch">{t('map.branchesOnly')}</MenuItem>
+              <MenuItem value="kitchen">{t('map.kitchensOnly')}</MenuItem>
             </Select>
           </FormControl>
 
           {(isSuperAdmin || isKitchenAdmin) && entityType !== 'kitchen' && (
             <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
-              <InputLabel>Kompaniya</InputLabel>
+            <InputLabel>{t('map.company')}</InputLabel>
               <Select
-                label="Kompaniya"
+                size="small"
+                label={t('map.company')}
                 value={companyFilter}
                 onChange={handleCompanyChange}
+                sx={{ '& .MuiSelect-select': { display: 'flex', alignItems: 'center' } }}
               >
-                <MenuItem value="">Barcha kompaniyalar</MenuItem>
+                <MenuItem value="">{t('map.allCompanies')}</MenuItem>
                 {companies.map((company) => (
                   <MenuItem key={company.id} value={company.id}>
                     {company.name}
@@ -592,9 +612,9 @@ export function MapOverviewView() {
 
           {(entityType !== 'kitchen' || isCompanyAdmin) && (
             <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
-              <InputLabel>Filial</InputLabel>
-              <Select label="Filial" value={branchFilter} onChange={handleBranchChange}>
-                <MenuItem value="">Barcha filiallar</MenuItem>
+            <InputLabel>{t('map.branch')}</InputLabel>
+              <Select size="small" label={t('map.branch')} value={branchFilter} onChange={handleBranchChange} sx={{ '& .MuiSelect-select': { display: 'flex', alignItems: 'center' } }}>
+                <MenuItem value="">{t('map.allBranches')}</MenuItem>
                 {branchOptions.map((branch) => (
                   <MenuItem key={branch.id} value={branch.id}>
                     {branch.name}
@@ -606,13 +626,15 @@ export function MapOverviewView() {
 
           {entityType !== 'branch' && (
             <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
-              <InputLabel>Oshxona</InputLabel>
+            <InputLabel>{t('map.kitchen')}</InputLabel>
               <Select
-                label="Oshxona"
+                size="small"
+                label={t('map.kitchen')}
                 value={kitchenFilter}
                 onChange={handleKitchenChange}
+                sx={{ '& .MuiSelect-select': { display: 'flex', alignItems: 'center' } }}
               >
-                <MenuItem value="">Barcha oshxonalar</MenuItem>
+                <MenuItem value="">{t('map.allKitchens')}</MenuItem>
                 {kitchenOptions.map((kitchen) => (
                   <MenuItem key={kitchen.id} value={kitchen.id}>
                     {kitchen.name}
@@ -623,11 +645,11 @@ export function MapOverviewView() {
           )}
 
         </Stack>
-      </Card>
+      </Box>
 
       {totalWithoutCoords > 0 && !loading && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          {totalWithoutCoords} ta yozuvda koordinata yo&apos;q
+          {t('map.missingCoordinates', { count: totalWithoutCoords })}
         </Alert>
       )}
 
@@ -786,7 +808,7 @@ export function MapOverviewView() {
                   boxShadow: 3,
                 }}
               >
-                Tanlangan filtr bo&apos;yicha lokatsiya topilmadi
+                {t('map.noLocations')}
               </Alert>
             )}
           </Box>

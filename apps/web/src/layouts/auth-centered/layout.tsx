@@ -20,6 +20,7 @@ import { Logo } from 'src/components/logo';
 import { AuthCenteredContent } from './content';
 import { SettingsButton } from '../components/settings-button';
 import { MainSection, LayoutSection, HeaderSection } from '../core';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -41,6 +42,7 @@ export function AuthCenteredLayout({
   slotProps,
   layoutQuery = 'md',
 }: AuthCenteredLayoutProps) {
+  const { t } = useTranslate('common');
   const renderHeader = () => {
     const headerSlotProps: HeaderSectionProps['slotProps'] = { container: { maxWidth: false } };
 
@@ -65,7 +67,7 @@ export function AuthCenteredLayout({
             color="inherit"
             sx={{ typography: 'subtitle2' }}
           >
-            Need help?
+            {t('auth.needHelp')}
           </Link>
 
           {/** @slot Settings button */}

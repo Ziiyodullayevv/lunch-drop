@@ -8,7 +8,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import (
     BotCommand,
+    BotCommandScopeChat,
     CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
@@ -26,9 +29,12 @@ from bot.approvals import (
     pending_cards_for,
     process_connection_decision,
     process_decision,
+    select_telegram_profile,
+    telegram_profiles,
     unlink_telegram_account,
 )
 from bot.config import bot_settings
+from bot.delivery import process_delivery_confirmation
 from bot.menu import send_employee_menu
 from bot.notifier import approval_markup
 from bot.reports import build_report
@@ -43,6 +49,98 @@ def _role_label(role: UserRole) -> str:
         UserRole.KITCHEN_ADMIN: "Kitchen Admin",
         UserRole.EMPLOYEE: "Xodim",
     }.get(role, role.value)
+
+
+def _profiles_markup(
+    users, selected_user_id: str | None = None
+) -> InlineKeyboardMarkup | None:
+    if len(users) < 2:
+        return None
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=(
+                        f"✅ {_role_label(user.role)}"
+                        if user.id == selected_user_id
+                        else f"🔄 {_role_label(user.role)}"
+                    ),
+                    callback_data=f"profile:{user.id}",
+                )
+            ]
+            for user in users
+        ]
+    )
+
+
+def _commands_for_role(
+    role: UserRole | None, *, has_multiple_profiles: bool = False
+) -> list[BotCommand]:
+    commands = [BotCommand(command="start", description="LunchDrop hisobini ulash")]
+
+    if role == UserRole.EMPLOYEE:
+        commands.extend(
+            [
+                BotCommand(command="menu", description="Bugungi taomlar"),
+                BotCommand(
+                    command="hisobot", description="Oylik xarajat va buyurtmalar"
+                ),
+            ]
+        )
+    elif role in (UserRole.COMPANY_ADMIN, UserRole.KITCHEN_ADMIN):
+        commands.extend(
+            [
+                BotCommand(command="pending", description="Kutilayotgan so'rovlar"),
+                BotCommand(command="hisobot", description="Oylik hisobot"),
+            ]
+        )
+    elif role == UserRole.SUPER_ADMIN:
+        commands.append(
+            BotCommand(command="pending", description="Kutilayotgan admin arizalari")
+        )
+
+    if role is not None:
+        if has_multiple_profiles:
+            commands.append(
+                BotCommand(command="rollar", description="Faol rolni almashtirish")
+            )
+        commands.extend(
+            [
+                BotCommand(command="me", description="Bog'langan hisobim"),
+                BotCommand(command="unlink", description="Bog'lanishni uzish"),
+            ]
+        )
+
+    commands.append(BotCommand(command="id", description="Telegram chat ID"))
+    return commands
+
+
+async def _sync_commands(bot: Bot, chat_id: int, user=None, profiles=None) -> None:
+    profiles = profiles or []
+    await bot.set_my_commands(
+        _commands_for_role(
+            user.role if user is not None else None,
+            has_multiple_profiles=len(profiles) > 1,
+        ),
+        scope=BotCommandScopeChat(chat_id=chat_id),
+    )
+
+
+async def _refresh_linked_profiles(message: Message, user):
+    """Bir xil telefondagi yangi tasdiqlangan rollarni ham botga qo'shadi."""
+    if message.from_user is not None:
+        try:
+            user = await link_telegram_account(
+                telegram_user_id=message.from_user.id,
+                chat_id=message.chat.id,
+                username=message.from_user.username,
+                phone=user.phone,
+            )
+        except TelegramApprovalError:
+            # Avval bog'langan faol profil ishlashda davom etadi.
+            pass
+    profiles = await telegram_profiles(message.from_user.id)
+    return user, profiles
 
 
 async def _send_pending(message: Message) -> None:
@@ -78,7 +176,13 @@ async def cmd_start(message: Message) -> None:
             await message.answer(str(exc))
             return
         keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="📱 Telefon raqamimni tasdiqlash", request_contact=True)]],
+            keyboard=[
+                [
+                    KeyboardButton(
+                        text="📱 Telefon raqamimni tasdiqlash", request_contact=True
+                    )
+                ]
+            ],
             resize_keyboard=True,
             one_time_keyboard=True,
         )
@@ -90,6 +194,7 @@ async def cmd_start(message: Message) -> None:
     try:
         user = await get_linked_user(message.from_user.id)
     except TelegramApprovalError:
+        await _sync_commands(message.bot, message.chat.id)
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -108,6 +213,8 @@ async def cmd_start(message: Message) -> None:
             reply_markup=keyboard,
         )
         return
+    user, profiles = await _refresh_linked_profiles(message, user)
+    await _sync_commands(message.bot, message.chat.id, user, profiles)
     await message.answer(
         f"✅ Hisob bog'langan\n👤 {user.name or '—'}\n🔐 {_role_label(user.role)}\n\n"
         + (
@@ -119,6 +226,11 @@ async def cmd_start(message: Message) -> None:
         ),
         reply_markup=ReplyKeyboardRemove(),
     )
+    if len(profiles) > 1:
+        await message.answer(
+            "Faol rolni tanlang:",
+            reply_markup=_profiles_markup(profiles, user.id),
+        )
 
 
 @dp.message(lambda message: message.contact is not None)
@@ -159,6 +271,13 @@ async def handle_contact(message: Message) -> None:
         f"👤 {user.name or '—'}\n🔐 {_role_label(user.role)}",
         reply_markup=ReplyKeyboardRemove(),
     )
+    user, profiles = await _refresh_linked_profiles(message, user)
+    await _sync_commands(message.bot, message.chat.id, user, profiles)
+    if len(profiles) > 1:
+        await message.answer(
+            "Faol rolni tanlang:",
+            reply_markup=_profiles_markup(profiles, user.id),
+        )
     if user.role == UserRole.EMPLOYEE:
         today = datetime.now(ZoneInfo(settings.timezone)).date()
         await send_employee_menu(
@@ -214,8 +333,31 @@ async def cmd_me(message: Message) -> None:
     except TelegramApprovalError as exc:
         await message.answer(str(exc))
         return
+    user, profiles = await _refresh_linked_profiles(message, user)
+    await _sync_commands(message.bot, message.chat.id, user, profiles)
     await message.answer(
-        f"👤 {user.name or '—'}\n📞 {user.phone}\n🔐 {_role_label(user.role)}"
+        f"👤 {user.name or '—'}\n📞 {user.phone}\n🔐 {_role_label(user.role)}",
+        reply_markup=_profiles_markup(profiles, user.id),
+    )
+
+
+@dp.message(Command("rollar", "roles"))
+async def cmd_roles(message: Message) -> None:
+    if message.from_user is None:
+        return
+    try:
+        user = await get_linked_user(message.from_user.id)
+    except TelegramApprovalError as exc:
+        await message.answer(str(exc))
+        return
+    user, profiles = await _refresh_linked_profiles(message, user)
+    await _sync_commands(message.bot, message.chat.id, user, profiles)
+    if len(profiles) < 2:
+        await message.answer(f"Sizda faqat bitta rol bor: {_role_label(user.role)}")
+        return
+    await message.answer(
+        f"Faol rol: {_role_label(user.role)}\n\nAlmashtirish uchun rolni tanlang:",
+        reply_markup=_profiles_markup(profiles, user.id),
     )
 
 
@@ -229,6 +371,7 @@ async def cmd_unlink(message: Message) -> None:
     if message.from_user is None:
         return
     unlinked = await unlink_telegram_account(message.from_user.id)
+    await _sync_commands(message.bot, message.chat.id)
     await message.answer(
         "Telegram bog'lanishi uzildi" if unlinked else "Bog'langan hisob topilmadi"
     )
@@ -237,6 +380,42 @@ async def cmd_unlink(message: Message) -> None:
 @dp.callback_query()
 async def handle_approval_callback(callback: CallbackQuery) -> None:
     data = callback.data or ""
+    if data.startswith("profile:"):
+        try:
+            user = await select_telegram_profile(
+                callback.from_user.id,
+                data.removeprefix("profile:"),
+            )
+        except TelegramApprovalError as exc:
+            await callback.answer(str(exc), show_alert=True)
+            return
+        await callback.answer(f"Faol rol: {_role_label(user.role)}")
+        if callback.message:
+            profiles = await telegram_profiles(callback.from_user.id)
+            await _sync_commands(callback.bot, callback.message.chat.id, user, profiles)
+            await callback.message.edit_text(
+                f"✅ Faol rol: {_role_label(user.role)}",
+                reply_markup=_profiles_markup(profiles, user.id),
+            )
+        return
+    if data.startswith("delivery:confirm:"):
+        prompt_id = data.removeprefix("delivery:confirm:")
+        try:
+            result = await process_delivery_confirmation(
+                telegram_user_id=callback.from_user.id,
+                prompt_id=prompt_id,
+            )
+        except TelegramApprovalError as exc:
+            await callback.answer(str(exc), show_alert=True)
+            return
+        await callback.answer(result)
+        if callback.message:
+            original = callback.message.html_text or "🚚 Yetkazish so'rovi"
+            await callback.message.edit_text(
+                f"{original}\n\n<b>{result}</b>",
+                parse_mode="HTML",
+            )
+        return
     if data.startswith("report:"):
         parts = data.split(":", maxsplit=2)
         if len(parts) != 3:
@@ -322,17 +501,7 @@ async def main() -> None:
     if not bot_settings.bot_token:
         raise SystemExit("BOT_TOKEN .env da sozlanmagan")
     bot = Bot(token=bot_settings.bot_token)
-    await bot.set_my_commands(
-        [
-            BotCommand(command="start", description="LunchDrop hisobini bog'lash"),
-            BotCommand(command="menu", description="Bugungi taomlar"),
-            BotCommand(command="hisobot", description="Oylik qarz va buyurtmalar"),
-            BotCommand(command="pending", description="Kutilayotgan arizalar"),
-            BotCommand(command="me", description="Bog'langan hisobim"),
-            BotCommand(command="unlink", description="Bog'lanishni uzish"),
-            BotCommand(command="id", description="Telegram chat ID"),
-        ]
-    )
+    await bot.set_my_commands(_commands_for_role(None))
     await dp.start_polling(bot)
 
 

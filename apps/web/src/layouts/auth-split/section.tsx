@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import { RouterLink } from 'src/routes/components';
 
 import { CONFIG } from 'src/global-config';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -37,6 +38,10 @@ export function AuthSplitSection({
   subtitle = 'Korporativ ovqatlanish platformasi.',
   ...other
 }: AuthSplitSectionProps) {
+  const { t } = useTranslate('common');
+  title = title === 'Xush kelibsiz' ? t('auth.brandWelcome') : title;
+  title = title === 'Lunch Drop' ? t('auth.brandTitle') : title;
+  subtitle = subtitle === 'Korporativ ovqatlanish platformasi.' ? t('auth.brandSubtitle') : subtitle;
   return (
     <Box
       sx={[

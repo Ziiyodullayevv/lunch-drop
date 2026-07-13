@@ -17,6 +17,7 @@ import { Iconify } from 'src/components/iconify';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
@@ -53,19 +54,20 @@ const NAV_ITEMS = [
 export function AccountLayout({ children, ...other }: DashboardContentProps) {
   const pathname = usePathname();
   const { user } = useAuthContext();
+  const { t } = useTranslate('common');
   const normalizedPathname = removeLastSlash(pathname);
   const isProfileEdit = normalizedPathname === paths.dashboard.user.account;
-  const userName = user?.name || user?.phone || 'Profile';
+  const userName = user?.name || user?.phone || t('account.profile');
 
   return (
     <DashboardContent {...other}>
       <CustomBreadcrumbs
-        heading={isProfileEdit ? 'Edit' : 'Account'}
+        heading={isProfileEdit ? t('accountPage.edit') : t('accountPage.title')}
         backHref={isProfileEdit ? paths.dashboard.root : undefined}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'User', href: paths.dashboard.user.list },
-          { name: isProfileEdit ? userName : 'Account' },
+          { name: t('dashboard.title'), href: paths.dashboard.root },
+          { name: t('user.title'), href: paths.dashboard.user.list },
+          { name: isProfileEdit ? userName : t('accountPage.title') },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
         slotProps={{
@@ -93,7 +95,7 @@ export function AccountLayout({ children, ...other }: DashboardContentProps) {
             <Tab
               component={RouterLink}
               key={tab.href}
-              label={tab.label}
+              label={t(`accountPage.tabs.${tab.label.toLowerCase().replace(/ /g, '')}`)}
               icon={tab.icon}
               value={tab.href}
               href={tab.href}

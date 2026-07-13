@@ -11,7 +11,12 @@ from app.models.enums import (
     OrderStatus,
     UserRole,
 )
-from app.models.invoice import Invoice, InvoiceBranchSummary, InvoiceEmployeeSummary
+from app.models.invoice import (
+    Invoice,
+    InvoiceBranchSummary,
+    InvoiceEmployeeSummary,
+    EmployeeMonthlyPayment,
+)
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.kitchen_connection import KitchenConnectionRequest
 from app.models.meal import Meal, MenuCategory, MenuSchedule
@@ -19,7 +24,14 @@ from app.models.notification import Notification
 from app.models.order import Order, OrderItem
 from app.models.otp_code import OtpCode
 from app.models.refresh_token import RefreshToken
-from app.models.telegram import ApprovalAction, TelegramAccount, TelegramMenuDelivery
+from app.models.telegram import (
+    ApprovalAction,
+    EmployeeDeliveryNotice,
+    TelegramAccount,
+    TelegramDeliveryPrompt,
+    TelegramKitchenOrderSummaryDelivery,
+    TelegramMenuDelivery,
+)
 from app.models.user import User
 
 __all__ = [
@@ -30,9 +42,11 @@ __all__ = [
     "Company",
     "ConnectionRequestStatus",
     "EmployeeBranch",
+    "EmployeeDeliveryNotice",
     "Invoice",
     "InvoiceBranchSummary",
     "InvoiceEmployeeSummary",
+    "EmployeeMonthlyPayment",
     "InvoiceStatus",
     "Kitchen",
     "KitchenConnectionRequest",
@@ -46,6 +60,8 @@ __all__ = [
     "OtpCode",
     "RefreshToken",
     "TelegramAccount",
+    "TelegramDeliveryPrompt",
+    "TelegramKitchenOrderSummaryDelivery",
     "TelegramMenuDelivery",
     "User",
     "UserRole",

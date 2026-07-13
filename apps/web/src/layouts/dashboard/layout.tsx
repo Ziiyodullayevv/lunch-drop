@@ -16,6 +16,7 @@ import { iconButtonClasses } from '@mui/material/IconButton';
 import { allLangs, useTranslate } from 'src/locales';
 import { fetchKitchenMe } from 'src/lib/api/kitchens';
 import { fetchCompanyMe } from 'src/lib/api/companies';
+import { switchAccountProfile } from 'src/lib/api/account';
 
 import { Logo } from 'src/components/logo';
 import { useSettingsContext } from 'src/components/settings';
@@ -92,14 +93,25 @@ export function DashboardLayout({
         ? (kitchenData?.name ?? '...')
         : '...';
 
-  const workspaceData = [
-    {
-      id: user?.role ?? 'workspace',
-      name: workspaceName,
-      plan: '',
-      logo: '',
-    },
-  ];
+  const profiles = user?.profiles?.length
+    ? user.profiles
+    : [{ id: user?.id ?? 'workspace', role: user?.role ?? 'employee' }];
+  const workspaceData = profiles.map((profile: { id: string; role: string }) => ({
+    id: profile.id,
+    role: profile.role,
+    name:
+      profile.id === user?.id
+        ? workspaceName
+        : t(`user.roles.${profile.role}`, { defaultValue: profile.role }),
+    plan: '',
+    logo: '',
+  }));
+
+  const handleProfileSelect = async (profileId: string) => {
+    if (profileId === user?.id) return;
+    await switchAccountProfile(profileId);
+    window.location.assign('/dashboard');
+  };
 
   const settings = useSettingsContext();
 
@@ -196,6 +208,8 @@ export function DashboardLayout({
           {/** @slot Workspace popover */}
           <WorkspacesPopover
             data={workspaceData}
+            activeId={user?.id}
+            onSelect={handleProfileSelect}
             sx={{ ...(isNavHorizontal && { color: 'var(--layout-nav-text-primary-color)' }) }}
           />
         </>

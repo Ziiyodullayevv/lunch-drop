@@ -52,12 +52,17 @@ async def build_order_reads(
                 status=o.status,
                 created_at=o.created_at,
                 employee_name=emp.name if emp else None,
+                employee_phone=emp.phone if emp else None,
+                employee_avatar_url=emp.avatar_url if emp else None,
                 branch_id=o.branch_id,
                 branch_name=branch.name if branch else None,
                 company_id=branch.company_id if branch else None,
                 company_name=company.name if company else None,
                 kitchen_name=kitchens[o.kitchen_id].name if o.kitchen_id in kitchens else None,
                 meal_name=meals[o.meal_id].name if o.meal_id in meals else None,
+                meal_image_url=(
+                    meals[o.meal_id].image_url if o.meal_id in meals else None
+                ),
                 items=[
                     OrderMealItemRead(
                         meal_id=item.meal_id,
@@ -65,6 +70,7 @@ async def build_order_reads(
                         meal_image_url=meals[item.meal_id].image_url if item.meal_id in meals else None,
                         quantity=item.quantity,
                         historical_price=item.historical_price,
+                        line_total=item.historical_price * item.quantity,
                     )
                     for item in o.items
                 ],

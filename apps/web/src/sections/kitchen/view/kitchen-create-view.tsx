@@ -39,6 +39,7 @@ import {
 } from 'src/components/map';
 
 import { useCreateKitchen } from '../hooks/use-kitchens';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -88,6 +89,7 @@ export function buildKitchenCreatePayload(data: FormValues): KitchenCreate {
 // ----------------------------------------------------------------------
 
 export function KitchenCreateView() {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const createKitchen = useCreateKitchen();
   const mapRef = useRef<MapRef | null>(null);
@@ -169,15 +171,15 @@ export function KitchenCreateView() {
     async (data) => {
       try {
         await createKitchen.mutateAsync(buildKitchenCreatePayload(data));
-        toast.success('Oshxona yaratildi!');
+        toast.success(t('kitchenExtra.created'));
         router.push(paths.dashboard.kitchen.root);
       } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Xato yuz berdi');
+        toast.error(err instanceof Error ? err.message : t('kitchenExtra.error'));
       }
     },
     (validationErrors) => {
       if (validationErrors.lat || validationErrors.lng) {
-        toast.error('Oshxona joylashuvini xaritadan belgilang');
+        toast.error(t('kitchenExtra.locationRequired'));
       }
     }
   );
@@ -185,11 +187,11 @@ export function KitchenCreateView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="New Kitchen"
+        heading={t('kitchenExtra.new')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Kitchens', href: paths.dashboard.kitchen.root },
-          { name: 'New' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('kitchen.title'), href: paths.dashboard.kitchen.root },
+          { name: t('kitchenExtra.newShort') },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
@@ -199,22 +201,22 @@ export function KitchenCreateView() {
           <Stack spacing={3}>
             <Field.Text
               name="name"
-              label="Oshxona nomi"
+              label={t('kitchenExtra.name')}
               slotProps={{ inputLabel: { shrink: true } }}
             />
             <Field.Text
               name="description"
-              label="Tavsif"
+              label={t('kitchenExtra.description')}
               multiline
               rows={3}
               slotProps={{ inputLabel: { shrink: true } }}
             />
-            <Field.ImageUpload name="image_url" label="Rasm" prefix="kitchens" />
-            <Field.Phone name="phone" label="Oshxona telefoni (login emas)" country="UZ" />
+            <Field.ImageUpload name="image_url" label={t('kitchenExtra.image')} prefix="kitchens" />
+            <Field.Phone name="phone" label={t('kitchenExtra.phone')} country="UZ" />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Field.TimePicker
                 name="order_cutoff_time"
-                label="Buyurtma yopilish vaqti"
+                label={t('kitchenExtra.cutoff')}
                 ampm={false}
                 views={['hours', 'minutes']}
                 format="HH:mm"
@@ -222,7 +224,7 @@ export function KitchenCreateView() {
               />
               <Field.TimePicker
                 name="delivery_start_time"
-                label="Yetkazish boshlanishi"
+                label={t('kitchenExtra.deliveryStart')}
                 ampm={false}
                 views={['hours', 'minutes']}
                 format="HH:mm"
@@ -230,14 +232,14 @@ export function KitchenCreateView() {
               />
               <Field.TimePicker
                 name="delivery_end_time"
-                label="Yetkazish tugashi"
+                label={t('kitchenExtra.deliveryEnd')}
                 ampm={false}
                 views={['hours', 'minutes']}
                 format="HH:mm"
                 sx={{ flex: 1 }}
               />
             </Stack>
-            <Field.Switch name="is_active" label="Faol" />
+            <Field.Switch name="is_active" label={t('map.active')} />
 
             <MapAddressAutocomplete
               value={addressSearch}
@@ -245,18 +247,18 @@ export function KitchenCreateView() {
               onSelect={handleAddressSelect}
               latitude={marker.latitude}
               longitude={marker.longitude}
-              label="Manzil qidirish"
+              label={t('kitchenExtra.searchAddress')}
             />
 
             <Divider>
               <Typography variant="caption" color="text.secondary">
-                Joylashuv
+                {t('kitchenExtra.location')}
               </Typography>
             </Divider>
 
             <Stack spacing={1}>
               <Typography variant="subtitle2" color="text.secondary">
-                Xaritani surib joylashuvni belgilang
+                {t('kitchenExtra.mapHint')}
               </Typography>
               <Box sx={{ position: 'relative' }}>
                 <Map
@@ -277,10 +279,8 @@ export function KitchenCreateView() {
                 {hasLocation ? (
                   <>
                     <Typography variant="caption" color="text.secondary">
-                      Lat: {lat?.toFixed(6)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Lng: {lng?.toFixed(6)}
                     </Typography>
                   </>
                 ) : (
@@ -290,7 +290,7 @@ export function KitchenCreateView() {
                   >
                     {errors.lat?.message ??
                       errors.lng?.message ??
-                      'Xaritani surib joylashuvni belgilang (majburiy)'}
+                      t('kitchenExtra.mapRequired')}
                   </Typography>
                 )}
               </Box>
@@ -303,7 +303,7 @@ export function KitchenCreateView() {
                 variant="outlined"
                 color="inherit"
               >
-                Bekor qilish
+                {t('common.cancel')}
               </Button>
               <LoadingButton
                 type="submit"
@@ -311,7 +311,7 @@ export function KitchenCreateView() {
                 loading={isSubmitting}
                 disabled={isMapMoving || isResolvingAddress}
               >
-                Adminsiz oshxona yaratish
+                {t('kitchenExtra.create')}
               </LoadingButton>
             </Stack>
           </Stack>

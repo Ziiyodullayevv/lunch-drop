@@ -20,7 +20,10 @@ export function filterOrdersForView(
     search,
   }: OrderFilterCriteria
 ) {
-  const searchTerms = search?.trim().toLowerCase().split(/\s+/).filter(Boolean) ?? [];
+  const searchQuery = search?.trim().toLowerCase() ?? '';
+  const searchTerms = searchQuery.split(/\s+/).filter(Boolean);
+  const phoneQuery = searchQuery.replace(/\D/g, '');
+  const isPhoneSearch = /^[+\d\s()-]+$/.test(searchQuery) && phoneQuery.length >= 3;
 
   return orders.filter((order) => {
     if (startDate && order.target_date < startDate) return false;
@@ -32,19 +35,18 @@ export function filterOrdersForView(
     if (searchTerms.length > 0) {
       const searchableValue = [
         order.id,
-        order.company_name,
-        order.branch_name,
-        order.kitchen_name,
+        `#${order.id}`,
         order.employee_name,
-        order.meal_name,
-        order.target_date,
-        order.status,
+        order.employee_phone,
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
+      const normalizedPhone = order.employee_phone?.replace(/\D/g, '') ?? '';
+      const matchesText = searchTerms.every((term) => searchableValue.includes(term));
+      const matchesPhone = isPhoneSearch && normalizedPhone.includes(phoneQuery);
 
-      if (!searchTerms.every((term) => searchableValue.includes(term))) return false;
+      if (!matchesText && !matchesPhone) return false;
     }
 
     return true;

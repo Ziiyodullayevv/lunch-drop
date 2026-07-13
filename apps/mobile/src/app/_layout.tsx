@@ -12,7 +12,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef } from "react";
-import { Appearance, View } from "react-native";
+import { Appearance, Platform, View } from "react-native";
 
 import { AppProviders } from "@/components/app-providers";
 Appearance.setColorScheme("light");
@@ -75,12 +75,16 @@ export default function RootLayout() {
             <Stack.Screen name="my-orders" />
             <Stack.Screen name="account" />
             <Stack.Screen name="edit-profile" />
+            <Stack.Screen name="expenses" />
             <Stack.Screen name="checkout" />
             <Stack.Screen
               name="food/[id]"
               options={{
-                presentation: "modal",
+                presentation: Platform.OS === "android" ? "transparentModal" : "modal",
                 animation: "slide_from_bottom",
+                contentStyle: Platform.OS === "android"
+                  ? { backgroundColor: "rgba(0,0,0,0.32)" }
+                  : undefined,
               }}
             />
           </Stack>

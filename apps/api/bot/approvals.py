@@ -95,93 +95,96 @@ async def link_telegram_account(
         raise TelegramApprovalError("Telefon raqami noto'g'ri")
 
     async with AsyncSessionLocal() as session:
-        user = (
-            await session.execute(
-                select(User).where(
-                    or_(User.phone == normalized, User.phone == normalized.lstrip("+")),
-                    User.deleted_at.is_(None),
+        profiles = list(
+            (
+                await session.execute(
+                    select(User).where(
+                        or_(
+                            User.phone == normalized,
+                            User.phone == normalized.lstrip("+"),
+                        ),
+                        User.deleted_at.is_(None),
+                    )
                 )
-            )
-        ).scalar_one_or_none()
-        if user is None:
+            ).scalars().all()
+        )
+        if not profiles:
             raise TelegramApprovalError(
-                "Bu telefon raqamiga bog'langan LunchDrop admin hisobi topilmadi"
+                "Bu telefon raqamiga bog'langan LunchDrop hisobi topilmadi"
             )
-        if user.role not in (
-            UserRole.SUPER_ADMIN,
-            UserRole.COMPANY_ADMIN,
-            UserRole.KITCHEN_ADMIN,
-            UserRole.EMPLOYEE,
-        ):
-            raise TelegramApprovalError(
-                "Bu rol uchun Telegram bot funksiyalari mavjud emas"
+        available = [
+            profile
+            for profile in profiles
+            if profile.is_active
+            and (
+                profile.role == UserRole.SUPER_ADMIN
+                or profile.account_status == AccountStatus.APPROVED
             )
-        if not user.is_active:
-            raise TelegramApprovalError("LunchDrop hisobingiz faol emas")
-        if user.role in (
-            UserRole.COMPANY_ADMIN,
-            UserRole.KITCHEN_ADMIN,
-            UserRole.EMPLOYEE,
-        ) and (user.account_status != AccountStatus.APPROVED):
-            label = {
-                UserRole.COMPANY_ADMIN: "Company Admin",
-                UserRole.KITCHEN_ADMIN: "Kitchen Admin",
-                UserRole.EMPLOYEE: "Xodim",
-            }[user.role]
-            raise TelegramApprovalError(f"{label} hisobi hali tasdiqlanmagan")
+        ]
+        if not available:
+            raise TelegramApprovalError("Faol yoki tasdiqlangan rol profilingiz yo'q")
 
-        by_telegram = (
-            await session.execute(
-                select(TelegramAccount).where(
-                    TelegramAccount.telegram_user_id == telegram_user_id
+        existing = list(
+            (
+                await session.execute(
+                    select(TelegramAccount).where(
+                        TelegramAccount.user_id.in_(
+                            [profile.id for profile in profiles]
+                        )
+                    )
                 )
-            )
-        ).scalar_one_or_none()
-        by_user = (
-            await session.execute(
-                select(TelegramAccount).where(TelegramAccount.user_id == user.id)
-            )
-        ).scalar_one_or_none()
+            ).scalars().all()
+        )
+        if any(binding.telegram_user_id != telegram_user_id for binding in existing):
+            raise TelegramApprovalError("Rol profillaridan biri boshqa Telegram'ga bog'langan")
 
-        if by_telegram is not None and by_telegram.user_id != user.id:
-            raise TelegramApprovalError(
-                "Bu Telegram akkaunti boshqa LunchDrop hisobiga bog'langan"
-            )
-        if by_user is not None and by_user.telegram_user_id != telegram_user_id:
-            raise TelegramApprovalError(
-                "Bu LunchDrop hisobi boshqa Telegram akkauntiga bog'langan"
-            )
-
-        binding = by_telegram or by_user
-        if binding is None:
-            binding = TelegramAccount(
-                user_id=user.id,
-                telegram_user_id=telegram_user_id,
-                chat_id=chat_id,
-                username=username,
-                is_active=True,
-            )
-            session.add(binding)
-        else:
+        bindings_by_user = {binding.user_id: binding for binding in existing}
+        available_ids = {profile.id for profile in available}
+        selected_user_id = next(
+            (
+                binding.user_id
+                for binding in existing
+                if binding.is_selected and binding.user_id in available_ids
+            ),
+            available[0].id,
+        )
+        for profile in available:
+            binding = bindings_by_user.get(profile.id)
+            if binding is None:
+                binding = TelegramAccount(
+                    user_id=profile.id,
+                    telegram_user_id=telegram_user_id,
+                    chat_id=chat_id,
+                    username=username,
+                    is_active=True,
+                    is_selected=profile.id == selected_user_id,
+                )
+                session.add(binding)
+            else:
+                binding.is_selected = profile.id == selected_user_id
+                binding.is_active = True
             binding.chat_id = chat_id
             binding.username = username
-            binding.is_active = True
         await session.commit()
-        return user
+        return next(profile for profile in available if profile.id == selected_user_id)
 
 
 async def unlink_telegram_account(telegram_user_id: int) -> bool:
     async with AsyncSessionLocal() as session:
-        binding = (
-            await session.execute(
-                select(TelegramAccount).where(
-                    TelegramAccount.telegram_user_id == telegram_user_id
+        bindings = list(
+            (
+                await session.execute(
+                    select(TelegramAccount).where(
+                        TelegramAccount.telegram_user_id == telegram_user_id
+                    )
                 )
-            )
-        ).scalar_one_or_none()
-        if binding is None:
+            ).scalars().all()
+        )
+        if not bindings:
             return False
-        binding.is_active = False
+        for binding in bindings:
+            binding.is_active = False
+            binding.is_selected = False
         await session.commit()
         return True
 
@@ -198,12 +201,59 @@ async def get_linked_user(telegram_user_id: int) -> User:
                     User.is_active.is_(True),
                     User.deleted_at.is_(None),
                 )
+                .order_by(TelegramAccount.is_selected.desc(), User.created_at)
+                .limit(1)
             )
         ).scalar_one_or_none()
         if user is None:
             raise TelegramApprovalError(
                 "Avval /start orqali telefon raqamingizni bog'lang"
             )
+        return user
+
+
+async def telegram_profiles(telegram_user_id: int) -> list[User]:
+    async with AsyncSessionLocal() as session:
+        return list(
+            (
+                await session.execute(
+                    select(User)
+                    .join(TelegramAccount, TelegramAccount.user_id == User.id)
+                    .where(
+                        TelegramAccount.telegram_user_id == telegram_user_id,
+                        TelegramAccount.is_active.is_(True),
+                        User.is_active.is_(True),
+                        User.deleted_at.is_(None),
+                    )
+                    .order_by(User.created_at)
+                )
+            ).scalars().all()
+        )
+
+
+async def select_telegram_profile(
+    telegram_user_id: int, profile_id: str
+) -> User:
+    async with AsyncSessionLocal() as session:
+        bindings = list(
+            (
+                await session.execute(
+                    select(TelegramAccount).where(
+                        TelegramAccount.telegram_user_id == telegram_user_id,
+                        TelegramAccount.is_active.is_(True),
+                    )
+                )
+            ).scalars().all()
+        )
+        selected = next((item for item in bindings if item.user_id == profile_id), None)
+        if selected is None:
+            raise TelegramApprovalError("Rol profili topilmadi")
+        for binding in bindings:
+            binding.is_selected = binding.id == selected.id
+        user = await session.get(User, profile_id)
+        if user is None or not user.is_active or user.deleted_at is not None:
+            raise TelegramApprovalError("Rol profili faol emas")
+        await session.commit()
         return user
 
 

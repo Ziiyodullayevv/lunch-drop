@@ -7,6 +7,7 @@ import axiosInstance, { endpoints } from 'src/lib/axios';
 import { toast } from 'src/components/snackbar';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { fetchKitchenConnectionRequests, approveKitchenConnection, rejectKitchenConnection } from 'src/lib/api/kitchen-connections';
 
 // ----------------------------------------------------------------------
 
@@ -58,6 +59,7 @@ export function useNotifications() {
   const { user } = useAuthContext();
   const isSuperAdmin   = user?.role === 'super_admin';
   const isCompanyAdmin = user?.role === 'company_admin';
+  const isKitchenAdmin = user?.role === 'kitchen_admin';
 
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount]     = useState(0);
@@ -117,7 +119,7 @@ export function useNotifications() {
   // ── fetch ─────────────────────────────────────────────────────────────
 
   const fetchNotifications = useCallback(async () => {
-    if (!isSuperAdmin && !isCompanyAdmin) {
+    if (!isSuperAdmin && !isCompanyAdmin && !isKitchenAdmin) {
       setLoading(false);
       return;
     }
@@ -134,7 +136,7 @@ export function useNotifications() {
         ];
         setNotifications(merged);
         setUnreadCount(merged.filter((n) => !n.is_read).length);
-      } else {
+      } else if (isCompanyAdmin) {
         const res  = await axiosInstance.get<PendingEmployeeRaw[]>(endpoints.company.pendingEmployees);
         const built = buildEmployeeNotifications(res.data ?? []);
         const merged = [
@@ -145,13 +147,24 @@ export function useNotifications() {
         ];
         setNotifications(merged);
         setUnreadCount(merged.filter((n) => !n.is_read).length);
+      } else {
+        const requests = await fetchKitchenConnectionRequests();
+        const built = requests.filter((r) => r.status === 'pending').map((r) => ({
+          id: r.id, type: 'kitchen_connection_pending',
+          title: `${r.company_name} — ${r.branch_name}`, subject: r.company_name,
+          body: r.branch_name, entity_id: r.id, is_read: readIds.current.has(r.id),
+          created_at: r.created_at, action_status: 'pending' as const,
+          entity_name: r.company_name,
+        }));
+        setNotifications(built);
+        setUnreadCount(built.filter((n) => !n.is_read).length);
       }
     } catch {
       // jim turish
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, isCompanyAdmin, buildAdminNotifications, buildEmployeeNotifications]);
+  }, [isSuperAdmin, isCompanyAdmin, isKitchenAdmin, buildAdminNotifications, buildEmployeeNotifications]);
 
   // ── markRead ──────────────────────────────────────────────────────────
 
@@ -253,7 +266,7 @@ export function useNotifications() {
 
   useEffect(() => {
     fetchNotifications();
-    if (!isSuperAdmin && !isCompanyAdmin) return undefined;
+    if (!isSuperAdmin && !isCompanyAdmin && !isKitchenAdmin) return undefined;
     const timer = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => clearInterval(timer);
   }, [fetchNotifications, isSuperAdmin, isCompanyAdmin]);
@@ -261,13 +274,13 @@ export function useNotifications() {
   // ── unified approve/decline (caller'ga roli yashirilgan) ──────────────
 
   const handleApprove = useCallback(
-    (id: string) => (isSuperAdmin ? approve(id) : approveEmployee(id)),
-    [isSuperAdmin, approve, approveEmployee]
+    (id: string) => (isSuperAdmin ? approve(id) : isKitchenAdmin ? approveKitchenConnection(id).then(() => markAsRead(id)) : approveEmployee(id)),
+    [isSuperAdmin, isKitchenAdmin, approve, approveEmployee, markAsRead]
   );
 
   const handleDecline = useCallback(
-    (id: string) => (isSuperAdmin ? decline(id) : declineEmployee(id)),
-    [isSuperAdmin, decline, declineEmployee]
+    (id: string) => (isSuperAdmin ? decline(id) : isKitchenAdmin ? rejectKitchenConnection(id).then(() => markAsRead(id)) : declineEmployee(id)),
+    [isSuperAdmin, isKitchenAdmin, decline, declineEmployee, markAsRead]
   );
 
   return {

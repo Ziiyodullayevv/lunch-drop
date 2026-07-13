@@ -22,6 +22,7 @@ from app.schemas.auth import (
     RefreshRequest,
     RegisterResponse,
     SendOtpRequest,
+    SwitchProfileRequest,
     TokenResponse,
     UserRead,
     VerifyOtpRequest,
@@ -71,7 +72,12 @@ async def admin_register(
 async def admin_login(
     body: LoginRequest, session: AsyncSession = Depends(get_session)
 ) -> TokenResponse:
-    return await AuthService(session).login(body.phone, body.password)
+    return await AuthService(session).login(
+        body.phone,
+        body.password,
+        role=body.role,
+        profile_id=body.profile_id,
+    )
 
 
 # --- Employee ---
@@ -101,8 +107,28 @@ async def logout(
 
 
 @router.get("/me", response_model=MeResponse, tags=["auth"], summary="Joriy foydalanuvchi")
-async def me(current_user: User = Depends(get_current_user)) -> MeResponse:
-    return MeResponse(user=UserRead.model_validate(current_user))
+async def me(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> MeResponse:
+    return MeResponse(
+        user=UserRead.model_validate(current_user),
+        profiles=await AuthService(session).list_profiles(current_user),
+    )
+
+
+@router.post(
+    "/switch-profile",
+    response_model=TokenResponse,
+    tags=["auth"],
+    summary="Faol rol profilini almashtirish",
+)
+async def switch_profile(
+    body: SwitchProfileRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> TokenResponse:
+    return await AuthService(session).switch_profile(current_user, body.profile_id)
 
 
 @router.patch(
@@ -122,4 +148,7 @@ async def update_me(
     if data.get("password"):
         current_user.password_hash = hash_password(data["password"])
     await session.commit()
-    return MeResponse(user=UserRead.model_validate(current_user))
+    return MeResponse(
+        user=UserRead.model_validate(current_user),
+        profiles=await AuthService(session).list_profiles(current_user),
+    )

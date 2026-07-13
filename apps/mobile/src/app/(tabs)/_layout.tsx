@@ -3,7 +3,7 @@ import { Redirect, Tabs, router } from 'expo-router';
 import { Image, Platform, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 import { ActiveOrderBar } from '@/components/order/active-order-bar';
-import { Colors, SECONDARY } from '@/constants/theme';
+import { Colors, DANGER } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useActiveOrder } from '@/hooks/use-orders';
 import { useCartStore } from '@/stores/cart-store';
@@ -33,7 +33,7 @@ function OrdersTabIcon({ color }: { color: string }) {
             width: 9,
             height: 9,
             borderRadius: 5,
-            backgroundColor: SECONDARY,
+            backgroundColor: DANGER,
           }} />
         </View>
       )}
@@ -98,7 +98,7 @@ export default function TabsLayout() {
     return <Redirect href="/login" />;
   }
 
-  const activeColor = isDark ? '#FFFFFF' : '#0A0A0A';
+  const activeColor = isDark ? '#FFFFFF' : '#1C252E';
   const inactiveColor = isDark ? '#5C5F66' : '#B4B7BD';
 
   return (

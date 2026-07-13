@@ -104,6 +104,13 @@ export type CurrentUser = {
   kitchenNames?: string[];
   balance: number;
   branches: BranchInfo[];
+  profiles?: {
+    id: string;
+    role: UserRole;
+    name?: string;
+    companyId?: string;
+    kitchenId?: string;
+  }[];
 };
 
 export type TokenPair = {

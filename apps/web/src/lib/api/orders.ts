@@ -19,18 +19,22 @@ export type OrderRead = {
   created_at: string;
   // Enriched fields — backend should include these in the response
   employee_name: string | null;
+  employee_phone: string | null;
+  employee_avatar_url: string | null;
   branch_id: string | null;
   branch_name: string | null;
   company_id: string | null;
   company_name: string | null;
   kitchen_name: string | null;
   meal_name: string | null;
+  meal_image_url: string | null;
   items?: {
     meal_id: string;
     meal_name: string | null;
     meal_image_url: string | null;
     quantity: number;
     historical_price: string;
+    line_total: string;
   }[];
 };
 
@@ -121,6 +125,24 @@ export type InvoiceRead = {
   employee_summaries?: EmployeeOrderSummary[];
 };
 
+export type InvoiceCustomerRead = {
+  company_id: string;
+  company_name: string;
+  employee_id: string;
+  employee_name: string | null;
+  employee_phone: string;
+  employee_avatar_url: string | null;
+  branch_names: string[];
+  period_month: string;
+  order_count: number;
+  total_amount: string;
+  status: InvoiceStatus;
+};
+
+export type InvoiceCustomerDetailRead = InvoiceCustomerRead & {
+  orders: OrderRead[];
+};
+
 export type AccountStatus = 'pending_approval' | 'approved' | 'rejected' | 'inactive';
 
 export type PendingEmployeeRead = {
@@ -191,6 +213,40 @@ export function updateOrderStatus(id: string, status: OrderStatus) {
     .then((r) => r.data);
 }
 
+export function updateSuperAdminOrderStatus(id: string, status: OrderStatus) {
+  return axiosInstance
+    .patch<OrderRead>(endpoints.superAdmin.orderStatus(id), { status })
+    .then((r) => r.data);
+}
+
+export function updateKitchenBranchOrderStatus(
+  branchId: string,
+  targetDate: string,
+  status: OrderStatus
+) {
+  return axiosInstance
+    .patch<{ updated: number }>(endpoints.kitchen.branchOrderStatus(branchId), {
+      target_date: targetDate,
+      status,
+    })
+    .then((r) => r.data);
+}
+
+export function updateSuperAdminBranchOrderStatus(
+  branchId: string,
+  targetDate: string,
+  status: OrderStatus,
+  kitchenId?: string
+) {
+  return axiosInstance
+    .patch<{ updated: number }>(
+      endpoints.superAdmin.branchOrderStatus(branchId),
+      { target_date: targetDate, status },
+      { params: kitchenId ? { kitchen_id: kitchenId } : undefined }
+    )
+    .then((r) => r.data);
+}
+
 // ----------------------------------------------------------------------
 
 export function fetchPendingEmployees() {
@@ -213,9 +269,12 @@ export function bulkConfirmOrders() {
     .then((r) => r.data);
 }
 
-export function bulkConfirmBranchOrders(branchId: string, targetDate?: string) {
+export function bulkConfirmBranchOrders(
+  branchId: string,
+  params?: { target_date?: string; period_start?: string; period_end?: string }
+) {
   return axiosInstance
-    .patch<{ confirmed: number }>(endpoints.company.bulkConfirmBranch(branchId), undefined, { params: targetDate ? { target_date: targetDate } : undefined })
+    .patch<{ confirmed: number }>(endpoints.company.bulkConfirmBranch(branchId), undefined, { params })
     .then((r) => r.data);
 }
 
@@ -225,6 +284,49 @@ export function fetchOrderReport(periodStart: string, periodEnd: string) {
 
 export function fetchInvoices() {
   return fetcher<InvoiceRead[]>(endpoints.company.invoices);
+}
+
+export function fetchInvoiceCustomers(
+  month: string,
+  scope: 'company' | 'super_admin' = 'company',
+  companyId?: string
+) {
+  return fetcher<InvoiceCustomerRead[]>([
+    scope === 'super_admin'
+      ? endpoints.superAdmin.invoiceCustomers
+      : endpoints.company.invoiceCustomers,
+    { params: { month, company_id: scope === 'super_admin' ? companyId : undefined } },
+  ]);
+}
+
+export function fetchInvoiceCustomer(
+  employeeId: string,
+  month: string,
+  scope: 'company' | 'super_admin' = 'company'
+) {
+  return fetcher<InvoiceCustomerDetailRead>([
+    scope === 'super_admin'
+      ? endpoints.superAdmin.invoiceCustomer(employeeId)
+      : endpoints.company.invoiceCustomer(employeeId),
+    { params: { month } },
+  ]);
+}
+
+export function updateInvoiceCustomerStatus(
+  employeeId: string,
+  month: string,
+  status: InvoiceStatus,
+  scope: 'company' | 'super_admin' = 'company'
+) {
+  return axiosInstance
+    .patch<InvoiceCustomerRead>(
+      scope === 'super_admin'
+        ? endpoints.superAdmin.invoiceCustomerStatus(employeeId)
+        : endpoints.company.invoiceCustomerStatus(employeeId),
+      { status },
+      { params: { month } }
+    )
+    .then((response) => response.data);
 }
 
 // ----------------------------------------------------------------------

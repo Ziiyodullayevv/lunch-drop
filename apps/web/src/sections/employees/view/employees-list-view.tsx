@@ -13,7 +13,6 @@ import Table from '@mui/material/Table';
 import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import MenuList from '@mui/material/MenuList';
 import TableRow from '@mui/material/TableRow';
@@ -27,7 +26,6 @@ import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
-import { RouterLink } from 'src/routes/components';
 
 import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -233,16 +231,6 @@ export function EmployeesListView() {
           { name: t('navigation.dashboard'), href: paths.dashboard.root },
           { name: t('navigation.employees') },
         ]}
-        action={
-          <Button
-            component={RouterLink}
-            href={paths.dashboard.employee.new}
-            variant="contained"
-            startIcon={<Iconify icon="mingcute:add-line" />}
-          >
-            {t('employee.add')}
-          </Button>
-        }
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 

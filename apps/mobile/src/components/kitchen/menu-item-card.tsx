@@ -10,7 +10,7 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
   const cart = useCart();
   const canOrderForDate = useTodayOrderGuard();
   const handleAdd = () => {
-    if (!canOrderForDate(item.targetDate)) return;
+    if (!canOrderForDate(item.targetDate, item.kitchenOrderCutoffTime)) return;
     cart.addItem(item, item.kitchenName);
   };
 

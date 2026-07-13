@@ -1,4 +1,5 @@
 import type { IDateValue, IAddressItem, IDatePickerControl } from './common';
+import type { BranchOrderSummary, EmployeeOrderSummary } from 'src/lib/api/orders';
 
 // ----------------------------------------------------------------------
 
@@ -36,4 +37,8 @@ export type IInvoice = {
   invoiceTo: IAddressItem;
   invoiceFrom: IAddressItem;
   branchSummary?: string;
+  companyName?: string;
+  createdAt?: IDateValue;
+  branchSummaries?: BranchOrderSummary[];
+  employeeSummaries?: EmployeeOrderSummary[];
 };

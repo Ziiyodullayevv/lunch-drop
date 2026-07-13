@@ -1,5 +1,8 @@
 import axiosInstance, { fetcher, endpoints } from 'src/lib/axios';
 
+import { setSession } from 'src/auth/context/jwt/utils';
+import { JWT_REFRESH_KEY } from 'src/auth/context/jwt/constant';
+
 export type AccountRole = 'super_admin' | 'company_admin' | 'kitchen_admin' | 'employee';
 
 export type AccountUser = {
@@ -10,6 +13,15 @@ export type AccountUser = {
   is_active?: boolean;
   account_status?: string;
   avatar_url?: string | null;
+  profiles?: AccountRoleProfile[];
+};
+
+export type AccountRoleProfile = {
+  id: string;
+  role: AccountRole;
+  name?: string | null;
+  company_id?: string | null;
+  kitchen_id?: string | null;
 };
 
 export type AccountProfile = {
@@ -54,4 +66,13 @@ export async function updateAccountProfile(
 ): Promise<AccountProfile> {
   const { data } = await axiosInstance.patch<MeResponse>(endpoints.auth.me, profile);
   return toProfile(unwrapUser(data));
+}
+
+export async function switchAccountProfile(profileId: string): Promise<void> {
+  const { data } = await axiosInstance.post<{
+    access_token: string;
+    refresh_token?: string;
+  }>(endpoints.auth.switchProfile, { profile_id: profileId });
+  if (data.refresh_token) sessionStorage.setItem(JWT_REFRESH_KEY, data.refresh_token);
+  await setSession(data.access_token);
 }

@@ -1,11 +1,11 @@
 'use client';
 
 import type { SelectChangeEvent } from '@mui/material/Select';
-import type { OrderStatus } from 'src/lib/api/orders';
+import type { OrderRead, OrderStatus } from 'src/lib/api/orders';
 
 import dayjs from 'dayjs';
-import { useState } from 'react';
-import { useDebounce } from 'minimal-shared/hooks';
+import { useMemo, Fragment, useState } from 'react';
+import { usePopover, useDebounce } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -15,7 +15,9 @@ import Stack from '@mui/material/Stack';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Select from '@mui/material/Select';
+import Collapse from '@mui/material/Collapse';
 import MenuItem from '@mui/material/MenuItem';
+import MenuList from '@mui/material/MenuList';
 import TableRow from '@mui/material/TableRow';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -34,12 +36,15 @@ import { RouterLink } from 'src/routes/components';
 import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
+import { useTranslate } from 'src/locales';
 import { orderItemsLabel } from 'src/lib/api/orders';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { emptyOrderAnalytics } from 'src/lib/order-analytics';
 
+import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import { CustomPopover } from 'src/components/custom-popover';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
   useTable,
@@ -54,7 +59,10 @@ import { useCompanies } from 'src/sections/company/hooks/use-companies';
 
 import { OrderAnalytics } from './order-analytics';
 import { OrderStatusTabs } from './order-status-tabs';
-import { useSuperAdminOrders } from '../hooks/use-orders';
+import {
+  useSuperAdminOrders,
+  useUpdateSuperAdminBranchOrderStatus,
+} from '../hooks/use-orders';
 
 // ----------------------------------------------------------------------
 
@@ -83,20 +91,87 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled:  'Bekor',
 };
 
+type BranchOrderGroup = {
+  id: string;
+  branchId: string;
+  branchName: string;
+  companyName: string;
+  targetDate: string;
+  kitchenNames: string[];
+  status: OrderStatus | 'mixed';
+  totalAmount: number;
+  orders: OrderRead[];
+};
+
+function BranchStatusDropdown({
+  status,
+  loading,
+  onChange,
+}: {
+  status: OrderStatus | 'mixed';
+  loading: boolean;
+  onChange: (status: OrderStatus) => void;
+}) {
+  const menu = usePopover();
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        color="inherit"
+        disabled={loading}
+        endIcon={<Iconify icon="eva:arrow-ios-downward-fill" />}
+        onClick={menu.onOpen}
+        sx={{ minWidth: 170, justifyContent: 'space-between' }}
+      >
+        {status === 'mixed' ? 'Aralash holat' : STATUS_LABEL[status]}
+      </Button>
+      <CustomPopover
+        open={menu.open}
+        anchorEl={menu.anchorEl}
+        onClose={menu.onClose}
+        slotProps={{ arrow: { placement: 'right-top' } }}
+      >
+        <MenuList sx={{ minWidth: 190 }}>
+          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            <MenuItem
+              key={value}
+              selected={value === status}
+              onClick={() => {
+                onChange(value as OrderStatus);
+                menu.onClose();
+              }}
+            >
+              <Chip
+                label={label}
+                color={STATUS_COLOR[value] ?? 'default'}
+                size="small"
+                variant="soft"
+              />
+            </MenuItem>
+          ))}
+        </MenuList>
+      </CustomPopover>
+    </>
+  );
+}
+
 const TABLE_HEAD = [
-  { id: 'company',  label: 'Kompaniya / filial', width: 180 },
-  { id: 'kitchen',  label: 'Oshxona',            width: 140 },
-  { id: 'employee', label: 'Xodim',               width: 150 },
-  { id: 'meal',     label: 'Taom',                width: 100 },
-  { id: 'date',     label: 'Sana',                width: 110 },
-  { id: 'price',    label: 'Narx',                width: 120 },
-  { id: 'status',   label: 'Holat',               width: 110 },
+  { id: 'company', label: 'companyBranch', width: 180 },
+  { id: 'kitchen', label: 'kitchen', width: 140 },
+  { id: 'employee', label: 'employee', width: 150 },
+  { id: 'meal', label: 'meal', width: 100 },
+  { id: 'date', label: 'date', width: 110 },
+  { id: 'price', label: 'price', width: 120 },
+  { id: 'status', label: 'status', width: 180 },
   { id: 'actions',  label: '',                    width: 56 },
 ];
 
 // ----------------------------------------------------------------------
 
 export function SuperAdminOrdersView() {
+  const { t } = useTranslate('common');
   const table = useTable({ defaultRowsPerPage: 10 });
   const [tabStatus, setTabStatus] = useState<OrderStatus | 'all'>('all');
   const [companyFilter, setCompanyFilter] = useState('');
@@ -105,6 +180,7 @@ export function SuperAdminOrdersView() {
   const [searchText, setSearchText] = useState('');
   const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
   const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(dayjs());
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const debouncedSearch = useDebounce(searchText, 300);
 
   const { data: companiesData, isLoading: isCompaniesLoading } = useCompanies({ limit: 100 });
@@ -130,7 +206,8 @@ export function SuperAdminOrdersView() {
   };
 
   const { data, isLoading, isError, error } = useSuperAdminOrders(queryParams);
-  const orders = data?.items ?? [];
+  const updateBranchStatus = useUpdateSuperAdminBranchOrderStatus();
+  const orders = useMemo(() => data?.items ?? [], [data?.items]);
   const total = data?.total ?? 0;
   const statusCounts = data?.status_counts ?? {
     all: tabStatus === 'all' ? total : 0,
@@ -140,21 +217,50 @@ export function SuperAdminOrdersView() {
     delivered: tabStatus === 'delivered' ? total : 0,
     cancelled: tabStatus === 'cancelled' ? total : 0,
   };
+  const groupedOrders = useMemo(() => {
+    const groups = new Map<string, BranchOrderGroup>();
+    orders.forEach((order) => {
+      const branchId = order.branch_id ?? order.company_id ?? 'unknown';
+      const key = `${branchId}:${order.target_date}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.orders.push(order);
+        existing.totalAmount += Number(order.historical_price);
+        if (order.kitchen_name && !existing.kitchenNames.includes(order.kitchen_name)) {
+          existing.kitchenNames.push(order.kitchen_name);
+        }
+        if (existing.status !== order.status) existing.status = 'mixed';
+        return;
+      }
+      groups.set(key, {
+        id: key,
+        branchId,
+        branchName: order.branch_name ?? '—',
+        companyName: order.company_name ?? '—',
+        targetDate: order.target_date,
+        kitchenNames: order.kitchen_name ? [order.kitchen_name] : [],
+        status: order.status,
+        totalAmount: Number(order.historical_price),
+        orders: [order],
+      });
+    });
+    return Array.from(groups.values());
+  }, [orders]);
 
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Buyurtmalar"
+        heading={t('order.title')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Buyurtmalar' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('order.title') },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error instanceof Error ? error.message : 'Buyurtmalarni yuklashda xatolik'}
+          {error instanceof Error ? error.message : t('order.loadError')}
         </Alert>
       )}
 
@@ -163,7 +269,10 @@ export function SuperAdminOrdersView() {
       <Card>
         <OrderStatusTabs
           value={tabStatus}
-          tabs={STATUS_TABS}
+          tabs={STATUS_TABS.map((tab) => ({
+            ...tab,
+            label: t(tab.value === 'all' ? 'order.status.all' : `orderExtra.kitchenStatus.${tab.value === 'on_the_way' ? 'onTheWay' : tab.value}`),
+          }))}
           counts={statusCounts}
           onChange={(value) => {
             setTabStatus(value as OrderStatus | 'all');
@@ -185,9 +294,9 @@ export function SuperAdminOrdersView() {
           }}
         >
           <FormControl sx={{ width: 1 }}>
-            <InputLabel>Kompaniya</InputLabel>
+            <InputLabel>{t('map.company')}</InputLabel>
             <Select
-              label="Kompaniya"
+              label={t('map.company')}
               value={companyFilter}
               disabled={isCompaniesLoading}
               onChange={(event: SelectChangeEvent<string>) => {
@@ -196,7 +305,7 @@ export function SuperAdminOrdersView() {
                 table.onResetPage();
               }}
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {companies.map((company) => (
                 <MenuItem key={company.id} value={company.id}>
                   {company.name}
@@ -206,9 +315,9 @@ export function SuperAdminOrdersView() {
           </FormControl>
 
           <FormControl sx={{ width: 1 }}>
-            <InputLabel>Filial</InputLabel>
+            <InputLabel>{t('map.branch')}</InputLabel>
             <Select
-              label="Filial"
+              label={t('map.branch')}
               value={branchFilter}
               disabled={isBranchesLoading}
               onChange={(event: SelectChangeEvent<string>) => {
@@ -216,7 +325,7 @@ export function SuperAdminOrdersView() {
                 table.onResetPage();
               }}
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {branches.map((branch) => (
                 <MenuItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -226,9 +335,9 @@ export function SuperAdminOrdersView() {
           </FormControl>
 
           <FormControl sx={{ width: 1 }}>
-            <InputLabel>Oshxona</InputLabel>
+            <InputLabel>{t('map.kitchen')}</InputLabel>
             <Select
-              label="Oshxona"
+              label={t('map.kitchen')}
               value={kitchenFilter}
               disabled={isKitchensLoading}
               onChange={(event: SelectChangeEvent<string>) => {
@@ -236,7 +345,7 @@ export function SuperAdminOrdersView() {
                 table.onResetPage();
               }}
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {kitchens.map((kitchen) => (
                 <MenuItem key={kitchen.id} value={kitchen.id}>
                   {kitchen.name}
@@ -246,7 +355,7 @@ export function SuperAdminOrdersView() {
           </FormControl>
 
           <DatePicker
-            label="Boshlanish sanasi"
+            label={t('orderExtra.startDate')}
             value={startDate}
             maxDate={endDate ?? dayjs()}
             onChange={(value) => {
@@ -258,7 +367,7 @@ export function SuperAdminOrdersView() {
           />
 
           <DatePicker
-            label="Tugash sanasi"
+            label={t('orderExtra.endDate')}
             value={endDate}
             minDate={startDate ?? undefined}
             maxDate={dayjs()}
@@ -276,7 +385,7 @@ export function SuperAdminOrdersView() {
               setSearchText(event.target.value);
               table.onResetPage();
             }}
-            placeholder="Kompaniya, filial, oshxona, xodim yoki taom bo'yicha..."
+            placeholder={t('orderExtra.kitchenSearch')}
             slotProps={{
               input: {
                 startAdornment: (
@@ -323,7 +432,7 @@ export function SuperAdminOrdersView() {
                 table.onResetPage();
               }}
             >
-              Tozalash
+            {t('common.clear')}
             </Button>
           )}
         </Box>
@@ -333,9 +442,8 @@ export function SuperAdminOrdersView() {
             <TableHeadCustom
               order={table.order}
               orderBy={table.orderBy}
-              headCells={TABLE_HEAD}
-              rowCount={orders.length}
-              numSelected={table.selected.length}
+              headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: cell.label ? t(`orderSuper.${cell.label}`) : '' }))}
+              rowCount={groupedOrders.length}
               onSort={table.onSort}
             />
 
@@ -347,61 +455,114 @@ export function SuperAdminOrdersView() {
                   </TableCell>
                 </TableRow>
               ) : (
-                orders.map((order) => (
-                  <TableRow key={order.id} hover>
-                    <TableCell>
-                      <Stack spacing={0.25}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {order.company_name ?? '—'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {order.branch_name ?? '—'}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2">{order.kitchen_name ?? '—'}</Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2">{order.employee_name ?? '—'}</Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2">{orderItemsLabel(order)}</Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2">{fDate(order.target_date)}</Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {fCurrency(Number(order.historical_price))}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell>
-                      <Chip
-                        label={STATUS_LABEL[order.status] ?? order.status}
-                        color={STATUS_COLOR[order.status] ?? 'default'}
-                        size="small"
-                        variant="soft"
-                      />
-                    </TableCell>
-
-                    <TableCell align="right">
-                      <IconButton
-                        component={RouterLink}
-                        href={paths.dashboard.order.details(order.id)}
-                        aria-label="Buyurtmani ko'rish"
-                      >
-                        <Iconify icon="solar:eye-bold" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
+                groupedOrders.map((group) => {
+                  const expanded = expandedGroupId === group.id;
+                  return (
+                    <Fragment key={group.id}>
+                      <TableRow hover sx={{ bgcolor: 'background.neutral' }}>
+                        <TableCell>
+                          <Stack spacing={0.25}>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              {group.companyName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {group.branchName}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {group.kitchenNames.join(', ') || '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="subtitle2">{group.orders.length} ta buyurtma</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {group.orders.reduce(
+                              (sum, order) => sum + (order.items?.reduce((count, item) => count + item.quantity, 0) ?? 1),
+                              0
+                            )} ta taom
+                          </Typography>
+                        </TableCell>
+                        <TableCell><Typography variant="body2">{fDate(group.targetDate)}</Typography></TableCell>
+                        <TableCell>
+                          <Typography variant="subtitle2">{fCurrency(group.totalAmount)}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <BranchStatusDropdown
+                            status={group.status}
+                            loading={updateBranchStatus.isPending}
+                            onChange={(status) => {
+                              updateBranchStatus.mutate(
+                                {
+                                  branchId: group.branchId,
+                                  targetDate: group.targetDate,
+                                  status,
+                                },
+                                {
+                                  onSuccess: ({ updated }) => toast.success(
+                                    `${group.branchName}: ${updated} ta buyurtma yangilandi`
+                                  ),
+                                  onError: (mutationError) => toast.error(
+                                    mutationError instanceof Error
+                                      ? mutationError.message
+                                      : 'Xatolik yuz berdi'
+                                  ),
+                                }
+                              );
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            aria-label="Filial buyurtmalarini ochish"
+                            onClick={() => setExpandedGroupId(expanded ? null : group.id)}
+                          >
+                            <Iconify icon={expanded ? 'eva:arrow-ios-upward-fill' : 'eva:arrow-ios-downward-fill'} />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell colSpan={TABLE_HEAD.length} sx={{ p: 0, border: 0 }}>
+                          <Collapse in={expanded} timeout="auto" unmountOnExit>
+                            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 900 }}>
+                              <TableBody>
+                                {group.orders.map((order) => (
+                                  <TableRow key={order.id} hover>
+                                    <TableCell>{order.employee_name ?? '—'}</TableCell>
+                                    <TableCell>{order.kitchen_name ?? '—'}</TableCell>
+                                    <TableCell colSpan={2}>{orderItemsLabel(order)}</TableCell>
+                                    <TableCell>{fDate(order.target_date)}</TableCell>
+                                    <TableCell>{fCurrency(Number(order.historical_price))}</TableCell>
+                                    <TableCell>
+                                      <Chip
+                                        label={STATUS_LABEL[order.status]}
+                                        color={STATUS_COLOR[order.status]}
+                                        size="small"
+                                        variant="soft"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <IconButton
+                                        component={RouterLink}
+                                        href={paths.dashboard.order.details(order.id)}
+                                        aria-label="Buyurtmani ko'rish"
+                                      >
+                                        <Iconify icon="solar:eye-bold" />
+                                      </IconButton>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    </Fragment>
+                  );
+                })
               )}
 
               {!isLoading && orders.length === 0 && <TableNoData notFound />}

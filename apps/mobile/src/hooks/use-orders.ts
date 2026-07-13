@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { cancelOrder, confirmDelivery, getOrder, listMonthlyOrders, listTodayOrders } from '@/lib/api/orders';
+import { cancelOrder, confirmDelivery, getOrder, listCurrentOrders, listMonthlyOrders, listTodayOrders } from '@/lib/api/orders';
 import { getTodayDate } from '@/lib/api/kitchens';
 import { getEffectiveOrderStatus } from '@/lib/order-status';
 import type { OrderStatus } from '@/types/domain';
@@ -9,8 +9,8 @@ const ACTIVE_STATUSES: OrderStatus[] = ['created', 'preparing', 'on_the_way'];
 
 export function useOrders() {
   const query = useQuery({
-    queryKey: ['orders', 'today', getTodayDate()],
-    queryFn: listTodayOrders,
+    queryKey: ['orders', 'current', getTodayDate()],
+    queryFn: listCurrentOrders,
   });
   const orders = query.data ?? [];
 

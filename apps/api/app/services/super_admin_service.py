@@ -10,7 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.branch import Branch
 from app.models.company import Company
-from app.models.enums import ORDER_STATUS_LABELS, AccountStatus, OrderStatus, UserRole
+from app.models.enums import (
+    ORDER_STATUS_LABELS,
+    AccountStatus,
+    InvoiceStatus,
+    OrderStatus,
+    UserRole,
+)
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.order import Order
 from app.models.user import User
@@ -23,6 +29,7 @@ from app.schemas.branch import BranchCreate, BranchUpdate
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.schemas.kitchen import KitchenCreate, KitchenUpdate
 from app.schemas.order import OrderRead
+from app.schemas.company_admin import InvoiceCustomerRead, InvoiceCustomerDetailRead
 from app.schemas.user_admin import UserAdminUpdate
 from app.services.dashboard import (
     build_dashboard,
@@ -36,6 +43,7 @@ from app.services.dashboard import (
 )
 from app.services.notification_service import notify
 from app.services.order_read import build_order_read, build_order_reads
+from app.services.company_service import CompanyAdminService
 
 
 class SuperAdminService:
@@ -45,6 +53,44 @@ class SuperAdminService:
         self.kitchens = KitchenRepository(session)
         self.branches = BranchRepository(session)
         self.users = UserRepository(session)
+
+    async def list_invoice_customers(
+        self, month: date, company_id: str | None = None
+    ) -> list[InvoiceCustomerRead]:
+        query = select(Company).where(Company.deleted_at.is_(None))
+        if company_id:
+            query = query.where(Company.id == company_id)
+        companies = list((await self.session.execute(query.order_by(Company.name))).scalars().all())
+        customers: list[InvoiceCustomerRead] = []
+        for company in companies:
+            customers.extend(
+                await CompanyAdminService(self.session, company.id).list_invoice_customers(month)
+            )
+        return customers
+
+    async def get_invoice_customer(
+        self, employee_id: str, month: date
+    ) -> InvoiceCustomerDetailRead:
+        employee = await self.session.scalar(
+            select(User).where(User.id == employee_id, User.deleted_at.is_(None))
+        )
+        if employee is None or not employee.company_id:
+            raise NotFoundError("Xodim topilmadi")
+        return await CompanyAdminService(
+            self.session, employee.company_id
+        ).get_invoice_customer(employee_id, month)
+
+    async def update_invoice_customer_status(
+        self, employee_id: str, month: date, status: InvoiceStatus
+    ) -> InvoiceCustomerRead:
+        employee = await self.session.scalar(
+            select(User).where(User.id == employee_id, User.deleted_at.is_(None))
+        )
+        if employee is None or not employee.company_id:
+            raise NotFoundError("Xodim topilmadi")
+        return await CompanyAdminService(
+            self.session, employee.company_id
+        ).update_invoice_customer_status(employee_id, month, status)
 
     # --- Companies ---
     async def create_company(self, data: CompanyCreate) -> Company:
@@ -361,6 +407,39 @@ class SuperAdminService:
         )
         await self.session.commit()
         return await build_order_read(self.session, order)
+
+    async def update_branch_orders_status(
+        self,
+        branch_id: str,
+        target_date: date,
+        status: OrderStatus,
+        kitchen_id: str | None = None,
+    ) -> int:
+        filters = [
+            Order.branch_id == branch_id,
+            Order.target_date == target_date,
+            Order.status != status,
+        ]
+        if kitchen_id:
+            filters.append(Order.kitchen_id == kitchen_id)
+        orders = (
+            await self.session.execute(select(Order).where(*filters))
+        ).scalars().all()
+        for order in orders:
+            if status == OrderStatus.DELIVERED and order.system_fee == 0:
+                order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
+                    Decimal("0.01")
+                )
+            order.status = status
+            await notify(
+                self.session,
+                order.employee_id,
+                "order_status",
+                f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
+                f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
+            )
+        await self.session.commit()
+        return len(orders)
 
     # --- Dashboard ---
     async def dashboard(self, year: int | None = None):

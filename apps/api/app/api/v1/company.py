@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -19,6 +19,9 @@ from app.schemas.company_admin import (
     BulkConfirmResponse,
     EmployeeStatusUpdate,
     InvoiceRead,
+    InvoiceCustomerRead,
+    InvoiceCustomerDetailRead,
+    InvoiceCustomerStatusUpdate,
     PendingEmployeeRead,
 )
 from app.schemas.kitchen import AssignKitchensRequest, KitchenRead
@@ -72,9 +75,14 @@ async def get_company(svc: CompanyAdminService = Depends(_svc)) -> CompanyRead:
 async def bulk_confirm_branch(
     branch_id: str,
     target_date: date | None = Query(None),
+    period_start: date | None = Query(None),
+    period_end: date | None = Query(None),
     svc: CompanyAdminService = Depends(_svc),
 ) -> BulkConfirmResponse:
-    return BulkConfirmResponse(confirmed=await svc.bulk_confirm_branch_orders(branch_id, target_date))
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Kompaniya admini buyurtma holatini o'zgartira olmaydi",
+    )
 
 
 @router.get("/reports/orders", response_model=OrderReportResponse, summary="Filial va xodimlar buyurtma hisoboti")
@@ -84,7 +92,6 @@ async def order_report(
     svc: CompanyAdminService = Depends(_svc),
 ) -> OrderReportResponse:
     if period_end < period_start:
-        from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="period_end period_start dan oldin bo'lishi mumkin emas")
     return await svc.order_report(period_start, period_end)
 
@@ -320,9 +327,51 @@ async def get_order(
     summary="Bugungi buyurtmalarni ommaviy DELIVERED qilish",
 )
 async def bulk_confirm(svc: CompanyAdminService = Depends(_svc)) -> BulkConfirmResponse:
-    return BulkConfirmResponse(confirmed=await svc.bulk_confirm_orders())
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Kompaniya admini buyurtma holatini o'zgartira olmaydi",
+    )
 
 
 @router.get("/invoices", response_model=list[InvoiceRead], summary="Hisob-fakturalar")
 async def invoices(svc: CompanyAdminService = Depends(_svc)) -> list[InvoiceRead]:
     return await svc.list_invoices()
+
+
+@router.get(
+    "/invoice-customers",
+    response_model=list[InvoiceCustomerRead],
+    summary="Xodimlarning oylik buyurtma hisoblari",
+)
+async def invoice_customers(
+    month: date = Query(..., description="Oy ichidagi istalgan sana"),
+    svc: CompanyAdminService = Depends(_svc),
+) -> list[InvoiceCustomerRead]:
+    return await svc.list_invoice_customers(month)
+
+
+@router.get(
+    "/invoice-customers/{employee_id}",
+    response_model=InvoiceCustomerDetailRead,
+    summary="Xodimning oylik buyurtma tafsilotlari",
+)
+async def invoice_customer_detail(
+    employee_id: str,
+    month: date = Query(..., description="Oy ichidagi istalgan sana"),
+    svc: CompanyAdminService = Depends(_svc),
+) -> InvoiceCustomerDetailRead:
+    return await svc.get_invoice_customer(employee_id, month)
+
+
+@router.patch(
+    "/invoice-customers/{employee_id}/status",
+    response_model=InvoiceCustomerRead,
+    summary="Xodimning oylik to'lov holatini o'zgartirish",
+)
+async def update_invoice_customer_status(
+    employee_id: str,
+    body: InvoiceCustomerStatusUpdate,
+    month: date = Query(..., description="Oy ichidagi istalgan sana"),
+    svc: CompanyAdminService = Depends(_svc),
+) -> InvoiceCustomerRead:
+    return await svc.update_invoice_customer_status(employee_id, month, body.status)

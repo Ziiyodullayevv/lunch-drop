@@ -22,6 +22,7 @@ import { Form, Field } from 'src/components/hook-form';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 
 import { useCreateMeal, useCategories } from '../hooks/use-meals';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -42,6 +43,7 @@ const _defaultValues: FormValues = {
 // ----------------------------------------------------------------------
 
 export function MenuCreateView() {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const createMeal = useCreateMeal();
   const { data: categoriesData } = useCategories();
@@ -64,20 +66,20 @@ export function MenuCreateView() {
         image_url:   data.image_url   || null,
         category_id: data.category_id || null,
       });
-      toast.success("Taom qo'shildi!");
+      toast.success(t('menu.created'));
       router.push(paths.dashboard.menu.root);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Xatolik yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('menu.error'));
     }
   });
 
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Taom qo'shish"
+        heading={t('menu.add')}
         links={[
           { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Menyu', href: paths.dashboard.menu.root },
+          { name: t('menu.title'), href: paths.dashboard.menu.root },
           { name: "Qo'shish" },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -88,13 +90,13 @@ export function MenuCreateView() {
           <Stack spacing={3}>
             <Field.Text
               name="name"
-              label="Nomi"
+              label={t('menu.name')}
               slotProps={{ inputLabel: { shrink: true } }}
             />
 
             <Field.Text
               name="description"
-              label="Tavsif"
+              label={t('menu.description')}
               multiline
               rows={3}
               slotProps={{ inputLabel: { shrink: true } }}
@@ -103,25 +105,25 @@ export function MenuCreateView() {
             <Stack direction="row" spacing={2}>
               <Field.Text
                 name="price"
-                label="Narxi (so'm)"
+                label={t('menu.price')}
                 placeholder="25000"
                 slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ flex: 1 }}
               />
               <Field.Select
                 name="category_id"
-                label="Kategoriya"
+                label={t('menu.category')}
                 slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ flex: 1 }}
               >
-                <MenuItem value="">— Tanlanmagan —</MenuItem>
+                <MenuItem value="">— {t('menu.unselected')} —</MenuItem>
                 {categories.map((c) => (
                   <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
                 ))}
               </Field.Select>
             </Stack>
 
-            <Field.ImageUpload name="image_url" label="Rasm" />
+            <Field.ImageUpload name="image_url" label={t('menu.image')} />
 
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button

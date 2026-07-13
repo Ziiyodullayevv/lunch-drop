@@ -78,6 +78,8 @@ class AdminRegisterRequest(BaseModel):
 # --- Admin login ---
 class LoginRequest(_PhoneMixin):
     password: str = Field(..., min_length=6, max_length=128)
+    role: UserRole | None = None
+    profile_id: str | None = None
 
 
 # --- Token ---
@@ -115,8 +117,21 @@ class UserRead(BaseModel):
     kitchen_id: str | None = None
 
 
+class RoleProfileRead(BaseModel):
+    id: str
+    role: UserRole
+    name: str | None = None
+    company_id: str | None = None
+    kitchen_id: str | None = None
+
+
 class MeResponse(BaseModel):
     user: UserRead
+    profiles: list[RoleProfileRead] = Field(default_factory=list)
+
+
+class SwitchProfileRequest(BaseModel):
+    profile_id: str
 
 
 class MeUpdate(BaseModel):

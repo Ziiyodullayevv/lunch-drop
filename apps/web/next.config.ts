@@ -34,6 +34,9 @@ const nextConfig: NextConfig = {
   },
   // With --turbopack (next dev --turbopack)
   turbopack: {
+    // Monorepo rootidagi boshqa lockfile Next/Turbopack workspace rootini
+    // noto‘g‘ri tanlashiga yo‘l qo‘ymaymiz.
+    root: __dirname,
     rules: {
       '*.svg': {
         loaders: ['@svgr/webpack'],

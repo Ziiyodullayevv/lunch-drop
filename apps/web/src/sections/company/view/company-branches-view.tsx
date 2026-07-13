@@ -65,6 +65,7 @@ import { useKitchens } from 'src/sections/kitchen/hooks/use-kitchens';
 import { branchKeys, useAssignKitchens } from 'src/sections/branch/hooks/use-branches';
 
 import { useCompanies, useDeleteCompany } from '../hooks/use-companies';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -90,10 +91,10 @@ type Branch = {
 
 // ----------------------------------------------------------------------
 
-const TABLE_HEAD = [
-  { id: 'name',       label: 'Kompaniya'                       },
-  { id: 'created_at', label: 'Sana',               width: 140 },
-  { id: 'branches',   label: 'Filiallar',          width: 90,  align: 'center' as const },
+const getTableHead = (t: (key: string) => string) => [
+  { id: 'name',       label: t('company.title') },
+  { id: 'created_at', label: t('companyExtra.date'), width: 140 },
+  { id: 'branches',   label: t('companyExtra.branches'), width: 90, align: 'center' as const },
   { id: 'actions',    label: '',                   width: 88  },
 ];
 
@@ -108,6 +109,7 @@ function ManageKitchensDialog({
   initialAssigned: string[];
   onSaved: (branchId: string, kitchenIds: string[]) => void;
 }) {
+  const { t } = useTranslate('common');
   const [assigned, setAssigned] = useState<Set<string>>(new Set(initialAssigned));
 
   const { data: kitchensData, isLoading: kitchensLoading } = useKitchens();
@@ -139,18 +141,18 @@ function ManageKitchensDialog({
     try {
       const savedKitchens = await assignKitchensMutation.mutateAsync(kitchenIds);
       const savedKitchenIds = savedKitchens.map((kitchen) => kitchen.id);
-      toast.success('Oshxonalar saqlandi');
+      toast.success(t('companyExtra.kitchensSaved'));
       onSaved(branch.id, savedKitchenIds);
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Saqlashda xatolik');
+      toast.error(err instanceof Error ? err.message : t('companyExtra.saveError'));
     }
   };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle component="div">
-        <Typography component="div" variant="h6">Oshxonalarni biriktirish</Typography>
+        <Typography component="div" variant="h6">{t('companyExtra.assignKitchens')}</Typography>
         <Typography component="div" variant="body2" color="text.secondary">{branch.name}</Typography>
       </DialogTitle>
       <Divider />
@@ -159,7 +161,7 @@ function ManageKitchensDialog({
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
         ) : allKitchens.length === 0 ? (
           <Box sx={{ px: 3, py: 4, textAlign: 'center' }}>
-            <Typography color="text.secondary">Hech qanday oshxona mavjud emas</Typography>
+            <Typography color="text.secondary">{t('companyExtra.noKitchens')}</Typography>
           </Box>
         ) : allKitchens.map((k) => {
           const checked = assigned.has(k.id);
@@ -179,8 +181,8 @@ function ManageKitchensDialog({
       </DialogContent>
       <Divider />
       <DialogActions>
-        <Button onClick={onClose} color="inherit">Bekor qilish</Button>
-        <LoadingButton variant="contained" loading={assignKitchensMutation.isPending} onClick={handleSave} disabled={loading}>Saqlash</LoadingButton>
+        <Button onClick={onClose} color="inherit">{t('common.cancel')}</Button>
+        <LoadingButton variant="contained" loading={assignKitchensMutation.isPending} onClick={handleSave} disabled={loading}>{t('common.save')}</LoadingButton>
       </DialogActions>
     </Dialog>
   );
@@ -213,6 +215,7 @@ function CompanyRow({
   kitchenAssignMap,
   kitchenNameById,
 }: CompanyRowProps) {
+  const { t } = useTranslate('common');
   const collapseRow = useBoolean();
   const menuActions = usePopover();
   const branchMenu = usePopover();
@@ -291,7 +294,7 @@ function CompanyRow({
           <Paper sx={{ m: 1.5 }}>
             {branches.length === 0 ? (
               <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.disabled">Filiallar mavjud emas</Typography>
+                <Typography variant="body2" color="text.disabled">{t('company.noBranches')}</Typography>
               </Box>
             ) : (
               branches.map((b) => {
@@ -328,7 +331,7 @@ function CompanyRow({
                     />
                     {newBranchIdSet.has(b.id) && (
                       <Chip
-                        label="Yangi"
+                        label={t('company.newShort')}
                         size="small"
                         color="success"
                         variant="soft"
@@ -355,7 +358,7 @@ function CompanyRow({
                         variant="caption"
                         sx={{ display: 'block', mb: 0.75, color: 'text.disabled', fontWeight: 600 }}
                       >
-                        Tanlangan oshxonalar
+                        {t('company.selectedKitchens')}
                       </Typography>
                       {assignedKitchenNames.length > 0 ? (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
@@ -371,7 +374,7 @@ function CompanyRow({
                         </Box>
                       ) : (
                         <Typography variant="caption" color="text.disabled">
-                          Oshxona tanlanmagan
+                          {t('company.noKitchen')}
                         </Typography>
                       )}
                     </Box>
@@ -404,7 +407,7 @@ function CompanyRow({
                 component={RouterLink}
                 href={`${paths.dashboard.branch.new}?company_id=${row.id}`}
               >
-                Yangi filial
+                {t('company.newBranch')}
               </Button>
             </Box>
           </Paper>
@@ -424,7 +427,7 @@ function CompanyRow({
         <li>
           <MenuItem component={RouterLink} href={paths.dashboard.company.edit(row.id)} onClick={menuActions.onClose}>
             <Iconify icon="solar:pen-bold" />
-            Tahrirlash
+            {t('common.edit')}
           </MenuItem>
         </li>
         <MenuItem
@@ -432,7 +435,7 @@ function CompanyRow({
           sx={{ color: 'error.main' }}
         >
           <Iconify icon="solar:trash-bin-trash-bold" />
-          O&apos;chirish
+          {t('common.delete')}
         </MenuItem>
       </MenuList>
     </CustomPopover>
@@ -453,7 +456,7 @@ function CompanyRow({
         <MenuList>
           <MenuItem onClick={() => { if (menuBranch) onManageBranch(menuBranch); branchMenu.onClose(); }}>
             <Iconify icon="solar:cup-star-bold" sx={{ mr: 1 }} />
-            Oshxonalar
+            {t('company.kitchens')}
           </MenuItem>
           <MenuItem
             component={RouterLink}
@@ -461,7 +464,7 @@ function CompanyRow({
             onClick={branchMenu.onClose}
           >
             <Iconify icon="solar:eye-bold" sx={{ mr: 1 }} />
-            Ko&apos;rish
+            {t('common.view')}
           </MenuItem>
           <MenuItem
             component={RouterLink}
@@ -469,7 +472,7 @@ function CompanyRow({
             onClick={branchMenu.onClose}
           >
             <Iconify icon="solar:pen-bold" sx={{ mr: 1 }} />
-            Tahrirlash
+            {t('common.edit')}
           </MenuItem>
         </MenuList>
       </CustomPopover>
@@ -480,6 +483,8 @@ function CompanyRow({
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export function CompanyBranchesView() {
+  const { t } = useTranslate('common');
+  const tableHead = getTableHead(t);
   const table = useTable({ defaultRowsPerPage: 10 });
   const confirmDelete = useBoolean();
   const queryClient = useQueryClient();
@@ -552,8 +557,8 @@ export function CompanyBranchesView() {
   const handleSuspend = async (id: string) => {
     try {
       await deleteCompany.mutateAsync(id);
-      toast.success("Kompaniya o'chirildi");
-    } catch { toast.error('Xatolik'); }
+      toast.success(t('company.deleted'));
+    } catch { toast.error(t('company.error')); }
   };
 
   const handleDeleteSelected = async () => {
@@ -565,10 +570,10 @@ export function CompanyBranchesView() {
     const failedCount = results.length - deletedCount;
 
     if (deletedCount > 0) {
-      toast.success(`${deletedCount} ta kompaniya o'chirildi`);
+      toast.success(t('company.deletedMany', { count: deletedCount }));
     }
     if (failedCount > 0) {
-      toast.error(`${failedCount} ta kompaniyani o'chirib bo'lmadi`);
+      toast.error(t('company.deleteFailed', { count: failedCount }));
     }
 
     table.onSelectAllRows(false, []);
@@ -604,8 +609,8 @@ export function CompanyBranchesView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Kompaniyalar va Filiallar"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Kompaniyalar' }]}
+        heading={t('company.titleWithBranches')}
+        links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('company.title') }]}
         action={
           <Button
             component={RouterLink}
@@ -613,7 +618,7 @@ export function CompanyBranchesView() {
             variant="contained"
             startIcon={<Iconify icon="mingcute:add-line" />}
           >
-            Yangi kompaniya
+            {t('company.new')}
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -630,9 +635,9 @@ export function CompanyBranchesView() {
           }}
         >
           <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 220 } }}>
-            <InputLabel>Kompaniya</InputLabel>
+            <InputLabel>{t('company.title')}</InputLabel>
             <Select
-              label="Kompaniya"
+              label={t('company.title')}
               value={companyFilter}
               disabled={loadingCompanies}
               onChange={(event: SelectChangeEvent<string>) => {
@@ -640,7 +645,7 @@ export function CompanyBranchesView() {
                 table.onResetPage();
               }}
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {companies.map((company) => (
                 <MenuItem key={company.id} value={company.id}>
                   {company.name}
@@ -652,7 +657,7 @@ export function CompanyBranchesView() {
           <TextField
             value={searchText}
             onChange={(e) => { setSearchText(e.target.value); table.onResetPage(); }}
-            placeholder="Kompaniya, filial, manzil yoki ID bo'yicha..."
+            placeholder={t('company.search')}
             sx={{ width: { xs: 1, md: 560 }, maxWidth: 1 }}
             slotProps={{
               input: {
@@ -688,7 +693,7 @@ export function CompanyBranchesView() {
               table.onSelectAllRows(checked, filtered.map((company) => company.id))
             }
             action={
-              <Tooltip title="O'chirish">
+              <Tooltip title={t('common.delete')}>
                 <IconButton color="error" onClick={confirmDelete.onTrue}>
                   <Iconify icon="solar:trash-bin-trash-bold" />
                 </IconButton>
@@ -701,7 +706,7 @@ export function CompanyBranchesView() {
               <TableHeadCustom
                 order={table.order}
                 orderBy={table.orderBy}
-                headCells={TABLE_HEAD}
+                headCells={tableHead}
                 rowCount={filtered.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}
@@ -765,8 +770,8 @@ export function CompanyBranchesView() {
       <ConfirmDialog
         open={confirmDelete.value}
         onClose={confirmDelete.onFalse}
-        title="Kompaniyalarni o'chirish"
-        content={`${table.selected.length} ta kompaniyani o'chirishni tasdiqlaysizmi?`}
+        title={t('company.deleteTitle')}
+        content={t('company.deleteConfirm', { count: table.selected.length })}
         action={
           <LoadingButton
             variant="contained"
@@ -774,7 +779,7 @@ export function CompanyBranchesView() {
             loading={deleteCompany.isPending}
             onClick={handleDeleteSelected}
           >
-            O&apos;chirish
+            {t('common.delete')}
           </LoadingButton>
         }
       />

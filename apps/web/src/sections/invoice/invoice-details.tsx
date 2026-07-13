@@ -1,7 +1,5 @@
 import type { IInvoice } from 'src/types/invoice';
 
-import { useState, useCallback } from 'react';
-
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Table from '@mui/material/Table';
@@ -16,8 +14,6 @@ import Typography from '@mui/material/Typography';
 import { fDate } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
-import { INVOICE_STATUS_OPTIONS } from 'src/_mock';
-
 import { Label } from 'src/components/label';
 import { Scrollbar } from 'src/components/scrollbar';
 
@@ -31,11 +27,7 @@ type Props = {
 };
 
 export function InvoiceDetails({ invoice }: Props) {
-  const [currentStatus, setCurrentStatus] = useState(invoice?.status);
-
-  const handleChangeStatus = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentStatus(event.target.value);
-  }, []);
+  const currentStatus = invoice?.status ?? '';
 
   const renderFooter = () => (
     <Box
@@ -49,18 +41,18 @@ export function InvoiceDetails({ invoice }: Props) {
     >
       <div>
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-          NOTES
+          IZOH
         </Typography>
         <Typography variant="body2">
-          We appreciate your business. Should you need us to add VAT or extra notes let us know!
+          Hisob-faktura tanlangan davrdagi yetkazilgan buyurtmalar asosida shakllantirilgan.
         </Typography>
       </div>
 
       <Box sx={{ flexGrow: { md: 1 }, textAlign: { md: 'right' } }}>
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-          Have a question?
+          Savol bo‘lsa
         </Typography>
-        <Typography variant="body2">support@minimals.cc</Typography>
+        <Typography variant="body2">LunchDrop administratoriga murojaat qiling</Typography>
       </Box>
     </Box>
   );
@@ -71,10 +63,10 @@ export function InvoiceDetails({ invoice }: Props) {
         <TableHead>
           <TableRow>
             <TableCell width={40}>#</TableCell>
-            <TableCell sx={{ typography: 'subtitle2' }}>Description</TableCell>
-            <TableCell>Qty</TableCell>
-            <TableCell align="right">Unit price</TableCell>
-            <TableCell align="right">Total</TableCell>
+            <TableCell sx={{ typography: 'subtitle2' }}>Filial</TableCell>
+            <TableCell>Buyurtmalar</TableCell>
+            <TableCell align="right">O‘rtacha narx</TableCell>
+            <TableCell align="right">Jami</TableCell>
           </TableRow>
         </TableHead>
 
@@ -95,7 +87,7 @@ export function InvoiceDetails({ invoice }: Props) {
 
               <TableCell>{row.quantity}</TableCell>
               <TableCell align="right">{fCurrency(row.price)}</TableCell>
-              <TableCell align="right">{fCurrency(row.price * row.quantity)}</TableCell>
+              <TableCell align="right">{fCurrency(row.total)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -105,12 +97,7 @@ export function InvoiceDetails({ invoice }: Props) {
 
   return (
     <>
-      <InvoiceToolbar
-        invoice={invoice}
-        currentStatus={currentStatus || ''}
-        onChangeStatus={handleChangeStatus}
-        statusOptions={INVOICE_STATUS_OPTIONS}
-      />
+      <InvoiceToolbar invoice={invoice} currentStatus={currentStatus} />
 
       <Card sx={{ pt: 5, px: 5 }}>
         <Box
@@ -138,7 +125,7 @@ export function InvoiceDetails({ invoice }: Props) {
                 'default'
               }
             >
-              {currentStatus}
+              {currentStatus === 'paid' ? 'To‘langan' : 'Kutilmoqda'}
             </Label>
 
             <Typography variant="h6">{invoice?.invoiceNumber}</Typography>
@@ -146,7 +133,7 @@ export function InvoiceDetails({ invoice }: Props) {
 
           <Stack sx={{ typography: 'body2' }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Invoice from
+              Kimdan
             </Typography>
             {invoice?.invoiceFrom.name}
             <br />
@@ -158,7 +145,7 @@ export function InvoiceDetails({ invoice }: Props) {
 
           <Stack sx={{ typography: 'body2' }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Invoice to
+              Kimga
             </Typography>
             {invoice?.invoiceTo.name}
             <br />
@@ -170,20 +157,50 @@ export function InvoiceDetails({ invoice }: Props) {
 
           <Stack sx={{ typography: 'body2' }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Date create
+              Davr boshlanishi
             </Typography>
             {fDate(invoice?.createDate)}
           </Stack>
 
           <Stack sx={{ typography: 'body2' }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Due date
+              Davr tugashi
             </Typography>
             {fDate(invoice?.dueDate)}
           </Stack>
         </Box>
 
         {renderList()}
+
+        {!!invoice?.employeeSummaries?.length && (
+          <>
+            <Typography variant="h6" sx={{ mt: 5, mb: 2 }}>
+              Buyurtmachilar kesimida
+            </Typography>
+            <Scrollbar>
+              <Table sx={{ minWidth: 760 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Buyurtmachi</TableCell>
+                    <TableCell>Filial</TableCell>
+                    <TableCell align="center">Buyurtmalar</TableCell>
+                    <TableCell align="right">Jami</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {invoice.employeeSummaries.map((employee) => (
+                    <TableRow key={employee.employee_id}>
+                      <TableCell>{employee.employee_name ?? 'Foydalanuvchi'}</TableCell>
+                      <TableCell>{employee.branch_name}</TableCell>
+                      <TableCell align="center">{employee.order_count}</TableCell>
+                      <TableCell align="right">{fCurrency(Number(employee.total_amount))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Scrollbar>
+          </>
+        )}
 
         <Divider sx={{ borderStyle: 'dashed' }} />
 

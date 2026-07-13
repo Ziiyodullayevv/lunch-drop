@@ -7,6 +7,7 @@ import Divider from '@mui/material/Divider';
 import { Scrollbar } from 'src/components/scrollbar';
 
 import { InvoiceAnalytic } from 'src/sections/invoice/invoice-analytic';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function OrderAnalytics({ data }: Props) {
+  const { t } = useTranslate('common');
   const percent = (value: number) =>
     data.total ? Math.round((value / data.total) * 100) : 0;
 
@@ -26,9 +28,9 @@ export function OrderAnalytics({ data }: Props) {
           sx={{ py: 2, flexDirection: 'row' }}
         >
           <InvoiceAnalytic
-            unit="buyurtma"
+            unit={t('order.unit')}
             currency="UZS"
-            title="Jami"
+            title={t('order.total')}
             total={data.total}
             percent={data.total ? 100 : 0}
             price={data.totalAmount}
@@ -36,29 +38,9 @@ export function OrderAnalytics({ data }: Props) {
             color="var(--palette-info-main)"
           />
           <InvoiceAnalytic
-            unit="buyurtma"
+            unit={t('order.unit')}
             currency="UZS"
-            title="Tayyorlanmoqda"
-            total={data.active}
-            percent={percent(data.active)}
-            price={data.activeAmount}
-            icon="solar:sort-by-time-bold-duotone"
-            color="var(--palette-warning-main)"
-          />
-          <InvoiceAnalytic
-            unit="buyurtma"
-            currency="UZS"
-            title="Yo'lda"
-            total={data.onTheWay}
-            percent={percent(data.onTheWay)}
-            price={data.onTheWayAmount}
-            icon="custom:delivery-bold"
-            color="var(--palette-primary-main)"
-          />
-          <InvoiceAnalytic
-            unit="buyurtma"
-            currency="UZS"
-            title="Yetkazildi"
+            title={t('order.delivered')}
             total={data.delivered}
             percent={percent(data.delivered)}
             price={data.deliveredAmount}
@@ -79,9 +61,9 @@ export function OrderAnalytics({ data }: Props) {
             color="var(--palette-success-main)"
           />
           <InvoiceAnalytic
-            unit="buyurtma"
+            unit={t('order.unit')}
             currency="UZS"
-            title="Bekor qilindi"
+            title={t('order.cancelled')}
             total={data.cancelled}
             percent={percent(data.cancelled)}
             price={data.cancelledAmount}

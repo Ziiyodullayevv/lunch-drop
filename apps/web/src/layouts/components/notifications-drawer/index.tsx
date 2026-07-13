@@ -24,6 +24,7 @@ import { varTap, varHover, transitionTap } from 'src/components/animate';
 
 import { NotificationItem } from './notification-item';
 import { useNotifications } from './use-notifications';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
@@ -32,6 +33,7 @@ export type NotificationsDrawerProps = IconButtonProps;
 export function NotificationsDrawer({ sx, ...other }: NotificationsDrawerProps) {
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
   const [currentTab, setCurrentTab] = useState('all');
+  const { t } = useTranslate('common');
 
   const { notifications, unreadCount, loading, markAsRead, markAllRead, approve, decline } = useNotifications();
 
@@ -46,19 +48,19 @@ export function NotificationsDrawer({ sx, ...other }: NotificationsDrawerProps) 
   });
 
   const tabs = [
-    { value: 'all', label: 'Hammasi', count: notifications.length },
-    { value: 'unread', label: "O'qilmagan", count: unreadCount },
-    { value: 'archived', label: "O'qilgan", count: notifications.length - unreadCount },
+    { value: 'all', label: t('notifications.all'), count: notifications.length },
+    { value: 'unread', label: t('notifications.unread'), count: unreadCount },
+    { value: 'archived', label: t('notifications.read'), count: notifications.length - unreadCount },
   ];
 
   const renderHead = () => (
     <Box sx={{ py: 2, pr: 1, pl: 2.5, minHeight: 68, display: 'flex', alignItems: 'center' }}>
       <Typography variant="h6" sx={{ flexGrow: 1 }}>
-        Bildirishnomalar
+        {t('notifications.title')}
       </Typography>
 
       {!!unreadCount && (
-        <Tooltip title="Barchasini o'qilgan deb belgilash">
+        <Tooltip title={t('notifications.markAllRead')}>
           <IconButton color="primary" onClick={markAllRead}>
             <Iconify icon="eva:done-all-fill" />
           </IconButton>
@@ -108,7 +110,7 @@ export function NotificationsDrawer({ sx, ...other }: NotificationsDrawerProps) 
     if (!filtered.length) {
       return (
         <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary', typography: 'body2' }}>
-          Bildirishnoma yo&apos;q
+          {t('notifications.empty')}
         </Box>
       );
     }
@@ -167,7 +169,7 @@ export function NotificationsDrawer({ sx, ...other }: NotificationsDrawerProps) 
 
         <Box sx={{ p: 1 }}>
           <Button fullWidth size="large" onClick={onClose}>
-            Yopish
+            {t('notifications.close')}
           </Button>
         </Box>
       </Drawer>

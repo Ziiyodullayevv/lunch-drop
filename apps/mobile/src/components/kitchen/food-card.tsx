@@ -51,7 +51,7 @@ function AddButton({ item }: { item: MenuItem }) {
   }, [expanded, widthAnim]);
 
   const handleAdd = () => {
-    if (!canOrderForDate(item.targetDate)) return;
+    if (!canOrderForDate(item.targetDate, item.kitchenOrderCutoffTime)) return;
     if (item.isAvailable) cart.addItem(item, item.kitchenName);
   };
 
@@ -137,12 +137,9 @@ function AddButton({ item }: { item: MenuItem }) {
 export function FoodCard({ item }: Props) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
-  const canOrderForDate = useTodayOrderGuard();
-
   const hasDiscount = false;
   const handleOpen = () => {
-    if (!canOrderForDate(item.targetDate)) return;
-    router.push(`/food/${item.id}`);
+    router.push(`/food/${item.id}?targetDate=${item.targetDate ?? ''}`);
   };
 
   return (

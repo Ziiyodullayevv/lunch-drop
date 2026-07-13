@@ -1,7 +1,10 @@
 import type { AuthResponseDto, EmployeeMenuItemDto, OrderHistoryDto, OrderReadDto } from '@/types/api';
 import type { AuthSession, BranchInfo, CurrentUser, MenuItem, Order, OrderStatus } from '@/types/domain';
 
-export function mapUser(dto: AuthResponseDto['user']): CurrentUser {
+export function mapUser(
+  dto: AuthResponseDto['user'],
+  profiles: AuthResponseDto['profiles'] = []
+): CurrentUser {
   return {
     id: dto.id,
     role: dto.role as CurrentUser['role'],
@@ -18,6 +21,13 @@ export function mapUser(dto: AuthResponseDto['user']): CurrentUser {
     kitchenNames: [],
     balance: 0,
     branches: [],
+    profiles: profiles.map((profile) => ({
+      id: profile.id,
+      role: profile.role as CurrentUser['role'],
+      name: profile.name ?? undefined,
+      companyId: profile.company_id ?? undefined,
+      kitchenId: profile.kitchen_id ?? undefined,
+    })),
   };
 }
 
@@ -25,7 +35,7 @@ export function mapAuthSession(dto: AuthResponseDto): AuthSession {
   return {
     accessToken: dto.access_token,
     refreshToken: dto.refresh_token,
-    user: mapUser(dto.user),
+    user: mapUser(dto.user, dto.profiles),
   };
 }
 
@@ -125,6 +135,7 @@ export function mapEmployeeMenuItem(dto: EmployeeMenuItemDto): MenuItem {
     kitchenId: dto.kitchen_id,
     kitchenName: dto.kitchen_name ?? '',
     kitchenDeliveryWindow: formatDeliveryWindow(dto.delivery_start_time, dto.delivery_end_time),
+    kitchenOrderCutoffTime: dto.order_cutoff_time ?? undefined,
     kitchenDeliveryStartTime: dto.delivery_start_time ?? undefined,
     kitchenDeliveryEndTime: dto.delivery_end_time ?? undefined,
     categoryId: dto.category_id ?? dto.kitchen_id,

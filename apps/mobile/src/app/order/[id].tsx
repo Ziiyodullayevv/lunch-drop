@@ -17,6 +17,7 @@ import {
   updateOrderLiveActivity,
 } from '@/lib/live-activity';
 import { canCancelOrder, getEffectiveOrderStatus } from '@/lib/order-status';
+import { formatUzDayMonthTime } from '@/lib/uz-date';
 import type { Order } from '@/types/domain';
 
 const STATUS_LABEL: Record<Order['status'], string> = {
@@ -37,12 +38,6 @@ const ORDER_DETAIL_CARD_SHADOW = {
   boxShadow: '0px 0px 12px rgba(0,0,0,0.09)',
   elevation: 0,
 };
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long' }) +
-    ', ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-}
 
 function shortId(id: string) {
   return id.replace(/-/g, '').slice(0, 5).toUpperCase();
@@ -127,7 +122,7 @@ export default function OrderDetailScreen() {
           <XStack justifyContent="space-between" alignItems="flex-start">
             <YStack gap={3}>
               <Text fontSize={13} color="#8E8E93" fontWeight="500">Buyurtma vaqti</Text>
-              <Text fontFamily="$heading" fontSize={18} fontWeight="800" color="#1C1C1E">{formatDate(order.createdAt)}</Text>
+              <Text fontFamily="$heading" fontSize={18} fontWeight="800" color="#1C1C1E">{formatUzDayMonthTime(order.createdAt)}</Text>
             </YStack>
             <View style={{
               backgroundColor: ORDER_DETAIL_PRIMARY,
@@ -190,6 +185,14 @@ export default function OrderDetailScreen() {
           {canCancel && (
             <>
               <YStack height={0.5} backgroundColor="#E5E5EA" />
+              <Text
+                fontSize={13}
+                lineHeight={18}
+                color="#8E8E93"
+                textAlign="center"
+              >
+                Buyurtmani qabul qilish vaqti tugaguncha bekor qilishingiz mumkin
+              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 disabled={cancelOrder.isPending}

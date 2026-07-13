@@ -27,6 +27,9 @@ export function VerifyOtpScreen() {
   const auth = useAuth();
   const expiresIn = Number(params.expiresIn ?? 60);
   const countdown = useCountdown(expiresIn);
+  const verifyError = auth.verifyOtp.error instanceof Error
+    ? auth.verifyOtp.error.message
+    : "Tasdiqlashda xatolik yuz berdi. Qaytadan urinib ko'ring.";
 
   const phone = params.phone ?? '';
   const telegramUrl = params.telegramUrl ?? '';
@@ -135,7 +138,10 @@ export function VerifyOtpScreen() {
           render={({ field }) => (
             <OtpBoxInput
               value={field.value}
-              onChange={(v) => form.setValue('code', v, { shouldValidate: true })}
+              onChange={(v) => {
+                if (auth.verifyOtp.isError) auth.verifyOtp.reset();
+                form.setValue('code', v, { shouldValidate: true });
+              }}
               onComplete={handleComplete}
               length={6}
               autoFocus
@@ -203,7 +209,7 @@ export function VerifyOtpScreen() {
             alignSelf="stretch"
           >
             <Text fontFamily="$body" fontSize="$3" color="#FF3B30" fontWeight="500" textAlign="center" flex={1}>
-              {"Kod noto'g'ri. Qaytadan urinib ko'ring."}
+              {verifyError}
             </Text>
           </XStack>
         )}

@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: `Hisob-fakturalar | Dashboard - ${CON
 
 export default function Page() {
   return (
-    <PageRoleGuard allowedRoles={['company_admin']}>
+    <PageRoleGuard allowedRoles={['company_admin', 'super_admin']}>
       <InvoiceListView />
     </PageRoleGuard>
   );

@@ -11,7 +11,7 @@ import {
 	useColorScheme,
 	View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, XStack, YStack } from "tamagui";
 
 import { EmptyState, LoadingState } from "@/components/ui";
@@ -30,10 +30,11 @@ const ACCENT_DARK = "#007867";
 const ACCENT_SOFT = "rgba(0, 167, 111, 0.10)";
 
 export default function FoodDetailScreen() {
-	const { id } = useLocalSearchParams<{ id: string }>();
+	const { id, targetDate } = useLocalSearchParams<{ id: string; targetDate?: string }>();
 	const colorScheme = useColorScheme();
 	const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
-	const { items, isLoading, refetch } = useAllFoodItems();
+	const insets = useSafeAreaInsets();
+	const { items, isLoading, refetch } = useAllFoodItems(undefined, targetDate);
 	const [refreshing, setRefreshing] = useState(false);
 	const canOrderForDate = useTodayOrderGuard();
 
@@ -105,17 +106,17 @@ export default function FoodDetailScreen() {
 	};
 
 	const handlePlus = () => {
-		if (!canOrderForDate(item.targetDate)) return;
+		if (!canOrderForDate(item.targetDate, item.kitchenOrderCutoffTime)) return;
 		cart.addItem(item, item.kitchenName, 1);
 	};
 
 	const handleSimilarAdd = (similarItem: MenuItem) => {
-		if (!canOrderForDate(similarItem.targetDate)) return;
+		if (!canOrderForDate(similarItem.targetDate, similarItem.kitchenOrderCutoffTime)) return;
 		cart.addItem(similarItem, similarItem.kitchenName, 1);
 	};
 
 	const handleAddAndBack = () => {
-		if (!canOrderForDate(item.targetDate)) return;
+		if (!canOrderForDate(item.targetDate, item.kitchenOrderCutoffTime)) return;
 		cart.addItem(item, item.kitchenName, 1);
 		router.back();
 	};
@@ -123,7 +124,16 @@ export default function FoodDetailScreen() {
 	return (
 		<>
 			<Stack.Screen options={{ headerShown: false }} />
-			<View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+				<View
+					style={{
+						flex: 1,
+						backgroundColor: "#FFFFFF",
+						marginTop: Platform.OS === "android" ? Math.max(insets.top, 52) : 0,
+						borderTopLeftRadius: Platform.OS === "android" ? 28 : 0,
+						borderTopRightRadius: Platform.OS === "android" ? 28 : 0,
+						overflow: "hidden",
+					}}
+				>
 				{/* ─── Scrollable content ─── */}
 				<ScrollView
 					contentContainerStyle={{ paddingBottom: 130 }}
@@ -264,39 +274,39 @@ export default function FoodDetailScreen() {
 							</XStack>
 						</YStack>
 
-						{/* Delivery time */}
-						<YStack gap={4}>
-							<Text color="$gray10" fontSize={14} fontWeight="500">
-								Yetkazib berish
-							</Text>
-							<XStack alignItems="center" gap={6}>
-								<MaterialCommunityIcons
-									name="clock-outline"
-									size={16}
-									color={colors.text}
-								/>
-								<Text color="$color" fontSize={15} fontWeight="600">
-									{item.kitchenDeliveryWindow
-										? deliveryRange(item.kitchenDeliveryWindow)
-										: 'Belgilanmagan'}
+							{/* Order cutoff time */}
+							<YStack gap={4}>
+								<Text color="$gray10" fontSize={14} fontWeight="500">
+									Buyurtma berish vaqti
 								</Text>
-							</XStack>
-						</YStack>
+								<XStack alignItems="center" gap={6}>
+									<MaterialCommunityIcons
+										name="timer-outline"
+										size={16}
+										color={colors.text}
+									/>
+									<Text color="$color" fontSize={15} fontWeight="600">
+										{item.kitchenOrderCutoffTime ? `${formatTime(item.kitchenOrderCutoffTime)} gacha` : 'Belgilanmagan'}
+									</Text>
+								</XStack>
+							</YStack>
 
-						{/* Order cutoff time */}
-						<YStack gap={4}>
-							<Text color="$gray10" fontSize={14} fontWeight="500">
-								Buyurtma berish vaqti
-							</Text>
-							<XStack alignItems="center" gap={6}>
-								<MaterialCommunityIcons
-									name="timer-outline"
-									size={16}
-									color={colors.text}
-								/>
-								<Text color="$color" fontSize={15} fontWeight="600">
-									{item.kitchenOrderCutoffTime ? `${formatTime(item.kitchenOrderCutoffTime)} gacha` : 'Belgilanmagan'}
+							{/* Delivery time */}
+							<YStack gap={4}>
+								<Text color="$gray10" fontSize={14} fontWeight="500">
+									Yetkazib berish
 								</Text>
+								<XStack alignItems="center" gap={6}>
+									<MaterialCommunityIcons
+										name="clock-outline"
+										size={16}
+										color={colors.text}
+									/>
+									<Text color="$color" fontSize={15} fontWeight="600">
+										{item.kitchenDeliveryWindow
+											? deliveryRange(item.kitchenDeliveryWindow)
+											: 'Belgilanmagan'}
+									</Text>
 							</XStack>
 						</YStack>
 					</YStack>

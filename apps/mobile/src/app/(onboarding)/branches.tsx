@@ -12,6 +12,7 @@ import { listCompanyBranches, joinBranches, getEmployeeStatus } from '@/lib/api/
 import { openSupportBot } from '@/lib/support';
 import type { CompanyBranchDto as BranchDto } from '@/lib/api/onboarding';
 import { useAuthStore } from '@/stores/auth-store';
+import { useWorkplaceDraftStore } from '@/stores/workplace-draft-store';
 
 const ACCENT = '#00A76F';
 
@@ -89,10 +90,19 @@ export default function BranchesScreen() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const currentUser = useAuthStore((s) => s.user);
+  const workplaceDraft = useWorkplaceDraftStore((s) => s.draft);
+  const setWorkplaceDraft = useWorkplaceDraftStore((s) => s.setDraft);
 
+  const isDraftCompany = Boolean(companyId && workplaceDraft?.companyId === companyId);
   const isCurrentCompany = Boolean(companyId && currentUser?.companyId === companyId);
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(isCurrentCompany ? (currentUser?.branches ?? []).map((b) => b.id) : [])
+    () => new Set(
+      isDraftCompany
+        ? (workplaceDraft?.branches ?? []).map((branch) => branch.id)
+        : isCurrentCompany
+          ? (currentUser?.branches ?? []).map((branch) => branch.id)
+          : []
+    )
   );
   const queryClient = useQueryClient();
   const finishRoute = (returnTo || '/(tabs)/home') as Href;
@@ -105,8 +115,13 @@ export default function BranchesScreen() {
   });
 
   useEffect(() => {
-    setSelected(new Set(isCurrentCompany ? (currentUser?.branches ?? []).map((b) => b.id) : []));
-  }, [currentUser?.branches, isCurrentCompany]);
+    const branchIds = isDraftCompany
+      ? (workplaceDraft?.branches ?? []).map((branch) => branch.id)
+      : isCurrentCompany
+        ? (currentUser?.branches ?? []).map((branch) => branch.id)
+        : [];
+    setSelected(new Set(branchIds));
+  }, [currentUser?.branches, isCurrentCompany, isDraftCompany, workplaceDraft?.branches]);
 
   const availableBranchIds = useMemo(() => new Set((branches ?? []).map((b) => b.id)), [branches]);
   const selectedBranchIds = useMemo(
@@ -193,37 +208,19 @@ export default function BranchesScreen() {
   const handleConfirm = () => {
     if (selectedBranchIds.length === 0) return;
 
-    const existingIds = new Set((currentUser?.branches ?? []).map((b) => b.id));
-    const newBranchIds = selectedBranchIds.filter((id) => !existingIds.has(id));
-
-    if (newBranchIds.length === 0) {
-      // Faqat tanlash o'zgardi, yangi branch yo'q — API chaqirmay store yangilaymiz
-      if (currentUser) {
-        const selectedBranches = (branches ?? [])
-          .filter((b) => selectedBranchIds.includes(b.id))
-          .map((b) => mapBranchInfo(b));
-        const primaryBranch = selectedBranches[0];
-        setSession({
-          accessToken: accessToken!,
-          refreshToken: refreshToken!,
-          user: {
-            ...currentUser,
-            branchId: primaryBranch?.id ?? '',
-            branchName: primaryBranch?.name ?? '',
-            branchAddress: primaryBranch?.address ?? '',
-            companyId: companyId ?? currentUser.companyId,
-            companyName: resolvedCompanyName,
-            branches: selectedBranches,
-          },
-        });
-      }
-      void queryClient.invalidateQueries({ queryKey: ['employee-menu'] });
-      router.replace(finishRoute);
+    if (returnTo) {
+      setWorkplaceDraft({
+        companyId,
+        companyName: resolvedCompanyName,
+        branches: (branches ?? [])
+          .filter((branch) => selectedBranchIds.includes(branch.id))
+          .map(mapBranchInfo),
+      });
+      router.dismissTo(finishRoute);
       return;
     }
 
-    // Faqat yangi branchlarni yuboramiz — mavjudlarini qayta yuborsa backend 500 beradi
-    joinMutation.mutate(newBranchIds);
+    joinMutation.mutate(selectedBranchIds);
   };
 
   const isPending = joinMutation.isPending;

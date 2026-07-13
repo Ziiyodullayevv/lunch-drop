@@ -19,7 +19,17 @@ from app.schemas.kitchen import (
     KitchenRead,
     KitchenUpdate,
 )
-from app.schemas.order import OrderRead, OrderStatusUpdate
+from app.schemas.order import (
+    BranchOrderStatusUpdate,
+    BulkOrderStatusResponse,
+    OrderRead,
+    OrderStatusUpdate,
+)
+from app.schemas.company_admin import (
+    InvoiceCustomerRead,
+    InvoiceCustomerDetailRead,
+    InvoiceCustomerStatusUpdate,
+)
 from app.schemas.user_admin import UserAdminRead, UserAdminUpdate
 from app.services.super_admin_service import SuperAdminService
 
@@ -32,6 +42,44 @@ router = APIRouter(
 
 def _svc(session: AsyncSession = Depends(get_session)) -> SuperAdminService:
     return SuperAdminService(session)
+
+
+@router.get(
+    "/invoice-customers",
+    response_model=list[InvoiceCustomerRead],
+    summary="Barcha kompaniyalarning oylik xodim hisoblari",
+)
+async def invoice_customers(
+    month: date = Query(...),
+    company_id: str | None = Query(None),
+    svc: SuperAdminService = Depends(_svc),
+) -> list[InvoiceCustomerRead]:
+    return await svc.list_invoice_customers(month, company_id)
+
+
+@router.get(
+    "/invoice-customers/{employee_id}",
+    response_model=InvoiceCustomerDetailRead,
+)
+async def invoice_customer_detail(
+    employee_id: str,
+    month: date = Query(...),
+    svc: SuperAdminService = Depends(_svc),
+) -> InvoiceCustomerDetailRead:
+    return await svc.get_invoice_customer(employee_id, month)
+
+
+@router.patch(
+    "/invoice-customers/{employee_id}/status",
+    response_model=InvoiceCustomerRead,
+)
+async def update_invoice_customer_status(
+    employee_id: str,
+    body: InvoiceCustomerStatusUpdate,
+    month: date = Query(...),
+    svc: SuperAdminService = Depends(_svc),
+) -> InvoiceCustomerRead:
+    return await svc.update_invoice_customer_status(employee_id, month, body.status)
 
 
 # --- Dashboard ---
@@ -263,6 +311,23 @@ async def update_order_status(
     svc: SuperAdminService = Depends(_svc),
 ) -> OrderRead:
     return await svc.update_order_status(order_id, body.status)
+
+
+@router.patch(
+    "/branches/{branch_id}/orders/status",
+    response_model=BulkOrderStatusResponse,
+    summary="Filial buyurtmalari holatini ommaviy o'zgartirish",
+)
+async def update_branch_orders_status(
+    branch_id: str,
+    body: BranchOrderStatusUpdate,
+    kitchen_id: str | None = Query(None),
+    svc: SuperAdminService = Depends(_svc),
+) -> BulkOrderStatusResponse:
+    updated = await svc.update_branch_orders_status(
+        branch_id, body.target_date, body.status, kitchen_id
+    )
+    return BulkOrderStatusResponse(updated=updated)
 
 
 # --- Tasdiqlanmagan adminlar ---

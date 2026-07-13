@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // ----------------------------------------------------------------------
 
@@ -47,7 +47,13 @@ export function useTable(props?: UseTableProps): UseTableReturn {
 
   const [orderBy, setOrderBy] = useState(props?.defaultOrderBy ?? 'name');
 
-  const [rowsPerPage, setRowsPerPage] = useState(props?.defaultRowsPerPage ?? 5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  useEffect(() => {
+    const savedRows = Number(window.localStorage.getItem('table.rowsPerPage'));
+    if ([10, 20, 30, 50].includes(savedRows)) setRowsPerPage(savedRows);
+    setDense(window.localStorage.getItem('table.dense') === 'true');
+  }, []);
 
   const [order, setOrder] = useState<'asc' | 'desc'>(props?.defaultOrder ?? 'asc');
 
@@ -77,11 +83,15 @@ export function useTable(props?: UseTableProps): UseTableReturn {
 
   const onChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setPage(0);
-    setRowsPerPage(parseInt(event.target.value, 10));
+    const nextValue = parseInt(event.target.value, 10);
+    setRowsPerPage(nextValue);
+    window.localStorage.setItem('table.rowsPerPage', String(nextValue));
   }, []);
 
   const onChangeDense = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setDense(event.target.checked);
+    const nextValue = event.target.checked;
+    setDense(nextValue);
+    window.localStorage.setItem('table.dense', String(nextValue));
   }, []);
 
   const onSelectAllRows = useCallback((checked: boolean, inputValue: string[]) => {

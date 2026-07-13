@@ -7,6 +7,9 @@ import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import ListItemText from '@mui/material/ListItemText';
 
+import { paths } from 'src/routes/paths';
+import { RouterLink } from 'src/routes/components';
+
 import { fCurrency } from 'src/utils/format-number';
 import { fDate, fTime } from 'src/utils/format-time';
 
@@ -29,7 +32,14 @@ export function InvoiceTableRow({ row }: Props) {
             primary={row.invoiceTo.name}
             secondary={
               <Box>
-                <Link color="inherit" underline="none">{row.invoiceNumber}</Link>
+                <Link
+                  component={RouterLink}
+                  href={paths.dashboard.invoice.details(row.id)}
+                  color="inherit"
+                  underline="hover"
+                >
+                  {row.invoiceNumber}
+                </Link>
                 {row.branchSummary && <Box component="span" sx={{ display: 'block', typography: 'caption', color: 'text.disabled' }}>{row.branchSummary}</Box>}
               </Box>
             }
@@ -81,7 +91,7 @@ export function InvoiceTableRow({ row }: Props) {
             'default'
           }
         >
-          {row.status}
+          {row.status === 'paid' ? "To‘langan" : 'Kutilmoqda'}
         </Label>
       </TableCell>
     </TableRow>

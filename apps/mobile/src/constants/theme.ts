@@ -33,6 +33,7 @@ export const PrimaryPalette = {
 
 export const PRIMARY = PrimaryPalette.main;
 export const SECONDARY = '#00A76F';
+export const DANGER = '#FF3B30';
 export const PRIMARY_ON = PrimaryPalette.darker;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

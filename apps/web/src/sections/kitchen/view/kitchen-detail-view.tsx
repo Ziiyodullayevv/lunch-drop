@@ -734,10 +734,8 @@ export function KitchenDetailView({ id }: { id: string }) {
         {hasLocation ? (
           <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Lat: {locationMarker.latitude.toFixed(6)}
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Lng: {locationMarker.longitude.toFixed(6)}
             </Typography>
           </Stack>
         ) : (

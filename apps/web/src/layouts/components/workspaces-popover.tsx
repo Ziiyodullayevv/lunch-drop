@@ -1,6 +1,10 @@
 import type { Theme, SxProps } from '@mui/material/styles';
 
+import { useState } from 'react';
+
 import Box from '@mui/material/Box';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 // ----------------------------------------------------------------------
 
@@ -10,7 +14,10 @@ export type WorkspacesPopoverProps = {
     name: string;
     logo: string;
     plan: string;
+    role?: string;
   }[];
+  activeId?: string;
+  onSelect?: (id: string) => void;
   sx?: SxProps<Theme>;
 };
 
@@ -63,13 +70,16 @@ function WorkspaceIcon({ role }: { role: string }) {
   );
 }
 
-export function WorkspacesPopover({ data = [], sx }: WorkspacesPopoverProps) {
-  const workspace = data[0];
+export function WorkspacesPopover({ data = [], activeId, onSelect, sx }: WorkspacesPopoverProps) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const workspace = data.find((item) => item.id === activeId) ?? data[0];
 
   return (
     <Box
+      role={data.length > 1 ? 'button' : undefined}
+      onClick={(event) => data.length > 1 && setAnchorEl(event.currentTarget)}
       sx={[
-        { display: 'flex', alignItems: 'center', gap: 1 },
+        { display: 'flex', alignItems: 'center', gap: 1, cursor: data.length > 1 ? 'pointer' : 'default' },
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}
     >
@@ -94,7 +104,7 @@ export function WorkspacesPopover({ data = [], sx }: WorkspacesPopoverProps) {
             flexShrink: 0,
           }}
         >
-          <WorkspaceIcon role={workspace?.id ?? ''} />
+          <WorkspaceIcon role={workspace?.role ?? workspace?.id ?? ''} />
         </Box>
       )}
 
@@ -104,6 +114,24 @@ export function WorkspacesPopover({ data = [], sx }: WorkspacesPopoverProps) {
       >
         {workspace?.name}
       </Box>
+
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+        {data.map((item) => (
+          <MenuItem
+            key={item.id}
+            selected={item.id === workspace?.id}
+            onClick={(event) => {
+              event.stopPropagation();
+              setAnchorEl(null);
+              onSelect?.(item.id);
+            }}
+            sx={{ gap: 1.5, minWidth: 220 }}
+          >
+            <WorkspaceIcon role={item.role ?? item.id} />
+            {item.name}
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   );
 }

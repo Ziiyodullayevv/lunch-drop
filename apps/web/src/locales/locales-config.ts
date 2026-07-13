@@ -59,7 +59,7 @@ export const allLangs: LangOption[] = [
     label: 'Русский',
     countryCode: 'RU',
     adapterLocale: 'ru',
-    numberFormat: { code: 'ru-RU', currency: 'RUB' },
+    numberFormat: { code: 'ru-RU', currency: 'UZS' },
     systemValue: {
       components: { ...ruRUCore.components, ...ruRUDate.components, ...ruRUDataGrid.components },
     },
@@ -69,7 +69,7 @@ export const allLangs: LangOption[] = [
     label: 'English',
     countryCode: 'GB',
     adapterLocale: 'en',
-    numberFormat: { code: 'en-US', currency: 'USD' },
+    numberFormat: { code: 'en-US', currency: 'UZS' },
     systemValue: {
       components: { ...enUSDate.components, ...enUSDataGrid.components },
     },

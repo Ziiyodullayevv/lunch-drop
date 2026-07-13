@@ -38,30 +38,19 @@ export function fNumber(inputValue: InputNumberValue, options?: Options) {
 // ----------------------------------------------------------------------
 
 export function fCurrency(inputValue: InputNumberValue, options?: Options) {
-  const locale = formatNumberLocale() || DEFAULT_LOCALE;
-
   const number = processInput(inputValue);
   if (number === null) return '';
 
-  const currency = options?.currency ?? locale.currency;
-
-  if (currency === 'UZS') {
-    const formatted = new Intl.NumberFormat('uz-UZ', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(number);
-    return `${formatted} so'm`;
-  }
-
-  const fm = new Intl.NumberFormat(locale.code, {
-    style: 'currency',
-    currency,
+  // The product operates only in Uzbek so'm. Keep the language-specific
+  // number grouping, but never render RUB/USD symbols when the UI language
+  // changes.
+  const locale = formatNumberLocale() || DEFAULT_LOCALE;
+  const formatted = new Intl.NumberFormat(locale.code, {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-    ...options,
+    maximumFractionDigits: 0,
   }).format(number);
 
-  return fm;
+  return `${formatted} so'm`;
 }
 
 // ----------------------------------------------------------------------

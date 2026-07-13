@@ -26,7 +26,12 @@ from app.schemas.meal import (
 )
 from app.schemas.kitchen import KitchenMapCompanyRead, KitchenRead, KitchenSettingsUpdate
 from app.schemas.kitchen_connection import KitchenConnectionRead, KitchenPartnerReport
-from app.schemas.order import OrderRead, OrderStatusUpdate
+from app.schemas.order import (
+    BranchOrderStatusUpdate,
+    BulkOrderStatusResponse,
+    OrderRead,
+    OrderStatusUpdate,
+)
 from app.integrations.s3 import upload_image
 from app.services.kitchen_service import KitchenService
 from app.services.kitchen_connection_service import KitchenConnectionService
@@ -59,7 +64,7 @@ async def dashboard(
     return await svc.dashboard(year)
 
 
-# --- Oshxona sozlamalari (vaqtlar, nom, holat) ---
+# --- Oshxona sozlamalari (vaqtlar, nom, holat, lokatsiya) ---
 @router.get("/me", response_model=KitchenRead, summary="O'z oshxona ma'lumotlari")
 async def get_kitchen(svc: KitchenService = Depends(_svc)) -> KitchenRead:
     return await svc.get_kitchen()
@@ -79,7 +84,7 @@ async def map_companies(
 @router.patch(
     "/settings",
     response_model=KitchenRead,
-    summary="Oshxona sozlamalari (qabul/yetkazish vaqtlari)",
+    summary="Oshxona sozlamalari (vaqtlar va lokatsiya)",
 )
 async def update_settings(
     body: KitchenSettingsUpdate, svc: KitchenService = Depends(_svc)
@@ -304,3 +309,19 @@ async def update_order_status(
     order_id: str, body: OrderStatusUpdate, svc: KitchenService = Depends(_svc)
 ) -> OrderRead:
     return await svc.update_order_status(order_id, body.status)
+
+
+@router.patch(
+    "/branches/{branch_id}/orders/status",
+    response_model=BulkOrderStatusResponse,
+    summary="Filial buyurtmalari holatini ommaviy o'zgartirish",
+)
+async def update_branch_orders_status(
+    branch_id: str,
+    body: BranchOrderStatusUpdate,
+    svc: KitchenService = Depends(_svc),
+) -> BulkOrderStatusResponse:
+    updated = await svc.update_branch_orders_status(
+        branch_id, body.target_date, body.status
+    )
+    return BulkOrderStatusResponse(updated=updated)

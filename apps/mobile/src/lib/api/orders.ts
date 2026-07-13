@@ -41,12 +41,50 @@ export async function listTodayOrders(): Promise<Order[]> {
   return enrichOrdersWithKitchenSchedules(res.data.items.map(mapOrder));
 }
 
-export async function listMonthlyOrders(month?: string): Promise<Order[]> {
+export async function listCurrentOrders(): Promise<Order[]> {
+  const today = getTodayDate();
+  const pageSize = 100;
+  const orders: Order[] = [];
+  let offset = 0;
+  let total = 0;
+  let reachedPastOrders = false;
+
+  do {
+    const res = await apiClient.get<OrderListResponseDto>('/orders', {
+      params: { limit: pageSize, offset },
+    });
+    const page = res.data.items.map(mapOrder);
+    orders.push(...page.filter((order) => order.targetDate >= today));
+    reachedPastOrders = page.some((order) => order.targetDate < today);
+    total = res.data.total;
+    offset += page.length;
+  } while (!reachedPastOrders && offset < total && offset > 0);
+
+  return enrichOrdersWithKitchenSchedules(orders);
+}
+
+export async function listMonthlyOrders(
+  month?: string,
+  options: { enrichSchedules?: boolean } = {}
+): Promise<Order[]> {
   const m = month ?? getTodayDate().slice(0, 7);
-  const res = await apiClient.get<OrderListResponseDto>('/orders', {
-    params: { month: m, limit: 100 },
-  });
-  return enrichOrdersWithKitchenSchedules(res.data.items.map(mapOrder));
+  const pageSize = 100;
+  const orders: Order[] = [];
+  let offset = 0;
+  let total = 0;
+
+  do {
+    const res = await apiClient.get<OrderListResponseDto>('/orders', {
+      params: { month: m, limit: pageSize, offset },
+    });
+    orders.push(...res.data.items.map(mapOrder));
+    total = res.data.total;
+    offset += res.data.items.length;
+  } while (offset < total && offset > 0);
+
+  return options.enrichSchedules === false
+    ? orders
+    : enrichOrdersWithKitchenSchedules(orders);
 }
 
 export async function getOrder(orderId: string): Promise<Order> {

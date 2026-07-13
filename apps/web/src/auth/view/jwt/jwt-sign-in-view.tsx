@@ -24,29 +24,31 @@ import { useAuthContext } from '../../hooks';
 import { getErrorMessage } from '../../utils';
 import { FormHead } from '../../components/form-head';
 import { signInWithPassword } from '../../context/jwt';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
-export type SignInSchemaType = z.infer<typeof SignInSchema>;
-
-export const SignInSchema = z.object({
-  phone: z.string().min(1, { message: 'Telefon raqam majburiy' }),
+const createSignInSchema = (t: (key: string) => string) => z.object({
+  phone: z.string().min(1, { message: t('auth.phoneRequired') }),
   password: z
     .string()
-    .min(1, { message: 'Parol majburiy' })
-    .min(6, { message: 'Parol kamida 6 ta belgidan iborat bo‘lishi kerak' }),
+    .min(1, { message: t('auth.passwordRequired') })
+    .min(6, { message: t('auth.passwordMin') }),
 });
+export type SignInSchemaType = z.infer<ReturnType<typeof createSignInSchema>>;
 
 // ----------------------------------------------------------------------
 
 export function JwtSignInView() {
+  const { t } = useTranslate('common');
+  const signInSchema = createSignInSchema(t);
   const router = useRouter();
   const showPassword = useBoolean();
   const { checkUserSession } = useAuthContext();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const methods = useForm({
-    resolver: zodResolver(SignInSchema),
+    resolver: zodResolver(signInSchema),
     defaultValues: { phone: '', password: '' },
   });
 
@@ -65,12 +67,12 @@ export function JwtSignInView() {
   return (
     <>
       <FormHead
-        title="Tizimga kirish"
+        title={t('auth.signInTitle')}
         description={
           <>
-            Lunch Drop hamkori bo‘lmoqchimisiz?{' '}
+            {t('auth.signInDescription')}{' '}
             <Link component={RouterLink} href={paths.auth.jwt.signUp} variant="subtitle2">
-              Ro‘yxatdan o‘tish
+              {t('auth.signUp')}
             </Link>
           </>
         }
@@ -85,12 +87,12 @@ export function JwtSignInView() {
 
       <Form methods={methods} onSubmit={onSubmit}>
         <Box sx={{ gap: 3, display: 'flex', flexDirection: 'column' }}>
-          <Field.Phone name="phone" label="Telefon raqam" country="UZ" />
+          <Field.Phone name="phone" label={t('auth.phone')} placeholder={t('auth.phonePlaceholder')} country="UZ" />
 
           <Field.Text
             name="password"
-            label="Parol"
-            placeholder="Kamida 6 ta belgi"
+            label={t('auth.password')}
+            placeholder={t('auth.passwordPlaceholder')}
             type={showPassword.value ? 'text' : 'password'}
             slotProps={{
               inputLabel: { shrink: true },
@@ -115,9 +117,9 @@ export function JwtSignInView() {
             type="submit"
             variant="contained"
             loading={isSubmitting}
-            loadingIndicator="Kirilmoqda..."
+            loadingIndicator={t('auth.signingIn')}
           >
-            Kirish
+            {t('auth.signIn')}
           </Button>
         </Box>
       </Form>

@@ -49,6 +49,7 @@ import { useCompanies } from 'src/sections/company/hooks/use-companies';
 import { useAuthContext } from 'src/auth/hooks';
 
 import { useCreateBranch, useCompanyKitchens, useCreateCompanyBranch } from '../hooks/use-branches';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -68,6 +69,7 @@ type FormValues = z.infer<typeof BranchSchema>;
 // ----------------------------------------------------------------------
 
 export function BranchCreateView() {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const { user } = useAuthContext();
   const searchParams = useSearchParams();
@@ -177,10 +179,10 @@ export function BranchCreateView() {
         });
         addRecentBranch({ id: branch.id, companyId: branch.company_id });
       }
-      toast.success('Filial yaratildi');
+      toast.success(t('branch.created'));
       router.push(isSuperAdmin ? paths.dashboard.company.root : paths.dashboard.branch.root);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Xato yuz berdi');
+      toast.error(err instanceof Error ? err.message : t('branch.error'));
     }
   });
 
@@ -189,11 +191,11 @@ export function BranchCreateView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Yangi filial"
+        heading={t('branch.new')}
         links={[
           { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Filiallar', href: backHref },
-          { name: 'Yangi' },
+          { name: t('branch.title'), href: backHref },
+          { name: t('branch.newShort') },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}
       />
@@ -202,14 +204,14 @@ export function BranchCreateView() {
         <Form methods={methods} onSubmit={onSubmit}>
           <Stack spacing={3}>
             {isSuperAdmin && (
-              <Field.Select name="company_id" label="Kompaniya" slotProps={{ inputLabel: { shrink: true } }}>
+              <Field.Select name="company_id" label={t('map.company')} slotProps={{ inputLabel: { shrink: true } }}>
                 {companies.map((c) => (
                   <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
                 ))}
               </Field.Select>
             )}
 
-            <Field.Text name="name" label="Filial nomi" slotProps={{ inputLabel: { shrink: true } }} />
+            <Field.Text name="name" label={t('branch.name')} slotProps={{ inputLabel: { shrink: true } }} />
             <Controller
               name="address"
               control={control}
@@ -228,11 +230,11 @@ export function BranchCreateView() {
 
             {isCompanyAdmin && (
               <FormControl fullWidth>
-                <InputLabel shrink>Oshxonalar</InputLabel>
+                <InputLabel shrink>{t('branch.kitchens')}</InputLabel>
                 <Select
                   multiple
                   displayEmpty
-                  label="Oshxonalar"
+                  label={t('branch.kitchens')}
                   value={selectedKitchenIds}
                   onChange={(e) => setSelectedKitchenIds(e.target.value as string[])}
                   notched
@@ -242,7 +244,7 @@ export function BranchCreateView() {
                       return <Typography variant="body2" color="text.disabled">Yuklanmoqda...</Typography>;
                     }
                     if ((selected as string[]).length === 0) {
-                      return <Typography variant="body2" color="text.disabled">Oshxona tanlang</Typography>;
+                      return <Typography variant="body2" color="text.disabled">{t('branch.selectKitchen')}</Typography>;
                     }
                     return (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -256,7 +258,7 @@ export function BranchCreateView() {
                 >
                   {kitchens.length === 0 && !kitchensLoading ? (
                     <MenuItem disabled>
-                      <Typography variant="body2" color="text.disabled">Oshxona topilmadi</Typography>
+                      <Typography variant="body2" color="text.disabled">{t('branch.noKitchen')}</Typography>
                     </MenuItem>
                   ) : (
                     kitchens.map((k) => (
@@ -298,8 +300,6 @@ export function BranchCreateView() {
               <Box sx={{ display: 'flex', gap: 2 }}>
                 {hasLocation ? (
                   <>
-                    <Typography variant="caption" color="text.secondary">Lat: {latVal?.toFixed(6)}</Typography>
-                    <Typography variant="caption" color="text.secondary">Lng: {lngVal?.toFixed(6)}</Typography>
                   </>
                 ) : (
                   <Typography variant="caption" color="text.disabled">
@@ -311,7 +311,7 @@ export function BranchCreateView() {
 
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button component={RouterLink} href={backHref} variant="outlined" color="inherit">
-                Bekor qilish
+                {t('common.cancel')}
               </Button>
               <LoadingButton
                 type="submit"
@@ -319,7 +319,7 @@ export function BranchCreateView() {
                 loading={isSubmitting}
                 disabled={isMapMoving || isResolvingAddress}
               >
-                Filial yaratish
+                {t('branch.create')}
               </LoadingButton>
             </Box>
           </Stack>

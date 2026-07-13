@@ -71,6 +71,7 @@ import {
 import { useAuthContext } from 'src/auth/hooks';
 
 import { useKitchens, useDeleteKitchen, useUpdateKitchen } from '../hooks/use-kitchens';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -127,6 +128,7 @@ function KitchenTableRow({
   onSelectRow: () => void;
   onRefresh: () => void;
 }) {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const popover = usePopover();
   const confirmDelete = useBoolean();
@@ -140,10 +142,10 @@ function KitchenTableRow({
     popover.onClose();
     try {
       await updateKitchen.mutateAsync({ is_active: !row.is_active });
-      toast.success(row.is_active ? 'Nofaol qilindi' : 'Faol qilindi');
+      toast.success(row.is_active ? t('kitchenExtra.deactivated') : t('kitchenExtra.activated'));
       onRefresh();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(t('kitchenExtra.error'));
     }
   };
 
@@ -151,10 +153,10 @@ function KitchenTableRow({
     confirmDelete.onFalse();
     try {
       await deleteKitchen.mutateAsync(row.id);
-      toast.success("Oshxona o'chirildi");
+      toast.success(t('kitchenExtra.deleted'));
       onRefresh();
     } catch {
-      toast.error("O'chirishda xatolik");
+      toast.error(t('kitchenExtra.deleteError'));
     }
   };
 
@@ -261,7 +263,7 @@ function KitchenTableRow({
 
         <TableCell>
           <Label variant="soft" color={row.is_active ? 'success' : 'default'}>
-            {row.is_active ? 'Faol' : 'Nofaol'}
+            {row.is_active ? t('map.active') : t('map.inactive')}
           </Label>
         </TableCell>
 
@@ -292,7 +294,7 @@ function KitchenTableRow({
             }}
           >
             <Iconify icon="solar:eye-bold" />
-            Ko&apos;rish
+            {t('common.view')}
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -301,14 +303,14 @@ function KitchenTableRow({
             }}
           >
             <Iconify icon="solar:pen-bold" />
-            Tahrirlash
+            {t('common.edit')}
           </MenuItem>
           <MenuItem onClick={handleToggleActive}>
             <Iconify
               icon={row.is_active ? 'solar:forbidden-circle-bold' : 'solar:check-circle-bold'}
               sx={{ color: row.is_active ? 'warning.main' : 'success.main' }}
             />
-            {row.is_active ? "To'xtatish" : 'Faollashtirish'}
+            {row.is_active ? t('common.deactivate') : t('common.activate')}
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -318,7 +320,7 @@ function KitchenTableRow({
             sx={{ color: 'error.main' }}
           >
             <Iconify icon="solar:trash-bin-trash-bold" />
-            O&apos;chirish
+            {t('common.delete')}
           </MenuItem>
         </MenuList>
       </CustomPopover>
@@ -326,11 +328,11 @@ function KitchenTableRow({
       <ConfirmDialog
         open={confirmDelete.value}
         onClose={confirmDelete.onFalse}
-        title="O'chirish"
-        content="Ushbu oshxonani o'chirmoqchimisiz?"
+        title={t('common.delete')}
+        content={t('kitchenExtra.deleteConfirm')}
         action={
           <Button variant="contained" color="error" onClick={handleDelete}>
-            O&apos;chirish
+            {t('common.delete')}
           </Button>
         }
       />
@@ -784,6 +786,7 @@ function CatalogKitchenItem({
 // ----------------------------------------------------------------------
 
 export function KitchenListView() {
+  const { t } = useTranslate('common');
   const { user } = useAuthContext();
   const isCompanyAdmin = user?.role === 'company_admin';
 
@@ -893,14 +896,14 @@ export function KitchenListView() {
     return (
       <DashboardContent>
         <CustomBreadcrumbs
-          heading="Oshxonalar"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Oshxonalar' }]}
+          heading={t('kitchen.title')}
+          links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('kitchen.title') }]}
           sx={{ mb: { xs: 3, md: 5 } }}
         />
 
         <Tabs value={catalogTab} onChange={(_, val) => setCatalogTab(val)}>
           {CATALOG_TABS.map((tab) => (
-            <Tab key={tab.value} value={tab.value} label={tab.label} />
+            <Tab key={tab.value} value={tab.value} label={t(`kitchenExtra.catalog.${tab.value}`)} />
           ))}
         </Tabs>
 
@@ -921,7 +924,7 @@ export function KitchenListView() {
                 setCatalogBranchFilter(event.target.value)
               }
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {branches.map((branch) => (
                 <MenuItem key={branch.id} value={branch.id}>
                   {branch.name}
@@ -933,7 +936,7 @@ export function KitchenListView() {
           <TextField
             value={catalogSearchText}
             onChange={(event) => setCatalogSearchText(event.target.value)}
-            placeholder="Oshxona, filial, telefon yoki ID bo'yicha..."
+            placeholder={t('kitchen.search')}
             sx={{
               width: {
                 xs: 1,
@@ -965,7 +968,7 @@ export function KitchenListView() {
           </Box>
         ) : filteredCatalog.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8, color: 'text.disabled' }}>
-            <Typography variant="h6">Oshxonalar topilmadi</Typography>
+            <Typography variant="h6">{t('kitchen.notFound')}</Typography>
           </Box>
         ) : (
           <Box
@@ -993,8 +996,8 @@ export function KitchenListView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Oshxonalar"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Oshxonalar' }]}
+          heading={t('kitchen.title')}
+          links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('kitchen.title') }]}
         action={
           <Button
             component={RouterLink}
@@ -1002,7 +1005,7 @@ export function KitchenListView() {
             variant="contained"
             startIcon={<Iconify icon="mingcute:add-line" />}
           >
-            Yangi oshxona
+            {t('kitchen.new')}
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -1029,7 +1032,7 @@ export function KitchenListView() {
               <Tab
                 key={tab.value}
                 value={tab.value}
-                label={tab.label}
+                label={t(`kitchenExtra.status.${tab.value}`)}
                 iconPosition="end"
                 icon={
                   <Label
@@ -1052,7 +1055,7 @@ export function KitchenListView() {
               setKitchenSearchText(event.target.value);
               table.onResetPage();
             }}
-            placeholder="Oshxona nomi, telefon, vaqt yoki ID bo'yicha..."
+            placeholder={t('kitchen.searchShort')}
             sx={{ width: { xs: 1, md: 480 } }}
             slotProps={{
               input: {
@@ -1091,7 +1094,7 @@ export function KitchenListView() {
               )
             }
             action={
-              <Tooltip title="O'chirish">
+              <Tooltip title={t('common.delete')}>
                 <IconButton color="error" onClick={confirmBulkDelete.onTrue}>
                   <Iconify icon="solar:trash-bin-trash-bold" />
                 </IconButton>
@@ -1104,7 +1107,7 @@ export function KitchenListView() {
               <TableHeadCustom
                 order={table.order}
                 orderBy={table.orderBy}
-                headCells={TABLE_HEAD}
+                headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: t(`kitchenExtra.table.${cell.id}`) }))}
                 rowCount={pagedRows.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}

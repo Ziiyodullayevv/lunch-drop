@@ -16,6 +16,7 @@ import { signOut as jwtSignOut } from 'src/auth/context/jwt/action';
 import { signOut as amplifySignOut } from 'src/auth/context/amplify/action';
 import { signOut as supabaseSignOut } from 'src/auth/context/supabase/action';
 import { signOut as firebaseSignOut } from 'src/auth/context/firebase/action';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
@@ -33,6 +34,7 @@ export function SignOutButton({ onClose, sx, ...other }: Props) {
   const router = useRouter();
 
   const { checkUserSession } = useAuthContext();
+  const { t } = useTranslate('common');
 
   const { logout: signOutAuth0 } = useAuth0();
 
@@ -45,7 +47,7 @@ export function SignOutButton({ onClose, sx, ...other }: Props) {
       router.refresh();
     } catch (error) {
       console.error(error);
-      toast.error('Unable to logout!');
+      toast.error(t('account.logoutError'));
     }
   }, [checkUserSession, onClose, router]);
 
@@ -57,7 +59,7 @@ export function SignOutButton({ onClose, sx, ...other }: Props) {
       router.refresh();
     } catch (error) {
       console.error(error);
-      toast.error('Unable to logout!');
+      toast.error(t('account.logoutError'));
     }
   }, [onClose, router, signOutAuth0]);
 
@@ -71,7 +73,7 @@ export function SignOutButton({ onClose, sx, ...other }: Props) {
       sx={sx}
       {...other}
     >
-      Logout
+      {t('account.logout')}
     </Button>
   );
 }

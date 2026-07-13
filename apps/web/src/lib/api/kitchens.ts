@@ -40,6 +40,8 @@ export type KitchenSettingsUpdate = {
   delivery_start_time?: string | null;
   delivery_end_time?: string | null;
   is_active?: boolean | null;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 export type PageKitchen = {

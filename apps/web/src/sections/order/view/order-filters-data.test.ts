@@ -15,12 +15,15 @@ const createOrder = (overrides: Partial<OrderRead> = {}): OrderRead => ({
   status: 'delivered',
   created_at: '2026-06-11T08:00:00Z',
   employee_name: 'Akobir Ziyodullayev',
+  employee_phone: '+998901234567',
+  employee_avatar_url: '/media/avatars/akobir.png',
   branch_id: 'branch-1',
   branch_name: 'Tinchlik filiali',
   company_id: 'company-1',
   company_name: 'Mars IT',
   kitchen_name: 'Ochil Dasturxon',
   meal_name: 'Osh',
+  meal_image_url: '/media/meals/osh.png',
   ...overrides,
 });
 
@@ -44,11 +47,19 @@ describe('order view filters', () => {
     ).toEqual(['order-1', 'order-2']);
   });
 
-  it('searches company, branch, kitchen, employee and meal terms together', () => {
-    const result = filterOrdersForView([createOrder()], {
-      search: 'mars tinchlik dasturxon akobir osh',
-    });
+  it.each([
+    ['employee name', 'akobir ziyodullayev'],
+    ['formatted phone', '90 123-45-67'],
+    ['full phone', '+998901234567'],
+    ['order id', 'order-1'],
+    ['displayed order id', '#order-1'],
+  ])('searches by %s', (_label, search) => {
+    expect(filterOrdersForView([createOrder()], { search })).toHaveLength(1);
+  });
 
-    expect(result).toHaveLength(1);
+  it('does not use company, branch or meal as free-text search fields', () => {
+    expect(filterOrdersForView([createOrder()], { search: 'Mars IT' })).toHaveLength(0);
+    expect(filterOrdersForView([createOrder()], { search: 'Tinchlik' })).toHaveLength(0);
+    expect(filterOrdersForView([createOrder()], { search: 'Osh' })).toHaveLength(0);
   });
 });

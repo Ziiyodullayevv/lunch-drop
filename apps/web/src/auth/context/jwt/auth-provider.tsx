@@ -30,8 +30,9 @@ export function AuthProvider({ children }: Props) {
         const res = await axios.get(endpoints.auth.me);
 
         const user = res.data?.user ?? res.data;
+        const profiles = res.data?.profiles ?? [];
 
-        setState({ user: { ...user, accessToken }, loading: false });
+        setState({ user: { ...user, profiles, accessToken }, loading: false });
       } else {
         setState({ user: null, loading: false });
       }

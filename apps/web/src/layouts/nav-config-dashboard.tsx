@@ -63,7 +63,7 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
         title: t('navigation.branches'),
         path: paths.dashboard.branch.root,
         icon: ICONS.booking,
-        allowedRoles: ['company_admin'],
+        allowedRoles: ['super_admin', 'company_admin'],
         children: [
           { title: t('common.all'), path: paths.dashboard.branch.root },
           { title: t('common.add'), path: paths.dashboard.branch.new },
@@ -76,7 +76,6 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
         allowedRoles: ['company_admin'],
         children: [
           { title: t('common.all'), path: paths.dashboard.employee.list },
-          { title: t('common.create'), path: paths.dashboard.employee.new },
         ],
       },
       {
@@ -125,7 +124,7 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
         title: t('navigation.invoices'),
         path: paths.dashboard.invoice.root,
         icon: ICONS.banking,
-        allowedRoles: ['company_admin'],
+        allowedRoles: ['super_admin', 'company_admin'],
       },
     ],
   },

@@ -40,6 +40,7 @@ import {
 } from 'src/components/table';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales';
 
 import {
   useBranches,
@@ -75,6 +76,7 @@ type RowProps = {
 };
 
 function BranchRow({ row, selected, canManage, onSelectRow, onDelete }: RowProps) {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const popover = usePopover();
   const kitchenCount = row.kitchen_ids?.length ?? 0;
@@ -172,7 +174,7 @@ function BranchRow({ row, selected, canManage, onSelectRow, onDelete }: RowProps
             }}
           >
             <Iconify icon="solar:eye-bold" sx={{ mr: 1 }} />
-            Ko&apos;rish
+            {t('common.view')}
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -181,7 +183,7 @@ function BranchRow({ row, selected, canManage, onSelectRow, onDelete }: RowProps
             }}
           >
             <Iconify icon="solar:pen-bold" sx={{ mr: 1 }} />
-            Tahrirlash
+            {t('common.edit')}
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -191,7 +193,7 @@ function BranchRow({ row, selected, canManage, onSelectRow, onDelete }: RowProps
             sx={{ color: 'error.main' }}
           >
             <Iconify icon="solar:trash-bin-trash-bold" sx={{ mr: 1 }} />
-            O&apos;chirish
+            {t('common.delete')}
           </MenuItem>
         </MenuList>
       </CustomPopover>
@@ -202,6 +204,7 @@ function BranchRow({ row, selected, canManage, onSelectRow, onDelete }: RowProps
 // ----------------------------------------------------------------------
 
 export function BranchListView() {
+  const { t } = useTranslate('common');
   const table = useTable({ defaultRowsPerPage: 10 });
   const { user } = useAuthContext();
   const isCompanyAdmin = user?.role === 'company_admin';
@@ -229,17 +232,17 @@ export function BranchListView() {
       } else {
         await deleteBranch.mutateAsync(id);
       }
-      toast.success("Filial o'chirildi");
+      toast.success(t('branch.deleted'));
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(t('branch.error'));
     }
   };
 
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Filiallar"
-        links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Filiallar' }]}
+        heading={t('branch.title')}
+        links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('branch.title') }]}
         action={
           <Button
             component={RouterLink}
@@ -247,7 +250,7 @@ export function BranchListView() {
             variant="contained"
             startIcon={<Iconify icon="mingcute:add-line" />}
           >
-            Yangi filial
+            {t('branch.new')}
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -255,7 +258,7 @@ export function BranchListView() {
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          Filiallarni yuklashda xatolik yuz berdi
+          {t('branch.loadError')}
         </Alert>
       )}
 
@@ -270,7 +273,7 @@ export function BranchListView() {
             <TableHeadCustom
               order={table.order}
               orderBy={table.orderBy}
-              headCells={TABLE_HEAD}
+              headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: t(`branch.table.${cell.id}`) }))}
               rowCount={branches.length}
               numSelected={table.selected.length}
               onSort={table.onSort}

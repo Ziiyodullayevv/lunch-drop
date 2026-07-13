@@ -23,6 +23,9 @@ import {
   fetchSuperAdminOrder,
   fetchSuperAdminOrders,
   bulkConfirmBranchOrders,
+  updateSuperAdminOrderStatus,
+  updateKitchenBranchOrderStatus,
+  updateSuperAdminBranchOrderStatus,
 } from 'src/lib/api/orders';
 
 // ----------------------------------------------------------------------
@@ -41,18 +44,20 @@ export const kitchenKeys = {
 
 // ----------------------------------------------------------------------
 
-export function useKitchenMe() {
+export function useKitchenMe(enabled = true) {
   return useQuery({
     queryKey: kitchenKeys.me,
     queryFn:  fetchKitchenMe,
     staleTime: Infinity,
+    enabled,
   });
 }
 
-export function useKitchenOrders(params?: { target_date?: string }) {
+export function useKitchenOrders(params?: { target_date?: string }, enabled = true) {
   return useQuery({
     queryKey: orderKeys.kitchen(params),
     queryFn:  () => fetchKitchenOrders(params),
+    enabled,
   });
 }
 
@@ -75,6 +80,42 @@ export function useUpdateOrderStatus() {
   });
 }
 
+export function useUpdateSuperAdminOrderStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: OrderStatus }) =>
+      updateSuperAdminOrderStatus(id, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+  });
+}
+
+export function useUpdateKitchenBranchOrderStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ branchId, targetDate, status }: {
+      branchId: string;
+      targetDate: string;
+      status: OrderStatus;
+    }) => updateKitchenBranchOrderStatus(branchId, targetDate, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+  });
+}
+
+export function useUpdateSuperAdminBranchOrderStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ branchId, targetDate, status, kitchenId }: {
+      branchId: string;
+      targetDate: string;
+      status: OrderStatus;
+      kitchenId?: string;
+    }) => updateSuperAdminBranchOrderStatus(
+      branchId, targetDate, status, kitchenId
+    ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+  });
+}
+
 export function useBulkConfirm() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -88,8 +129,11 @@ export function useBulkConfirm() {
 export function useBulkConfirmBranch() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ branchId, targetDate }: { branchId: string; targetDate?: string }) =>
-      bulkConfirmBranchOrders(branchId, targetDate),
+    mutationFn: ({ branchId, periodStart, periodEnd }: { branchId: string; periodStart: string; periodEnd: string }) =>
+      bulkConfirmBranchOrders(branchId, {
+        period_start: periodStart,
+        period_end: periodEnd,
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: orderKeys.all }),
   });
 }
@@ -102,17 +146,19 @@ export function useOrderReport(periodStart: string, periodEnd: string, enabled =
   });
 }
 
-export function useCompanyOrders(params?: CompanyOrdersParams) {
+export function useCompanyOrders(params?: CompanyOrdersParams, enabled = true) {
   return useQuery({
     queryKey: orderKeys.company(params),
     queryFn:  () => fetchCompanyOrders(params),
+    enabled,
   });
 }
 
-export function useSuperAdminOrders(params?: SuperAdminOrdersParams) {
+export function useSuperAdminOrders(params?: SuperAdminOrdersParams, enabled = true) {
   return useQuery({
     queryKey: orderKeys.superAdmin(params),
     queryFn:  () => fetchSuperAdminOrders(params),
+    enabled,
   });
 }
 

@@ -287,10 +287,8 @@ export function KitchenEditView({ id }: Props) {
 
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <Typography variant="caption" color={errors.lat ? 'error' : 'text.secondary'}>
-                  Lat: {lat?.toFixed(6)}
                 </Typography>
                 <Typography variant="caption" color={errors.lng ? 'error' : 'text.secondary'}>
-                  Lng: {lng?.toFixed(6)}
                 </Typography>
               </Box>
             </Stack>

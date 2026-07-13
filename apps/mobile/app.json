@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lunch Drop",
     "slug": "lunchdrop",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon2.png",
     "scheme": "lunchdrop",
@@ -42,14 +42,29 @@
         {
           "backgroundColor": "#FFFFFF",
           "image": "./assets/images/icon2.png",
-          "imageWidth": 280,
+          "imageWidth": 340,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#FFFFFF",
+            "image": "./assets/images/icon2.png"
+          },
           "ios": {
-            "backgroundColor": "#FFFFFF"
+            "backgroundColor": "#FFFFFF",
+            "imageWidth": 340,
+            "dark": {
+              "backgroundColor": "#FFFFFF",
+              "image": "./assets/images/icon2.png"
+            }
           },
           "android": {
             "backgroundColor": "#FFFFFF",
             "image": "./assets/images/icon2.png",
-            "imageWidth": 280
+            "imageWidth": 340,
+            "resizeMode": "contain",
+            "dark": {
+              "backgroundColor": "#FFFFFF",
+              "image": "./assets/images/icon2.png"
+            }
           }
         }
       ]

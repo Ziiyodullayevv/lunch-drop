@@ -37,9 +37,10 @@ const mockOrder = {
   id: 'o-1', employee_id: 'u-1', kitchen_id: 'k-1', meal_id: 'm-1',
   target_date: '2024-01-15', historical_price: '25000.00', system_fee: '1250.00',
   status: 'created' as const, created_at: '2024-01-15T09:00:00Z',
-  employee_name: null, branch_id: null, branch_name: null,
+  employee_name: null, employee_phone: null, employee_avatar_url: null,
+  branch_id: null, branch_name: null,
   company_id: null, company_name: null, meal_name: null,
-  kitchen_name: null,
+  kitchen_name: null, meal_image_url: null,
 };
 
 function wrapper({ children }: { children: React.ReactNode }) {

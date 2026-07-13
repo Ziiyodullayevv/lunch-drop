@@ -32,6 +32,7 @@ import { orderItemsLabel } from 'src/lib/api/orders';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { emptyOrderAnalytics } from 'src/lib/order-analytics';
 
+import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
@@ -258,7 +259,26 @@ export function CompanyOrdersView() {
                             <Chip size="small" variant="soft" color={branch.pending_count ? 'warning' : 'success'} label={branch.pending_count ? `${branch.pending_count} ta kutilmoqda` : 'Tasdiqlangan'} />
                             <Typography variant="subtitle2">{fCurrency(Number(branch.total_amount))}</Typography>
                             <Box onClick={(event) => event.stopPropagation()}>
-                              {!!branch.pending_count && <Button size="small" variant="contained" onClick={() => bulkBranch.mutate({ branchId: branch.branch_id, targetDate: endDate?.format('YYYY-MM-DD') })} disabled={bulkBranch.isPending}>Tasdiqlash</Button>}
+                              {!!branch.pending_count && (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  onClick={() => bulkBranch.mutate(
+                                    {
+                                      branchId: branch.branch_id,
+                                      periodStart: reportStart,
+                                      periodEnd: reportEnd,
+                                    },
+                                    {
+                                      onSuccess: ({ confirmed }) => toast.success(`${confirmed} ta buyurtma tasdiqlandi`),
+                                      onError: (mutationError) => toast.error(mutationError instanceof Error ? mutationError.message : 'Xatolik yuz berdi'),
+                                    }
+                                  )}
+                                  disabled={bulkBranch.isPending}
+                                >
+                                  Tasdiqlash
+                                </Button>
+                              )}
                             </Box>
                           </Stack>
                         </TableCell>
@@ -266,7 +286,12 @@ export function CompanyOrdersView() {
                       <TableRow>
                         <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
                           <Collapse in={expanded} timeout="auto" unmountOnExit>
-                            <Box sx={{ bgcolor: 'background.neutral' }}>{branchOrders.map(renderOrderRow)}</Box>
+                            <Table
+                              size={table.dense ? 'small' : 'medium'}
+                              sx={{ width: '100%', minWidth: 700, bgcolor: 'background.neutral' }}
+                            >
+                              <TableBody>{branchOrders.map(renderOrderRow)}</TableBody>
+                            </Table>
                           </Collapse>
                         </TableCell>
                       </TableRow>

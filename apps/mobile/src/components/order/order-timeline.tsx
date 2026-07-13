@@ -26,14 +26,19 @@ export function OrderTimeline({ status }: Props) {
   const doneColor = '#00A76F';
   const activeColor = '#007867';
   const textColor = '#004B50';
-  const activeBg = 'rgba(0,120,103,0.08)';
-  const doneBg = 'rgba(0,167,111,0.12)';
+  // Android renders translucent backgrounds combined with elevation darker
+  // than iOS. Opaque fills keep the current step visibly green on both.
+  const activeBg = '#DDF3EE';
+  const doneBg = '#E1F5ED';
 
   return (
     <XStack alignItems="flex-start" paddingVertical={8}>
       {STEPS.map((step, index) => {
         const isDone   = index < activeIndex;
         const isActive = index === activeIndex;
+        const isDeliveredStep = status === 'delivered' && isActive;
+        const isVisuallyDone = isDone || isDeliveredStep;
+        const isVisuallyActive = isActive && !isDeliveredStep;
         const isLast   = index === STEPS.length - 1;
 
         return (
@@ -43,21 +48,21 @@ export function OrderTimeline({ status }: Props) {
                 width: 48,
                 height: 48,
                 borderRadius: 14,
-                backgroundColor: isActive ? activeBg : (isDone ? doneBg : '#F5F5F5'),
+                backgroundColor: isVisuallyActive ? activeBg : (isVisuallyDone ? doneBg : '#F5F5F5'),
                 alignItems: 'center',
                 justifyContent: 'center',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: isActive ? 0.12 : 0,
-                shadowRadius: isActive ? 8 : 0,
-                elevation: Platform.select({ android: isActive ? 2 : 0, default: isActive ? 4 : 0 }),
+                shadowOpacity: isVisuallyActive ? 0.12 : 0,
+                shadowRadius: isVisuallyActive ? 8 : 0,
+                elevation: Platform.select({ android: 0, default: isVisuallyActive ? 4 : 0 }),
               }}>
                 <MaterialCommunityIcons
                   name={step.icon as any}
                   size={22}
-                  color={isActive ? activeColor : (isDone ? doneColor : '#C7C7CC')}
+                  color={isVisuallyActive ? activeColor : (isVisuallyDone ? doneColor : '#C7C7CC')}
                 />
-                {isDone && (
+                {isVisuallyDone && (
                   <View style={{
                     position: 'absolute',
                     top: -4,
@@ -77,8 +82,8 @@ export function OrderTimeline({ status }: Props) {
               </View>
               <Text
                 fontSize={11}
-                fontWeight={isActive ? '700' : '500'}
-                color={isActive ? textColor : (isDone ? doneColor : '#C7C7CC')}
+                fontWeight={isVisuallyActive ? '700' : '500'}
+                color={isVisuallyActive ? textColor : (isVisuallyDone ? doneColor : '#C7C7CC')}
                 textAlign="center"
                 numberOfLines={2}
                 style={{ width: 68 }}

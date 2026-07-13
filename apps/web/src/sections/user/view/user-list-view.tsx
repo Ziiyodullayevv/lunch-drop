@@ -58,6 +58,7 @@ import {
 } from 'src/components/table';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales';
 
 import { UserTableToolbar } from '../user-table-toolbar';
 import { UserTableFiltersResult } from '../user-table-filters-result';
@@ -317,6 +318,7 @@ function UserRow({
 }: {
   row: UserItem; selected: boolean; isSelf: boolean; onSelectRow: () => void; onRefresh: () => void;
 }) {
+  const { t } = useTranslate('common');
   const router = useRouter();
   const popover = usePopover();
   const confirmDialog = useBoolean();
@@ -325,27 +327,27 @@ function UserRow({
     popover.onClose();
     try {
       await axios.post(endpoints.superAdmin.blockUser(row.id));
-      toast.success('User bloklandi');
+      toast.success(t('user.blocked'));
       onRefresh();
-    } catch { toast.error('Xatolik yuz berdi'); }
+    } catch { toast.error(t('user.error')); }
   };
 
   const handleApprove = async () => {
     popover.onClose();
     try {
       await axios.patch(endpoints.superAdmin.approveAdmin(row.id));
-      toast.success('Foydalanuvchi tasdiqlandi');
+      toast.success(t('user.approved'));
       onRefresh();
-    } catch { toast.error('Xatolik yuz berdi'); }
+    } catch { toast.error(t('user.error')); }
   };
 
   const handleDelete = async () => {
     confirmDialog.onFalse();
     try {
       await axios.delete(endpoints.superAdmin.user(row.id));
-      toast.success("User o'chirildi");
+      toast.success(t('user.deleted'));
       onRefresh();
-    } catch { toast.error('Xatolik yuz berdi'); }
+    } catch { toast.error(t('user.error')); }
   };
 
   return (
@@ -385,13 +387,13 @@ function UserRow({
 
         <TableCell>
           <Label variant="soft" color={roleColor(row.role) as any}>
-            {ROLE_LABELS[row.role] ?? row.role}
+            {t(`user.roles.${row.role}`, { defaultValue: row.role })}
           </Label>
         </TableCell>
 
         <TableCell>
           <Label variant="soft" color={statusColor(row.status) as any}>
-            {STATUS_LABELS[row.status] ?? row.status}
+            {t(`user.statuses.${row.status}`, { defaultValue: row.status })}
           </Label>
         </TableCell>
 
@@ -421,23 +423,23 @@ function UserRow({
           {row.status === 'pending_approval' && (
             <MenuItem onClick={handleApprove} sx={{ color: 'success.main' }}>
               <Iconify icon="solar:check-circle-bold" />
-              Tasdiqlash
+              {t('common.approve')}
             </MenuItem>
           )}
           <MenuItem onClick={() => { popover.onClose(); router.push(paths.dashboard.user.edit(row.id)); }}>
             <Iconify icon="solar:pen-bold" />
-            Tahrirlash
+            {t('common.edit')}
           </MenuItem>
           {!isSelf && row.status !== 'blocked' && (
             <MenuItem onClick={handleBlock} sx={{ color: 'warning.main' }}>
               <Iconify icon="solar:forbidden-circle-bold" />
-              Bloklash
+              {t('user.block')}
             </MenuItem>
           )}
           {!isSelf && (
             <MenuItem onClick={() => { popover.onClose(); confirmDialog.onTrue(); }} sx={{ color: 'error.main' }}>
               <Iconify icon="solar:trash-bin-trash-bold" />
-              O&apos;chirish
+              {t('common.delete')}
             </MenuItem>
           )}
         </MenuList>
@@ -446,11 +448,11 @@ function UserRow({
       <ConfirmDialog
         open={confirmDialog.value}
         onClose={confirmDialog.onFalse}
-        title="O'chirish"
-        content="Ushbu foydalanuvchini o'chirmoqchimisiz?"
+        title={t('common.delete')}
+        content={t('user.deleteConfirm')}
         action={
           <Button variant="contained" color="error" onClick={handleDelete}>
-            O&apos;chirish
+            {t('common.delete')}
           </Button>
         }
       />
@@ -486,6 +488,7 @@ function applyFilter(data: UserItem[], filters: IUserTableFilters, tabStatus: st
 // ----------------------------------------------------------------------
 
 export function UserListView() {
+  const { t } = useTranslate('common');
   const { user: authUser } = useAuthContext();
   const searchParams = useSearchParams();
   const table = useTable({ defaultRowsPerPage: 10 });
@@ -540,11 +543,11 @@ export function UserListView() {
   const handleBulkDelete = async () => {
     try {
       await Promise.all(table.selected.map((id) => axios.delete(endpoints.superAdmin.user(id))));
-      toast.success(`${table.selected.length} ta foydalanuvchi o'chirildi`);
+      toast.success(t('user.deletedMany', { count: table.selected.length }));
       table.onSelectAllRows(false, []);
       fetchUsers();
     } catch {
-      toast.error("O'chirishda xatolik yuz berdi");
+      toast.error(t('user.error'));
     }
     bulkConfirm.onFalse();
   };
@@ -564,10 +567,10 @@ export function UserListView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Foydalanuvchilar"
+        heading={t('user.title')}
         links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'Foydalanuvchilar' },
+          { name: t('navigation.dashboard'), href: paths.dashboard.root },
+          { name: t('user.title') },
         ]}
         action={
           <Button
@@ -576,7 +579,7 @@ export function UserListView() {
             variant="contained"
             startIcon={<Iconify icon="mingcute:add-line" />}
           >
-            Admin qo&apos;shish
+            {t('user.addAdmin')}
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -593,7 +596,7 @@ export function UserListView() {
             <Tab
               key={tab.value}
               value={tab.value}
-              label={tab.label}
+              label={tab.value === 'all' ? t('common.all') : t(`user.statuses.${tab.value}`)}
               iconPosition="end"
               icon={
                 <Label
@@ -618,7 +621,7 @@ export function UserListView() {
         <UserTableToolbar
           filters={filters}
           onResetPage={table.onResetPage}
-          options={{ roles: ROLES }}
+          options={{ roles: ROLES.map((roleOption) => ({ ...roleOption, label: t(`user.roles.${roleOption.value}`) })) }}
         />
 
         {/* Active filter chips */}
@@ -652,7 +655,7 @@ export function UserListView() {
               <TableHeadCustom
                 order={table.order}
                 orderBy={table.orderBy}
-                headCells={TABLE_HEAD}
+                headCells={TABLE_HEAD.map((cell) => ({ ...cell, label: cell.id === 'name' ? t('user.employee') : cell.id === 'phone' ? t('field.phone') : cell.id === 'role' ? t('field.role') : cell.id === 'status' ? t('common.status') : cell.label }))}
                 rowCount={dataFiltered.length}
                 numSelected={table.selected.length}
                 onSort={table.onSort}
@@ -700,15 +703,15 @@ export function UserListView() {
       <ConfirmDialog
         open={bulkConfirm.value}
         onClose={bulkConfirm.onFalse}
-        title="O'chirish"
+        title={t('common.delete')}
         content={
           <>
-            <strong>{table.selected.length} ta</strong> foydalanuvchini o&apos;chirmoqchimisiz?
+            {t('user.deleteConfirmMany', { count: table.selected.length })}
           </>
         }
         action={
           <Button variant="contained" color="error" onClick={handleBulkDelete}>
-            O&apos;chirish
+            {t('common.delete')}
           </Button>
         }
       />

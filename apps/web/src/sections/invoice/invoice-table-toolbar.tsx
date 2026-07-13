@@ -11,6 +11,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { formHelperTextClasses } from '@mui/material/FormHelperText';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function InvoiceTableToolbar({ filters, dateError, onResetPage }: Props) {
+  const { t } = useTranslate('common');
   const { state: currentFilters, setState: updateFilters } = filters;
 
   const handleFilterName = useCallback(
@@ -66,14 +68,14 @@ export function InvoiceTableToolbar({ filters, dateError, onResetPage }: Props) 
         }}
       >
         <DatePicker
-          label="Boshlanish sanasi"
+          label={t('orderExtra.startDate')}
           value={currentFilters.startDate}
           onChange={handleFilterStartDate}
           slotProps={{ textField: { fullWidth: true } }}
         />
 
         <DatePicker
-          label="Tugash sanasi"
+          label={t('orderExtra.endDate')}
           value={currentFilters.endDate}
           onChange={handleFilterEndDate}
           slotProps={{
@@ -81,7 +83,7 @@ export function InvoiceTableToolbar({ filters, dateError, onResetPage }: Props) 
               fullWidth: true,
               error: dateError,
               helperText: dateError
-                ? "Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas"
+                ? t('invoice.dateError')
                 : null,
             },
           }}
@@ -97,7 +99,7 @@ export function InvoiceTableToolbar({ filters, dateError, onResetPage }: Props) 
           fullWidth
           value={currentFilters.name}
           onChange={handleFilterName}
-          placeholder="Invoice yoki kompaniya bo'yicha qidirish..."
+          placeholder={t('invoice.search')}
           slotProps={{
             input: {
               startAdornment: (

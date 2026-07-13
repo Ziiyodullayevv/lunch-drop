@@ -12,12 +12,22 @@ class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
 
+class BranchOrderStatusUpdate(BaseModel):
+    status: OrderStatus
+    target_date: date
+
+
+class BulkOrderStatusResponse(BaseModel):
+    updated: int
+
+
 class OrderMealItemRead(BaseModel):
     meal_id: str
     meal_name: str | None = None
     meal_image_url: str | None = None
     quantity: int
     historical_price: Decimal
+    line_total: Decimal
 
 
 class OrderRead(BaseModel):
@@ -35,10 +45,13 @@ class OrderRead(BaseModel):
 
     # Boyitilgan maydonlar (servisda to'ldiriladi)
     employee_name: str | None = None
+    employee_phone: str | None = None
+    employee_avatar_url: str | None = None
     branch_id: str | None = None
     branch_name: str | None = None
     company_id: str | None = None
     company_name: str | None = None
     kitchen_name: str | None = None
     meal_name: str | None = None
+    meal_image_url: str | None = None
     items: list[OrderMealItemRead] = Field(default_factory=list)

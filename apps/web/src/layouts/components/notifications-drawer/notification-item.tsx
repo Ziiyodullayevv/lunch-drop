@@ -3,6 +3,7 @@
 import type { NotificationData } from './use-notifications';
 
 import dayjs from 'dayjs';
+import { useTranslate } from 'src/locales/use-locales';
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
@@ -82,6 +83,7 @@ function PendingDetailDialog({
   onApprove?: (id: string) => Promise<void>;
   onDecline?: (id: string) => Promise<void>;
 }) {
+  const { t } = useTranslate('common');
   const [busy, setBusy] = useState<'approve' | 'decline' | null>(null);
 
   const isActed = notification.action_status !== 'pending';
@@ -121,10 +123,10 @@ function PendingDetailDialog({
           </Box>
           <Box>
             <Typography variant="subtitle1">
-              {isEmployee ? "Xodim arizasi" : "Admin arizasi"}
+              {isEmployee ? t('notifications.employeeRequest') : t('notifications.adminRequest')}
             </Typography>
             <Chip
-              label={isEmployee ? 'Yangi xodim' : roleLabel}
+              label={isEmployee ? t('notifications.newEmployee') : roleLabel}
               color={typeColor}
               size="small"
               variant="soft"
@@ -140,18 +142,18 @@ function PendingDetailDialog({
         <Stack spacing={2}>
           <DetailRow
             icon="solar:user-bold"
-            label={isEmployee ? "Ismi" : "To'liq ismi"}
+            label={isEmployee ? t('notifications.name') : t('notifications.fullName')}
             value={notification.full_name ?? '—'}
           />
           <DetailRow
             icon="solar:phone-bold"
-            label="Telefon"
+            label={t('notifications.phone')}
             value={notification.phone ?? notification.body ?? '—'}
           />
           {isEmployee && notification.branch_id && (
             <DetailRow
               icon="solar:home-2-bold"
-              label="Filial ID"
+              label={t('notifications.branchId')}
               value={notification.branch_id.slice(0, 12) + '…'}
             />
           )}
@@ -160,19 +162,19 @@ function PendingDetailDialog({
               icon={notification.type === 'kitchen_pending'
                 ? 'solar:chef-hat-bold'
                 : 'solar:buildings-2-bold'}
-              label={notification.type === 'kitchen_pending' ? 'Oshxona nomi' : 'Kompaniya nomi'}
+              label={notification.type === 'kitchen_pending' ? t('notifications.kitchenName') : t('notifications.companyName')}
               value={notification.entity_name}
             />
           )}
           <DetailRow
             icon="solar:calendar-bold"
-            label="Ariza vaqti"
+            label={t('notifications.requestTime')}
             value={fDateTime(notification.created_at)}
           />
           <DetailRow
             icon="solar:shield-check-bold"
-            label="Holat"
-            value={isActed ? 'Ishlov berilgan' : 'Kutilmoqda'}
+            label={t('notifications.status')}
+            value={isActed ? t('notifications.processed') : t('notifications.pending')}
             valueColor={isActed ? 'success.main' : 'warning.main'}
           />
         </Stack>
@@ -182,7 +184,7 @@ function PendingDetailDialog({
 
       <DialogActions sx={{ px: 2.5, py: 1.5 }}>
         <Button onClick={onClose} color="inherit" size="small">
-          Yopish
+          {t('notifications.close')}
         </Button>
 
         {!isActed && (
@@ -195,7 +197,7 @@ function PendingDetailDialog({
               disabled={busy !== null}
               onClick={handleDecline}
             >
-              Rad etish
+              {t('notifications.decline')}
             </LoadingButton>
             <LoadingButton
               size="small"
@@ -205,7 +207,7 @@ function PendingDetailDialog({
               disabled={busy !== null}
               onClick={handleApprove}
             >
-              Tasdiqlash
+              {t('notifications.approve')}
             </LoadingButton>
           </>
         )}
@@ -254,20 +256,22 @@ function DetailRow({
 // ----------------------------------------------------------------------
 
 export function NotificationItem({ notification, onRead, onApprove, onDecline }: NotificationItemProps) {
+  const { t } = useTranslate('common');
   const [detailOpen, setDetailOpen] = useState(false);
   const [busy, setBusy] = useState<'approve' | 'decline' | null>(null);
 
   const isPending =
     notification.type === 'kitchen_pending' ||
     notification.type === 'company_pending' ||
-    notification.type === 'employee_pending';
+    notification.type === 'employee_pending' ||
+    notification.type === 'kitchen_connection_pending';
   const isAwaitingAction = notification.action_status === 'pending';
   const entityLabel =
     notification.type === 'kitchen_pending'
-      ? 'Oshxona'
+      ? t('navigation.kitchens')
       : notification.type === 'company_pending'
-        ? 'Kompaniya'
-        : 'Xodim';
+        ? t('navigation.companies')
+      : notification.type === 'kitchen_connection_pending' ? t('notifications.partnership') : t('user.employee');
   const icon =
     notification.type === 'kitchen_pending'
       ? 'custom:fast-food-fill'
@@ -350,7 +354,7 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
             <Box component="span" sx={{ fontWeight: 700 }}>
               {notification.subject}
             </Box>{' '}
-            <Box component="span">qo&apos;shilish so&apos;rovini yubordi.</Box>
+            <Box component="span">{t('notifications.requestSent')}</Box>
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
@@ -377,7 +381,7 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
                 disabled={busy !== null}
                 onClick={handleApprove}
               >
-                {busy === 'approve' ? '...' : 'Tasdiqlash'}
+                {busy === 'approve' ? '...' : t('notifications.approve')}
               </Button>
               <Button
                 size="small"
@@ -386,7 +390,7 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
                 disabled={busy !== null}
                 onClick={handleDecline}
               >
-                {busy === 'decline' ? '...' : 'Rad etish'}
+                {busy === 'decline' ? '...' : t('notifications.decline')}
               </Button>
             </Box>
           )}
@@ -397,7 +401,7 @@ export function NotificationItem({ notification, onRead, onApprove, onDecline }:
               variant="soft"
               sx={{ mt: 1 }}
               color={notification.action_status === 'approved' ? 'success' : 'error'}
-              label={notification.action_status === 'approved' ? 'Tasdiqlandi' : 'Rad etildi'}
+              label={notification.action_status === 'approved' ? t('notifications.approved') : t('notifications.declined')}
             />
           )}
         </Box>

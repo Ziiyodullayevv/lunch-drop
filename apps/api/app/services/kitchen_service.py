@@ -1,6 +1,6 @@
 """Kitchen Admin biznes logikasi — hammasi kitchen_id bo'yicha izolyatsiya qilingan."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -249,6 +249,46 @@ class KitchenService:
         )
         await self.session.commit()
         return await build_order_read(self.session, order)
+
+    async def update_branch_orders_status(
+        self, branch_id: str, target_date: date, status: OrderStatus
+    ) -> int:
+        if status == OrderStatus.PREPARING:
+            source_statuses = (OrderStatus.CREATED,)
+        elif status == OrderStatus.ON_THE_WAY:
+            source_statuses = (OrderStatus.PREPARING,)
+        else:
+            source_statuses = (
+                OrderStatus.CREATED,
+                OrderStatus.PREPARING,
+                OrderStatus.ON_THE_WAY,
+            )
+        orders = (
+            await self.session.execute(
+                select(Order).where(
+                    Order.kitchen_id == self.kitchen_id,
+                    Order.branch_id == branch_id,
+                    Order.target_date == target_date,
+                    Order.status.in_(source_statuses),
+                    Order.status != status,
+                )
+            )
+        ).scalars().all()
+        for order in orders:
+            if status == OrderStatus.DELIVERED and order.system_fee == 0:
+                order.system_fee = (order.historical_price * SYSTEM_FEE_RATE).quantize(
+                    Decimal("0.01")
+                )
+            order.status = status
+            await notify(
+                self.session,
+                order.employee_id,
+                "order_status",
+                f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
+                f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
+            )
+        await self.session.commit()
+        return len(orders)
 
     # --- Dashboard ---
     async def dashboard(self, year: int | None = None) -> dict:

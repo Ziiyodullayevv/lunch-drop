@@ -18,6 +18,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 
 import { Iconify } from 'src/components/iconify';
 import { CustomPopover } from 'src/components/custom-popover';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -32,6 +33,7 @@ type Props = {
 };
 
 export function UserTableToolbar({ filters, options, onResetPage }: Props) {
+  const { t } = useTranslate('common');
   const menuActions = usePopover();
 
   const { state: currentFilters, setState: updateFilters } = filters;
@@ -65,17 +67,17 @@ export function UserTableToolbar({ filters, options, onResetPage }: Props) {
       <MenuList>
         <MenuItem onClick={() => menuActions.onClose()}>
           <Iconify icon="solar:printer-minimalistic-bold" />
-          Print
+          {t('user.print')}
         </MenuItem>
 
         <MenuItem onClick={() => menuActions.onClose()}>
           <Iconify icon="solar:import-bold" />
-          Import
+          {t('user.import')}
         </MenuItem>
 
         <MenuItem onClick={() => menuActions.onClose()}>
           <Iconify icon="solar:export-bold" />
-          Export
+          {t('user.export')}
         </MenuItem>
       </MenuList>
     </CustomPopover>
@@ -94,10 +96,10 @@ export function UserTableToolbar({ filters, options, onResetPage }: Props) {
         }}
       >
         <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 200 } }}>
-          <InputLabel htmlFor="filter-role-select">Rol</InputLabel>
+          <InputLabel htmlFor="filter-role-select">{t('field.role')}</InputLabel>
           <Select
             multiple
-            label="Rol"
+            label={t('field.role')}
             value={currentFilters.role}
             onChange={handleFilterRole}
             renderValue={(selected) =>
@@ -134,7 +136,7 @@ export function UserTableToolbar({ filters, options, onResetPage }: Props) {
           <TextField
             value={currentFilters.name}
             onChange={handleFilterName}
-            placeholder="Ism yoki telefon bo'yicha qidirish..."
+            placeholder={t('user.search')}
             sx={{ width: { xs: 1, md: 320 } }}
             slotProps={{
               input: {

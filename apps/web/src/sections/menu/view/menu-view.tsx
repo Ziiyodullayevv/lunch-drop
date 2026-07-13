@@ -63,6 +63,7 @@ import {
 } from 'src/components/table';
 
 import { useAuthContext } from 'src/auth/hooks';
+import { useTranslate } from 'src/locales';
 
 import {
   useMeals,
@@ -366,6 +367,7 @@ function FoodTableRow({
   categories: FoodCategory[];
   selected: boolean; onSelect: () => void;
 }) {
+  const { t } = useTranslate('common');
   const popover = usePopover();
   const router = useRouter();
   const deleteMeal = useDeleteMeal();
@@ -442,7 +444,7 @@ function FoodTableRow({
 
         <TableCell>
           <Chip
-            label={item.available ? 'Mavjud' : 'Mavjud emas'}
+            label={item.available ? t('menu.available') : t('menu.unavailable')}
             color={item.available ? 'success' : 'default'}
             size="small"
             variant="soft"
@@ -466,22 +468,22 @@ function FoodTableRow({
         <MenuList>
           <MenuItem onClick={() => { popover.onClose(); router.push(paths.dashboard.menu.details(item.id)); }}>
             <Iconify icon="solar:eye-bold" sx={{ color: 'text.secondary' }} />
-            Ko&apos;rish
+            {t('common.view')}
           </MenuItem>
           <MenuItem onClick={() => { popover.onClose(); router.push(paths.dashboard.menu.edit(item.id)); }}>
             <Iconify icon="solar:pen-bold" sx={{ color: 'text.secondary' }} />
-            Tahrirlash
+            {t('common.edit')}
           </MenuItem>
           <MenuItem onClick={handleToggle}>
             <Iconify
               icon={item.available ? 'solar:eye-closed-bold' : 'solar:eye-bold'}
               sx={{ color: item.available ? 'text.secondary' : 'success.main' }}
             />
-            {item.available ? 'Mavjud emas qilish' : 'Mavjud qilish'}
+            {item.available ? t('menu.markUnavailable') : t('menu.markAvailable')}
           </MenuItem>
           <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
             <Iconify icon="solar:trash-bin-trash-bold" />
-            O&apos;chirish
+            {t('common.delete')}
           </MenuItem>
         </MenuList>
       </CustomPopover>
@@ -493,6 +495,7 @@ function FoodTableRow({
 // ----------------------------------------------------------------------
 
 export function MenuView() {
+  const { t } = useTranslate('common');
   const { user } = useAuthContext();
   const kitchenId = user?.kitchen_id as string | undefined;
   const table = useTable();
@@ -648,13 +651,13 @@ export function MenuView() {
     return (
       <DashboardContent>
         <CustomBreadcrumbs
-          heading="Menu"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Menu' }]}
+          heading={t('menu.title')}
+          links={[{ name: t('navigation.dashboard'), href: paths.dashboard.root }, { name: t('menu.title') }]}
           sx={{ mb: { xs: 3, md: 5 } }}
         />
         <Card sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            Hisobingiz oshxonaga bog&apos;lanmagan. Admin bilan bog&apos;laning.
+            {t('menuExtra.noKitchen')}
           </Typography>
         </Card>
       </DashboardContent>
@@ -666,7 +669,7 @@ export function MenuView() {
   return (
     <DashboardContent>
       <CustomBreadcrumbs
-        heading="Menu boshqaruvi"
+        heading={t('menu.title')}
         links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Menu' }]}
         action={
           <Button
@@ -675,7 +678,7 @@ export function MenuView() {
             onClick={() => setAddOpen(true)}
             disabled={false}
           >
-            Ovqat qo&apos;shish
+            {t('menu.add')}
           </Button>
         }
         sx={{ mb: { xs: 3, md: 5 } }}
@@ -702,7 +705,7 @@ export function MenuView() {
               <Tab
                 key={tab.value}
                 value={tab.value}
-                label={tab.label}
+                label={t(`menu.status.${tab.value}`)}
                 iconPosition="end"
                 icon={
                   <Label
@@ -733,7 +736,7 @@ export function MenuView() {
             fullWidth
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); table.onResetPage(); }}
-            placeholder="Ovqat nomini qidirish..."
+            placeholder={t('menu.search')}
             sx={{ width: { xs: 1, md: 360 } }}
             slotProps={{
               input: {
@@ -760,13 +763,13 @@ export function MenuView() {
           />
 
           <FormControl sx={{ width: { xs: 1, md: 220 }, flexShrink: 0 }}>
-            <InputLabel>Kategoriya</InputLabel>
+            <InputLabel>{t('menu.category')}</InputLabel>
             <Select
               value={filterCategory}
-              label="Kategoriya"
+              label={t('menu.category')}
               onChange={(e) => { setFilterCategory(e.target.value); table.onResetPage(); }}
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {categories.map((c) => (
                 <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
               ))}
@@ -774,13 +777,13 @@ export function MenuView() {
           </FormControl>
 
           <FormControl sx={{ width: { xs: 1, md: 220 }, flexShrink: 0 }}>
-            <InputLabel>Kun</InputLabel>
+            <InputLabel>{t('menu.day')}</InputLabel>
             <Select
               value={filterDay ?? ''}
-              label="Kun"
+              label={t('menu.day')}
               renderValue={(selected) => {
                 const value = String(selected);
-                if (value === '') return 'Barchasi';
+                if (value === '') return t('common.all');
                 const selectedDay = WEEK_DAYS.find((day) => day.value === Number(value));
                 if (!selectedDay) return '';
                 return selectedDay.value === todayWeekday
@@ -793,7 +796,7 @@ export function MenuView() {
                 table.onResetPage();
               }}
             >
-              <MenuItem value="">Barchasi</MenuItem>
+              <MenuItem value="">{t('common.all')}</MenuItem>
               {WEEK_DAYS.map((d) => (
                 <MenuItem key={d.value} value={d.value}>
                   {d.fullLabel}

@@ -177,8 +177,19 @@ export function fetchCompanyMe() {
   return fetcher<CompanyRead>(endpoints.company.me);
 }
 
-export function fetchCompanyBranchesList(params?: { limit?: number; offset?: number }) {
-  return fetcher<PageBranch>([endpoints.company.branches, { params }]);
+export async function fetchCompanyBranchesList(params?: { limit?: number; offset?: number }) {
+  const page = await fetcher<PageBranch>([endpoints.company.branches, { params }]);
+  const items = await Promise.all(
+    page.items.map(async (branch) => {
+      try {
+        const kitchens = await fetchCompanyBranchKitchens(branch.id);
+        return { ...branch, kitchen_ids: kitchens.map((kitchen) => kitchen.id) };
+      } catch {
+        return branch;
+      }
+    })
+  );
+  return { ...page, items };
 }
 
 export function fetchCompanyBranch(id: string) {

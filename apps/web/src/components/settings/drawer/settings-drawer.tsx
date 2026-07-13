@@ -15,7 +15,6 @@ import Typography from '@mui/material/Typography';
 import { useColorScheme } from '@mui/material/styles';
 
 import { themeConfig } from 'src/theme/theme-config';
-import { primaryColorPresets } from 'src/theme/with-settings';
 
 import { Label } from '../../label';
 import { settingIcons } from './icons';
@@ -23,16 +22,17 @@ import { Iconify } from '../../iconify';
 import { BaseOption } from './base-option';
 import { Scrollbar } from '../../scrollbar';
 import { SmallBlock, LargeBlock } from './styles';
-import { PresetsOptions } from './presets-options';
 import { FullScreenButton } from './fullscreen-button';
 import { FontSizeOptions, FontFamilyOptions } from './font-options';
 import { useSettingsContext } from '../context/use-settings-context';
 import { NavColorOptions, NavLayoutOptions } from './nav-layout-option';
+import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 
 export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
   const settings = useSettingsContext();
+  const { t } = useTranslate('common');
   const { mode, setMode, colorScheme } = useColorScheme();
 
   // Visible options by default settings
@@ -70,12 +70,12 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
       }}
     >
       <Typography variant="h6" sx={{ flexGrow: 1 }}>
-        Settings
+        {t('settingsDrawer.title')}
       </Typography>
 
       <FullScreenButton />
 
-      <Tooltip title="Reset all">
+      <Tooltip title={t('settingsDrawer.reset')}>
         <IconButton onClick={handleReset}>
           <Badge color="error" variant="dot" invisible={!settings.canReset}>
             <Iconify icon="solar:restart-bold" />
@@ -83,7 +83,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
         </IconButton>
       </Tooltip>
 
-      <Tooltip title="Close">
+      <Tooltip title={t('settingsDrawer.close')}>
         <IconButton onClick={settings.onCloseDrawer}>
           <Iconify icon="mingcute:close-line" />
         </IconButton>
@@ -93,7 +93,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
 
   const renderMode = () => (
     <BaseOption
-      label="Mode"
+      label={t('settingsDrawer.mode')}
       selected={settings.state.mode === 'dark'}
       icon={<SvgIcon>{settingIcons.moon}</SvgIcon>}
       action={
@@ -106,7 +106,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
               fontWeight: 'fontWeightSemiBold',
             }}
           >
-            System
+            {t('settingsDrawer.system')}
           </Label>
         ) : null
       }
@@ -119,7 +119,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
 
   const renderContrast = () => (
     <BaseOption
-      label="Contrast"
+      label={t('settingsDrawer.contrast')}
       selected={settings.state.contrast === 'high'}
       icon={<SvgIcon>{settingIcons.contrast}</SvgIcon>}
       onChangeOption={() => {
@@ -132,7 +132,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
 
   const renderDirection = () => (
     <BaseOption
-      label="Right to left"
+      label={t('settingsDrawer.rtl')}
       selected={settings.state.direction === 'rtl'}
       icon={<SvgIcon>{settingIcons.alignRight}</SvgIcon>}
       onChangeOption={() => {
@@ -143,8 +143,8 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
 
   const renderCompactLayout = () => (
     <BaseOption
-      tooltip="Dashboard only and available at large resolutions > 1600px (xl)"
-      label="Compact"
+      tooltip={t('settingsDrawer.compactHint')}
+      label={t('settingsDrawer.compact')}
       selected={!!settings.state.compactLayout}
       icon={<SvgIcon>{settingIcons.autofitWidth}</SvgIcon>}
       onChangeOption={() => {
@@ -153,35 +153,11 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
     />
   );
 
-  const renderPresets = () => (
-    <LargeBlock
-      title="Presets"
-      canReset={settings.state.primaryColor !== defaultSettings.primaryColor}
-      onReset={() => {
-        settings.setState({ primaryColor: defaultSettings.primaryColor });
-      }}
-    >
-      <PresetsOptions
-        icon={<SvgIcon sx={{ width: 28, height: 28 }}>{settingIcons.siderbarDuotone}</SvgIcon>}
-        options={(Object.keys(primaryColorPresets) as SettingsState['primaryColor'][]).map(
-          (key) => ({
-            name: key,
-            value: primaryColorPresets[key].main,
-          })
-        )}
-        value={settings.state.primaryColor}
-        onChangeOption={(newOption) => {
-          settings.setState({ primaryColor: newOption });
-        }}
-      />
-    </LargeBlock>
-  );
-
   const renderNav = () => (
-    <LargeBlock title="Nav" tooltip="Dashboard only" sx={{ gap: 2.5 }}>
+    <LargeBlock title={t('settingsDrawer.nav')} tooltip={t('settingsDrawer.dashboardOnly')} sx={{ gap: 2.5 }}>
       {visibility.navLayout && (
         <SmallBlock
-          label="Layout"
+          label={t('settingsDrawer.layout')}
           canReset={settings.state.navLayout !== defaultSettings.navLayout}
           onReset={() => {
             settings.setState({ navLayout: defaultSettings.navLayout });
@@ -215,7 +191,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
       )}
       {visibility.navColor && (
         <SmallBlock
-          label="Color"
+          label={t('settingsDrawer.color')}
           canReset={settings.state.navColor !== defaultSettings.navColor}
           onReset={() => {
             settings.setState({ navColor: defaultSettings.navColor });
@@ -228,12 +204,12 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
             }}
             options={[
               {
-                label: 'Integrate',
+                label: t('settingsDrawer.integrate'),
                 value: 'integrate',
                 icon: <SvgIcon>{settingIcons.sidebarOutline}</SvgIcon>,
               },
               {
-                label: 'Apparent',
+                label: t('settingsDrawer.apparent'),
                 value: 'apparent',
                 icon: <SvgIcon>{settingIcons.sidebarFill}</SvgIcon>,
               },
@@ -245,10 +221,10 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
   );
 
   const renderFont = () => (
-    <LargeBlock title="Font" sx={{ gap: 2.5 }}>
+    <LargeBlock title={t('settingsDrawer.font')} sx={{ gap: 2.5 }}>
       {visibility.fontFamily && (
         <SmallBlock
-          label="Family"
+          label={t('settingsDrawer.family')}
           canReset={settings.state.fontFamily !== defaultSettings.fontFamily}
           onReset={() => {
             settings.setState({ fontFamily: defaultSettings.fontFamily });
@@ -271,7 +247,7 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
       )}
       {visibility.fontSize && (
         <SmallBlock
-          label="Size"
+          label={t('settingsDrawer.size')}
           canReset={settings.state.fontSize !== defaultSettings.fontSize}
           onReset={() => {
             settings.setState({ fontSize: defaultSettings.fontSize });
@@ -331,7 +307,6 @@ export function SettingsDrawer({ sx, defaultSettings }: SettingsDrawerProps) {
           </Box>
 
           {(visibility.navColor || visibility.navLayout) && renderNav()}
-          {visibility.primaryColor && renderPresets()}
           {(visibility.fontFamily || visibility.fontSize) && renderFont()}
         </Box>
       </Scrollbar>
