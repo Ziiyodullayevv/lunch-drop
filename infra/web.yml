@@ -28,8 +28,8 @@ services:
       - '8082'
     environment:
       NODE_ENV: production
-      NEXT_SERVER_API_URL: ${NEXT_SERVER_API_URL:-${NEXT_PUBLIC_SERVER_URL:?NEXT_SERVER_API_URL is required}}
-      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-}
+      NEXT_SERVER_API_URL: ${NEXT_SERVER_API_URL:-https://api.lunchdrop.uz}
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-https://api.lunchdrop.uz}
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8082']
       interval: 30s
