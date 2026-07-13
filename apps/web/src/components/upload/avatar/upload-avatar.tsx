@@ -6,8 +6,9 @@ import { mergeClasses } from 'minimal-shared/utils';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales/use-locales';
+
+import { Iconify } from 'src/components/iconify';
 
 import { uploadClasses } from '../classes';
 import { RejectedFiles } from '../components/rejected-files';

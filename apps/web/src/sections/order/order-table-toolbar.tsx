@@ -12,8 +12,9 @@ import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import InputAdornment from '@mui/material/InputAdornment';
 
-import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
+
+import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 

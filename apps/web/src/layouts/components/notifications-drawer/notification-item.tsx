@@ -3,7 +3,6 @@
 import type { NotificationData } from './use-notifications';
 
 import dayjs from 'dayjs';
-import { useTranslate } from 'src/locales/use-locales';
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
@@ -21,6 +20,8 @@ import DialogActions from '@mui/material/DialogActions';
 import ListItemButton from '@mui/material/ListItemButton';
 
 import { fDateTime } from 'src/utils/format-time';
+
+import { useTranslate } from 'src/locales/use-locales';
 
 import { Iconify } from 'src/components/iconify';
 

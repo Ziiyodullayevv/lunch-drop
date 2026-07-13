@@ -22,6 +22,7 @@ import { paths } from 'src/routes/paths';
 import { fDateTime } from 'src/utils/format-time';
 import { fCurrency } from 'src/utils/format-number';
 
+import { useTranslate } from 'src/locales';
 import axios, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
@@ -47,7 +48,6 @@ import { OrderStatusTabs } from './order-status-tabs';
 import { PlaceOrderDialog } from '../place-order-dialog';
 import { OrderTableToolbar } from '../order-table-toolbar';
 import { OrderTableFiltersResult } from '../order-table-filters-result';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

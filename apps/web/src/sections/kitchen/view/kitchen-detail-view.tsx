@@ -733,10 +733,8 @@ export function KitchenDetailView({ id }: { id: string }) {
 
         {hasLocation ? (
           <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }} />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }} />
           </Stack>
         ) : (
           <Alert severity="warning" sx={{ mt: 2 }}>

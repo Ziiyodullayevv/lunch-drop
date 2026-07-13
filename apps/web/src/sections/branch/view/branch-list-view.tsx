@@ -25,6 +25,7 @@ import { RouterLink } from 'src/routes/components';
 
 import { fDate, fTime } from 'src/utils/format-time';
 
+import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { toast } from 'src/components/snackbar';
@@ -40,7 +41,6 @@ import {
 } from 'src/components/table';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { useTranslate } from 'src/locales';
 
 import {
   useBranches,

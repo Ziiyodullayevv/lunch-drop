@@ -24,6 +24,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 
+import { useTranslate } from 'src/locales';
 import axios, { endpoints } from 'src/lib/axios';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { fetchCompanyKitchenCatalog } from 'src/lib/api/companies';
@@ -33,7 +34,6 @@ import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { Map, MapPopup, MapMarker, MAP_STYLES, MapControls } from 'src/components/map';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

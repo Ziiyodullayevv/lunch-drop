@@ -18,11 +18,11 @@ import Typography from '@mui/material/Typography';
 import { fDateTime } from 'src/utils/format-time';
 import { fNumber, fCurrency } from 'src/utils/format-number';
 
+import { useTranslate } from 'src/locales';
 import { fetchDashboard } from 'src/lib/api/dashboard';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { useTranslate } from 'src/locales';
 
 import { AppAreaInstalled } from '../app-area-installed';
 import { AppWidgetSummary } from '../app-widget-summary';

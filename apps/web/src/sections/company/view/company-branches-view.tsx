@@ -42,6 +42,7 @@ import { RouterLink } from 'src/routes/components';
 
 import { fDate, fTime } from 'src/utils/format-time';
 
+import { useTranslate } from 'src/locales';
 import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { fetchBranchesWithKitchenIds } from 'src/lib/api/companies';
@@ -65,7 +66,6 @@ import { useKitchens } from 'src/sections/kitchen/hooks/use-kitchens';
 import { branchKeys, useAssignKitchens } from 'src/sections/branch/hooks/use-branches';
 
 import { useCompanies, useDeleteCompany } from '../hooks/use-companies';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

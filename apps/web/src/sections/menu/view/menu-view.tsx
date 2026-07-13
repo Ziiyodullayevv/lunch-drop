@@ -44,6 +44,7 @@ import { useRouter } from 'src/routes/hooks';
 
 import { fDate } from 'src/utils/format-time';
 
+import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { Label } from 'src/components/label';
@@ -63,7 +64,6 @@ import {
 } from 'src/components/table';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { useTranslate } from 'src/locales';
 
 import {
   useMeals,

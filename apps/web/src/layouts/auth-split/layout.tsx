@@ -15,6 +15,7 @@ import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
 import { CONFIG } from 'src/global-config';
+import { useTranslate } from 'src/locales';
 
 import { Logo } from 'src/components/logo';
 
@@ -22,7 +23,6 @@ import { AuthSplitSection } from './section';
 import { AuthSplitContent } from './content';
 import { SettingsButton } from '../components/settings-button';
 import { MainSection, LayoutSection, HeaderSection } from '../core';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

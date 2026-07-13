@@ -45,6 +45,7 @@ import { RouterLink } from 'src/routes/components';
 
 import { fDateTime } from 'src/utils/format-time';
 
+import { useTranslate } from 'src/locales';
 import { getImagePreviewUrl } from 'src/lib/image-url';
 import { DashboardContent } from 'src/layouts/dashboard';
 import {
@@ -71,7 +72,6 @@ import {
 import { useAuthContext } from 'src/auth/hooks';
 
 import { useKitchens, useDeleteKitchen, useUpdateKitchen } from '../hooks/use-kitchens';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

@@ -4,10 +4,11 @@ import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 
+import { useTranslate } from 'src/locales';
+
 import { Scrollbar } from 'src/components/scrollbar';
 
 import { InvoiceAnalytic } from 'src/sections/invoice/invoice-analytic';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

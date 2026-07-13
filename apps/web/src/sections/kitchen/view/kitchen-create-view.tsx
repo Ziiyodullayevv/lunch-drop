@@ -22,6 +22,7 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
+import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { toast } from 'src/components/snackbar';
@@ -39,7 +40,6 @@ import {
 } from 'src/components/map';
 
 import { useCreateKitchen } from '../hooks/use-kitchens';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -278,10 +278,8 @@ export function KitchenCreateView() {
               <Box sx={{ display: 'flex', gap: 2 }}>
                 {hasLocation ? (
                   <>
-                    <Typography variant="caption" color="text.secondary">
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary" />
+                    <Typography variant="caption" color="text.secondary" />
                   </>
                 ) : (
                   <Typography

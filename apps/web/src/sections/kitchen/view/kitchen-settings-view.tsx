@@ -18,6 +18,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 
+import { useTranslate } from 'src/locales/use-locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 
 import { toast } from 'src/components/snackbar';
@@ -35,7 +36,6 @@ import {
 } from 'src/components/map';
 
 import { useKitchenMe, useUpdateKitchenSettings } from 'src/sections/kitchen/hooks/use-kitchens';
-import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 

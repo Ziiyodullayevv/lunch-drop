@@ -7,7 +7,6 @@ import {
   createBranch,
   deleteBranch,
   updateBranch,
-  fetchBranchesWithKitchenIds,
   assignKitchens,
   fetchCompanyBranch,
   createCompanyBranch,
@@ -16,6 +15,7 @@ import {
   fetchCompanyKitchens,
   fetchCompanyBranchesList,
   fetchCompanyBranchKitchens,
+  fetchBranchesWithKitchenIds,
   assignCompanyBranchKitchens,
 } from 'src/lib/api/companies';
 

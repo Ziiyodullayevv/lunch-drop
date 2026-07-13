@@ -7,9 +7,10 @@ import { useTheme } from '@mui/material/styles';
 
 import { fNumber, fPercent } from 'src/utils/format-number';
 
+import { useTranslate } from 'src/locales';
+
 import { Iconify } from 'src/components/iconify';
 import { Chart, useChart } from 'src/components/chart';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

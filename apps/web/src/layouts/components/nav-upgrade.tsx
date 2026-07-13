@@ -6,9 +6,9 @@ import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 
 import { getImagePreviewUrl } from 'src/lib/image-url';
+import { useTranslate } from 'src/locales/use-locales';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 

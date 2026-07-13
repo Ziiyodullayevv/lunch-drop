@@ -20,6 +20,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { uploadImage } from 'src/lib/api/uploads';
 import { getImagePreviewUrl } from 'src/lib/image-url';
+import { useTranslate } from 'src/locales/use-locales';
 import {
   type AccountUser,
   fetchAccountProfile,
@@ -33,7 +34,6 @@ import { UploadAvatar } from 'src/components/upload';
 import { Form, Field } from 'src/components/hook-form';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { useTranslate } from 'src/locales/use-locales';
 
 // ----------------------------------------------------------------------
 

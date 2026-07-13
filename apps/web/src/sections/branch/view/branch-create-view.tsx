@@ -26,6 +26,7 @@ import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
+import { useTranslate } from 'src/locales';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { addRecentBranch } from 'src/lib/recent-branches';
 import { assignCompanyBranchKitchens } from 'src/lib/api/companies';
@@ -49,7 +50,6 @@ import { useCompanies } from 'src/sections/company/hooks/use-companies';
 import { useAuthContext } from 'src/auth/hooks';
 
 import { useCreateBranch, useCompanyKitchens, useCreateCompanyBranch } from '../hooks/use-branches';
-import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 

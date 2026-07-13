@@ -375,8 +375,7 @@ export function BranchEditView({ id }: Props) {
                 <MapLocateButton mapRef={mapRef} onLocate={handleLocate} />
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 2 }}>
-              </Box>
+              <Box sx={{ display: 'flex', gap: 2 }} />
             </Stack>
 
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

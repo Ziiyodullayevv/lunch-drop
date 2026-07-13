@@ -3,11 +3,11 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 
 import axiosInstance, { endpoints } from 'src/lib/axios';
+import { rejectKitchenConnection, approveKitchenConnection, fetchKitchenConnectionRequests } from 'src/lib/api/kitchen-connections';
 
 import { toast } from 'src/components/snackbar';
 
 import { useAuthContext } from 'src/auth/hooks';
-import { fetchKitchenConnectionRequests, approveKitchenConnection, rejectKitchenConnection } from 'src/lib/api/kitchen-connections';
 
 // ----------------------------------------------------------------------
 
