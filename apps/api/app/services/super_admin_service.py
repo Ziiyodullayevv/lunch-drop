@@ -1,6 +1,7 @@
 """Super admin biznes logikasi — companies/kitchens/branches CRUD, assign, admin, dashboard."""
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.branch import Branch
 from app.models.company import Company
-from app.models.enums import AccountStatus, OrderStatus, UserRole
+from app.models.enums import ORDER_STATUS_LABELS, AccountStatus, OrderStatus, UserRole
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.order import Order
 from app.models.user import User
@@ -338,6 +339,27 @@ class SuperAdminService:
         order = await self.session.get(Order, order_id)
         if order is None:
             raise NotFoundError("Buyurtma topilmadi")
+        return await build_order_read(self.session, order)
+
+    async def update_order_status(self, order_id: str, status: OrderStatus) -> OrderRead:
+        order = await self.session.get(Order, order_id)
+        if order is None:
+            raise NotFoundError("Buyurtma topilmadi")
+        if order.status == OrderStatus.CANCELLED:
+            raise ConflictError("Bekor qilingan buyurtma o'zgartirilmaydi")
+        if status == OrderStatus.DELIVERED and order.system_fee == 0:
+            order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
+                Decimal("0.01")
+            )
+        order.status = status
+        await notify(
+            self.session,
+            order.employee_id,
+            "order_status",
+            f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
+            f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
+        )
+        await self.session.commit()
         return await build_order_read(self.session, order)
 
     # --- Dashboard ---

@@ -19,7 +19,7 @@ from app.schemas.kitchen import (
     KitchenRead,
     KitchenUpdate,
 )
-from app.schemas.order import OrderRead
+from app.schemas.order import OrderRead, OrderStatusUpdate
 from app.schemas.user_admin import UserAdminRead, UserAdminUpdate
 from app.services.super_admin_service import SuperAdminService
 
@@ -250,6 +250,19 @@ async def list_orders(
 @router.get("/orders/{order_id}", response_model=OrderRead, summary="Buyurtma tafsilotlari")
 async def get_order(order_id: str, svc: SuperAdminService = Depends(_svc)) -> OrderRead:
     return await svc.get_order(order_id)
+
+
+@router.patch(
+    "/orders/{order_id}/status",
+    response_model=OrderRead,
+    summary="Buyurtma holatini o'zgartirish",
+)
+async def update_order_status(
+    order_id: str,
+    body: OrderStatusUpdate,
+    svc: SuperAdminService = Depends(_svc),
+) -> OrderRead:
+    return await svc.update_order_status(order_id, body.status)
 
 
 # --- Tasdiqlanmagan adminlar ---
