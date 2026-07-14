@@ -10,6 +10,8 @@ export type DashboardSummaryKey =
   | 'cancelled_today'
   | 'orders_total'
   | 'revenue_total'
+  | 'monthly_system_fee'
+  | 'pending_admin_approvals'
   | 'active_companies'
   | 'companies_total'
   | 'active_kitchens'

@@ -10,23 +10,28 @@ import { useQuery } from '@tanstack/react-query';
 
 import Grid from '@mui/material/Grid';
 import Alert from '@mui/material/Alert';
-import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Skeleton from '@mui/material/Skeleton';
 import { useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
 
-import { fDateTime } from 'src/utils/format-time';
+import { paths } from 'src/routes/paths';
+import { RouterLink } from 'src/routes/components';
+
 import { fNumber, fCurrency } from 'src/utils/format-number';
 
 import { useTranslate } from 'src/locales';
 import { fetchDashboard } from 'src/lib/api/dashboard';
 import { DashboardContent } from 'src/layouts/dashboard';
+import { SeoIllustration } from 'src/assets/illustrations';
 
 import { useAuthContext } from 'src/auth/hooks';
 
+import { AppWelcome } from '../app-welcome';
+import { AppFeatured } from '../app-featured';
 import { AppAreaInstalled } from '../app-area-installed';
 import { AppWidgetSummary } from '../app-widget-summary';
 import { AppCurrentDownload } from '../app-current-download';
+import { getDashboardFeaturedItems } from '../dashboard-featured-items';
 
 // ----------------------------------------------------------------------
 
@@ -34,13 +39,29 @@ const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep
 
 const SUMMARY_META: Record<
   DashboardSummaryKey,
-  { title: string; color: 'primary' | 'info' | 'warning' | 'success' | 'error'; currency?: boolean }
+  {
+    title: string;
+    color: 'primary' | 'info' | 'warning' | 'success' | 'error';
+    currency?: boolean;
+    translationKey?: string;
+  }
 > = {
   orders_today: { title: 'ordersToday', color: 'primary' },
   delivered_today: { title: 'deliveredToday', color: 'success' },
   cancelled_today: { title: 'cancelledToday', color: 'error' },
   orders_total: { title: 'ordersTotal', color: 'primary' },
   revenue_total: { title: 'revenueTotal', color: 'info', currency: true },
+  monthly_system_fee: {
+    title: 'monthlySystemFee',
+    color: 'info',
+    currency: true,
+    translationKey: 'superAdminKpis.monthlySystemFee',
+  },
+  pending_admin_approvals: {
+    title: 'pendingAdminApprovals',
+    color: 'warning',
+    translationKey: 'superAdminKpis.pendingAdminApprovals',
+  },
   active_companies: { title: 'activeCompanies', color: 'success' },
   companies_total: { title: 'companiesTotal', color: 'primary' },
   active_kitchens: { title: 'activeKitchens', color: 'warning' },
@@ -62,9 +83,10 @@ const STATUS_META = [
   { key: 'cancelled', label: 'cancelled' },
 ] as const;
 
-const SUPER_ADMIN_HIDDEN_SUMMARY_KEYS: DashboardSummaryKey[] = [
-  'orders_total',
-  'active_companies',
+const SUPER_ADMIN_SUMMARY_KEYS: DashboardSummaryKey[] = [
+  'orders_today',
+  'monthly_system_fee',
+  'pending_admin_approvals',
 ];
 
 function isDashboardRole(role: unknown): role is DashboardRole {
@@ -108,8 +130,10 @@ export function OverviewAppView() {
 
   const summaryCards =
     role === 'super_admin'
-      ? data?.summary.filter((card) => !SUPER_ADMIN_HIDDEN_SUMMARY_KEYS.includes(card.key))
+      ? data?.summary.filter((card) => SUPER_ADMIN_SUMMARY_KEYS.includes(card.key))
       : data?.summary;
+
+  const summarySkeletonCount = role === 'super_admin' ? 3 : 6;
 
   const monthlyChart = data
     ? {
@@ -137,18 +161,28 @@ export function OverviewAppView() {
         ],
       };
 
+  const featuredItems = role ? getDashboardFeaturedItems(role, t) : [];
+
   return (
     <DashboardContent maxWidth="xl">
-      <Stack spacing={0.75} sx={{ mb: 3 }}>
-        <Typography variant="h4">
-          {user?.name ? `${t('dashboard.welcome')}, ${user.name}` : t('dashboard.title')}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {data
-            ? t('dashboard.updated', { year: data.year, date: fDateTime(data.generated_at) })
-            : t('dashboard.subtitle')}
-        </Typography>
-      </Stack>
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <AppWelcome
+            title={`${t('dashboard.welcome')} 👋\n${user?.name ?? ''}`}
+            description={t('dashboard.subtitle')}
+            img={<SeoIllustration hideBackground />}
+            action={
+              <Button component={RouterLink} href={paths.dashboard.order.root} variant="contained" color="primary">
+                {t('dashboard.orderTrend')}
+              </Button>
+            }
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 4 }}>
+          {role ? <AppFeatured list={featuredItems} /> : <Skeleton variant="rounded" height={288} />}
+        </Grid>
+      </Grid>
 
       {isError && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -158,7 +192,7 @@ export function OverviewAppView() {
 
       <Grid container spacing={3}>
         {isLoading
-          ? Array.from({ length: 6 }, (_, index) => (
+          ? Array.from({ length: summarySkeletonCount }, (_, index) => (
               <Grid key={index} size={{ xs: 12, sm: 6, lg: 4 }}>
                 <Skeleton variant="rounded" height={152} />
               </Grid>
@@ -169,7 +203,7 @@ export function OverviewAppView() {
               return (
                 <Grid key={card.key} size={{ xs: 12, sm: 6, lg: 4 }}>
                   <AppWidgetSummary
-                    title={t(`dashboard.summary.${meta.title}`)}
+                    title={t(meta.translationKey ?? `dashboard.summary.${meta.title}`)}
                     percent={card.trend_percent}
                     total={card.value}
                     valueFormatter={meta.currency ? fCurrency : fNumber}

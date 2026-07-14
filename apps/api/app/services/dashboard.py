@@ -193,6 +193,28 @@ async def revenue_card(session, where, join_user, key, today, period) -> Summary
     return _card_explicit(key, history, await total(cs, ce), await total(ps, pe))
 
 
+async def system_fee_card(session, where, join_user, key, today, period) -> SummaryCard:
+    """Platformaning delivered buyurtmalardan olinadigan system_fee (UZS) yig'indisi."""
+    w = list(where) + [Order.status == OrderStatus.DELIVERED]
+    system_fee = func.coalesce(func.sum(Order.system_fee), 0)
+    (cs, ce), (ps, pe) = period
+
+    async def total(start, end):
+        return int(
+            (
+                await session.execute(
+                    _order_select(w, join_user, system_fee).where(
+                        Order.target_date >= start, Order.target_date <= end
+                    )
+                )
+            ).scalar_one()
+        )
+
+    by = await _daily(session, _order_select(w, join_user, Order.target_date, system_fee), today)
+    history = [(day, by.get(day, 0)) for day in _last_8_days(today)]
+    return _card_explicit(key, history, await total(cs, ce), await total(ps, pe))
+
+
 async def distinct_card(
     session, where, join_user, key, col, today, period
 ) -> SummaryCard:

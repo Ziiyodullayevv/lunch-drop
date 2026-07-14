@@ -18,6 +18,8 @@ SummaryKey = Literal[
     # super_admin
     "orders_total",
     "revenue_total",        # UZS
+    "monthly_system_fee",   # UZS, delivered buyurtmalardan platformaning 3% ulushi
+    "pending_admin_approvals",
     "active_companies",
     "companies_total",
     "active_kitchens",

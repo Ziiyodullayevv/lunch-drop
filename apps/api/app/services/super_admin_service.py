@@ -1,6 +1,6 @@
 """Super admin biznes logikasi — companies/kitchens/branches CRUD, assign, admin, dashboard."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +23,7 @@ from app.repositories.company_repo import CompanyRepository
 from app.repositories.kitchen_repo import KitchenRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.auth import PendingAdminRead
+from app.schemas.dashboard import HistoryPoint, SummaryCard
 from app.schemas.branch import BranchCreate, BranchUpdate
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.schemas.kitchen import KitchenCreate, KitchenUpdate
@@ -31,12 +32,9 @@ from app.schemas.company_admin import InvoiceCustomerRead, InvoiceCustomerDetail
 from app.schemas.user_admin import UserAdminUpdate
 from app.services.dashboard import (
     build_dashboard,
-    distinct_card,
     order_card,
-    order_count_card,
-    period_year,
-    revenue_card,
-    snapshot_card,
+    period_month,
+    system_fee_card,
     today_tashkent,
 )
 from app.services.notification_service import notify
@@ -419,37 +417,36 @@ class SuperAdminService:
         return len(orders)
 
     # --- Dashboard ---
+    async def _pending_admin_approvals_card(self, today: date) -> SummaryCard:
+        value = await self.session.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(
+                User.account_status == AccountStatus.PENDING_APPROVAL,
+                User.role.in_([UserRole.KITCHEN_ADMIN, UserRole.COMPANY_ADMIN]),
+            )
+        )
+        history = [
+            HistoryPoint(date=today - timedelta(days=offset), value=value or 0)
+            for offset in range(7, -1, -1)
+        ]
+        return SummaryCard(
+            key="pending_admin_approvals",
+            value=value or 0,
+            trend_percent=None,
+            history=history,
+        )
+
     async def dashboard(self, year: int | None = None):
-        """Butun tizim bo'yicha analytics (snapshot kartalar 7 kun oldingiga nisbatan)."""
+        """Super admin uchun kunlik operatsion va platforma daromad KPIlari."""
         today = today_tashkent()
         year = year or today.year
         order_where: list = []
-        yp = period_year(year)
         summary = [
-            await order_count_card(self.session, [], False, "orders_total", today, yp),
-            await revenue_card(self.session, [], False, "revenue_total", today, yp),
-            await distinct_card(
-                self.session, [], True, "active_companies", User.company_id, today, yp
-            ),
-            await snapshot_card(
-                self.session, "companies_total",
-                [Company.deleted_at.is_(None)], Company.created_at, today,
-            ),
-            await snapshot_card(
-                self.session, "active_kitchens",
-                [Kitchen.deleted_at.is_(None), Kitchen.is_active.is_(True)],
-                Kitchen.created_at, today,
-            ),
-            await snapshot_card(
-                self.session, "branches_total",
-                [Branch.deleted_at.is_(None)], Branch.created_at, today,
-            ),
-            await snapshot_card(
-                self.session, "active_employees",
-                [User.role == UserRole.EMPLOYEE,
-                 User.account_status == AccountStatus.APPROVED],
-                User.created_at, today,
-            ),
             await order_card(self.session, order_where, False, "orders_today", today),
+            await system_fee_card(
+                self.session, order_where, False, "monthly_system_fee", today, period_month(today)
+            ),
+            await self._pending_admin_approvals_card(today),
         ]
         return await build_dashboard(self.session, order_where, False, summary, year)
