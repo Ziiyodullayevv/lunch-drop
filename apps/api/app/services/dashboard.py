@@ -423,8 +423,12 @@ async def super_admin_analytics(
     session: AsyncSession, today: date, year: int
 ) -> SuperAdminAnalytics:
     month_expr = extract("month", Order.target_date)
-    fee_rows = await session.execute(
-        select(month_expr, func.coalesce(func.sum(Order.system_fee), 0))
+    monthly_rows = await session.execute(
+        select(
+            month_expr,
+            func.coalesce(func.sum(Order.historical_price), 0),
+            func.coalesce(func.sum(Order.system_fee), 0),
+        )
         .where(
             extract("year", Order.target_date) == year,
             Order.status == OrderStatus.DELIVERED,
@@ -432,8 +436,10 @@ async def super_admin_analytics(
         .group_by(month_expr)
     )
     monthly_fee = [0] * 12
-    for month, value in fee_rows.all():
-        monthly_fee[int(month) - 1] = int(value)
+    monthly_revenue = [0] * 12
+    for month, revenue_value, fee_value in monthly_rows.all():
+        monthly_revenue[int(month) - 1] = int(revenue_value)
+        monthly_fee[int(month) - 1] = int(fee_value)
 
     month_start = today.replace(day=1)
     system_fee = func.coalesce(func.sum(Order.system_fee), 0)
@@ -461,6 +467,7 @@ async def super_admin_analytics(
 
     return SuperAdminAnalytics(
         monthly_system_fee=MonthlySystemFee(year=year, values=monthly_fee),
+        monthly_revenue=MonthlySystemFee(year=year, values=monthly_revenue),
         top_companies=[
             TopCompanyAnalytics(
                 company_id=company_id,

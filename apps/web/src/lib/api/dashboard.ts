@@ -64,6 +64,7 @@ export type DashboardTopCompany = {
 
 export type DashboardSuperAdminAnalytics = {
   monthly_system_fee: { year: number; values: number[] };
+  monthly_revenue: { year: number; values: number[] };
   top_companies: DashboardTopCompany[];
 };
 

@@ -33,6 +33,7 @@ import { AppWidgetSummary } from '../app-widget-summary';
 import { AppLunchActivity } from '../app-lunch-activity';
 import { AppMonthlyAmount } from '../app-monthly-amount';
 import { AppTodayOrderStatuses } from '../app-today-order-statuses';
+import { AppMonthlyRevenueSplit } from '../app-monthly-revenue-split';
 import { getDashboardFeaturedItems } from '../dashboard-featured-items';
 
 // ----------------------------------------------------------------------
@@ -242,12 +243,15 @@ export function OverviewAppView() {
               </Grid>
 
               <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
-                <AppMonthlyAmount
-                  title={t('superAdminAnalytics.monthlySystemFee')}
+                <AppMonthlyRevenueSplit
+                  title={t('superAdminAnalytics.monthlyRevenueAndFee')}
                   subheader={t('dashboard.year', { year: superAdminAnalytics?.monthly_system_fee.year ?? data?.year })}
-                  totalLabel={t('superAdminAnalytics.yearlyTotal')}
+                  totalRevenueLabel={t('superAdminAnalytics.totalRevenue')}
+                  kitchenShareLabel={t('superAdminAnalytics.kitchenShare')}
+                  systemFeeLabel={t('superAdminAnalytics.systemFee')}
                   categories={monthCategories}
-                  series={superAdminAnalytics?.monthly_system_fee.values ?? Array(12).fill(0)}
+                  revenue={superAdminAnalytics?.monthly_revenue.values ?? Array(12).fill(0)}
+                  systemFee={superAdminAnalytics?.monthly_system_fee.values ?? Array(12).fill(0)}
                   sx={{ width: 1, height: 1 }}
                 />
               </Grid>

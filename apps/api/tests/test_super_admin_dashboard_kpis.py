@@ -53,7 +53,7 @@ class _FeeSession:
 class _AnalyticsSession:
     def __init__(self):
         self._results = [
-            _Result(rows=[(1, Decimal("300")), (7, Decimal("900"))]),
+            _Result(rows=[(1, Decimal("10000"), Decimal("300")), (7, Decimal("30000"), Decimal("900"))]),
             _Result(
                 rows=[
                     ("company-1", "Atlas", 12, Decimal("30000"), Decimal("900")),
@@ -103,6 +103,8 @@ def test_super_admin_analytics_returns_monthly_fee_and_top_five_companies() -> N
 
     assert analytics.monthly_system_fee.values[0] == 300
     assert analytics.monthly_system_fee.values[6] == 900
+    assert analytics.monthly_revenue.values[0] == 10_000
+    assert analytics.monthly_revenue.values[6] == 30_000
     assert len(analytics.top_companies) == 5
     assert analytics.top_companies[0].company_name == "Atlas"
     assert analytics.top_companies[0].system_fee == 900
