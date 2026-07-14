@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode, MouseEvent } from 'react';
+import type { ReactNode } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { MapRef, MarkerEvent } from 'react-map-gl/maplibre';
 
@@ -32,8 +32,8 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { fetchCompanyKitchenCatalog } from 'src/lib/api/companies';
 
 import { Iconify } from 'src/components/iconify';
-import { CustomPopover } from 'src/components/custom-popover';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+import { NavDropdown, NavDropdownPaper } from 'src/components/nav-basic/components';
 import { Map, MapPopup, MapMarker, MAP_STYLES, MapControls } from 'src/components/map';
 
 import { useAuthContext } from 'src/auth/hooks';
@@ -364,34 +364,31 @@ function CompanyCascadeItem({
         <Iconify icon="eva:arrow-ios-forward-fill" width={18} sx={{ ml: 1, color: 'text.disabled' }} />
       </MenuItem>
 
-      <CustomPopover
+      <NavDropdown
+        disableScrollLock
         open={open}
         anchorEl={anchorEl}
         onClose={onClose}
         anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
         transformOrigin={{ vertical: 'center', horizontal: 'left' }}
-        slotProps={{
-          arrow: { hide: true, placement: 'right-center' },
-          paper: {
-            sx: { width: 220 },
-            onMouseEnter: onOpen,
-            onMouseLeave: onClose,
-          },
-        }}
+        slotProps={{ paper: { onMouseEnter: onOpen, onMouseLeave: onClose } }}
+        sx={{ '--nav-dropdown-width': '220px' }}
       >
-        <MenuList sx={{ p: 1 }}>
-          {branches.map((branch) => (
-            <MenuItem
-              key={branch.id}
-              selected={selectedBranchId === branch.id}
-              sx={{ borderRadius: 1 }}
-              onClick={() => onBranchSelect(branch)}
-            >
-              {branch.name}
-            </MenuItem>
-          ))}
-        </MenuList>
-      </CustomPopover>
+        <NavDropdownPaper sx={{ p: 1 }}>
+          <MenuList disablePadding sx={{ gap: 0.5 }}>
+            {branches.map((branch) => (
+              <MenuItem
+                key={branch.id}
+                selected={selectedBranchId === branch.id}
+                sx={{ borderRadius: 1 }}
+                onClick={() => onBranchSelect(branch)}
+              >
+                {branch.name}
+              </MenuItem>
+            ))}
+          </MenuList>
+        </NavDropdownPaper>
+      </NavDropdown>
     </>
   );
 }
@@ -727,36 +724,35 @@ export function MapOverviewView() {
                 </Typography>
                 <Iconify icon="eva:arrow-ios-downward-fill" width={18} sx={{ color: 'text.disabled' }} />
               </Box>
-              <CustomPopover
+              <NavDropdown
+                disableScrollLock
                 open={companySelectOpen}
                 anchorEl={companySelectAnchor}
                 onClose={closeCompanySelect}
-                slotProps={{
-                  arrow: { hide: true, placement: 'top-left' },
-                  paper: {
-                    sx: { width: 220 },
-                    onMouseEnter: onOpenCompanySelect,
-                    onMouseLeave: onCloseCompanySelect,
-                  },
-                }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                slotProps={{ paper: { onMouseEnter: onOpenCompanySelect, onMouseLeave: onCloseCompanySelect } }}
+                sx={{ '--nav-dropdown-width': '220px', '& .MuiPopover-paper': { pt: 1, ml: -0.75 } }}
               >
-                <MenuList sx={{ p: 1 }}>
-                  <MenuItem sx={{ borderRadius: 1 }} selected={!companyFilter} onClick={() => handleCompanySelect('')}>
-                    {t('map.allCompanies')}
-                  </MenuItem>
-                  {companiesWithBranches.map((company) => (
-                    <CompanyCascadeItem
-                      key={company.id}
-                      company={company}
-                      branches={branches.filter((branch) => branch.company_id === company.id)}
-                      selectedCompanyId={companyFilter}
-                      selectedBranchId={branchFilter}
-                      onCompanySelect={handleCompanySelect}
-                      onBranchSelect={handleCompanyBranchSelect}
-                    />
-                  ))}
-                </MenuList>
-              </CustomPopover>
+                <NavDropdownPaper sx={{ p: 1 }}>
+                  <MenuList disablePadding sx={{ gap: 0.5 }}>
+                    <MenuItem sx={{ borderRadius: 1 }} selected={!companyFilter} onClick={() => handleCompanySelect('')}>
+                      {t('map.allCompanies')}
+                    </MenuItem>
+                    {companiesWithBranches.map((company) => (
+                      <CompanyCascadeItem
+                        key={company.id}
+                        company={company}
+                        branches={branches.filter((branch) => branch.company_id === company.id)}
+                        selectedCompanyId={companyFilter}
+                        selectedBranchId={branchFilter}
+                        onCompanySelect={handleCompanySelect}
+                        onBranchSelect={handleCompanyBranchSelect}
+                      />
+                    ))}
+                  </MenuList>
+                </NavDropdownPaper>
+              </NavDropdown>
             </FormControl>
           )}
 
