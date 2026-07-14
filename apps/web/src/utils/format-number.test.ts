@@ -1,6 +1,6 @@
 import { it, expect, describe } from 'vitest';
 
-import { fData, fNumber, fPercent, fCurrency, fShortenNumber } from './format-number';
+import { fData, fNumber, fPercent, fCurrency, fShortenNumber, fMillionCurrency } from './format-number';
 
 // ----------------------------------------------------------------------
 
@@ -76,6 +76,22 @@ describe('fShortenNumber', () => {
 
   it('null bo\'sh string qaytaradi', () => {
     expect(fShortenNumber(null)).toBe('');
+  });
+});
+
+// ----------------------------------------------------------------------
+
+describe('fMillionCurrency', () => {
+  it("2 000 000 ni '2 mln' tarzida formatlaydi", () => {
+    expect(fMillionCurrency(2_000_000)).toMatch(/^2(?:[,.]0)? mln$/);
+  });
+
+  it("500 000 ni '0.5 mln' tarzida formatlaydi", () => {
+    expect(fMillionCurrency(500_000)).toMatch(/^0[,.]5 mln$/);
+  });
+
+  it("nol qiymatni '0 mln' tarzida formatlaydi", () => {
+    expect(fMillionCurrency(0)).toBe('0 mln');
   });
 });
 

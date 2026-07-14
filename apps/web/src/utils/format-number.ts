@@ -72,6 +72,16 @@ export function fShortCurrency(inputValue: InputNumberValue) {
 
 // ----------------------------------------------------------------------
 
+/** Currency axis labels for dashboard charts, consistently expressed in millions of UZS. */
+export function fMillionCurrency(inputValue: InputNumberValue) {
+  const number = processInput(inputValue);
+  if (number === null) return '';
+
+  return `${fNumber(number / 1_000_000, { maximumFractionDigits: 1 })} mln`;
+}
+
+// ----------------------------------------------------------------------
+
 export function fPercent(inputValue: InputNumberValue, options?: Options) {
   const locale = formatNumberLocale() || DEFAULT_LOCALE;
 

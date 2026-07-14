@@ -6,7 +6,7 @@ import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import CardHeader from '@mui/material/CardHeader';
 
-import { fCurrency, fShortCurrency } from 'src/utils/format-number';
+import { fCurrency, fMillionCurrency } from 'src/utils/format-number';
 
 import { Chart, useChart } from 'src/components/chart';
 
@@ -36,7 +36,7 @@ export function AppMonthlyAmount({
     colors: [theme.vars.palette.primary.dark],
     stroke: { width: 0 },
     xaxis: { categories },
-    yaxis: { labels: { formatter: (value: number) => fShortCurrency(value) } },
+    yaxis: { labels: { formatter: (value: number) => fMillionCurrency(value) } },
     tooltip: { y: { formatter: (value: number) => fCurrency(value) } },
     plotOptions: { bar: { borderRadius: 4, columnWidth: '42%' } },
   });
