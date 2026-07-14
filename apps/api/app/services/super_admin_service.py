@@ -1,6 +1,6 @@
 """Super admin biznes logikasi — companies/kitchens/branches CRUD, assign, admin, dashboard."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -23,7 +23,6 @@ from app.repositories.company_repo import CompanyRepository
 from app.repositories.kitchen_repo import KitchenRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.auth import PendingAdminRead
-from app.schemas.dashboard import HistoryPoint, SummaryCard
 from app.schemas.branch import BranchCreate, BranchUpdate
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.schemas.kitchen import KitchenCreate, KitchenUpdate
@@ -34,6 +33,8 @@ from app.services.dashboard import (
     build_dashboard,
     order_card,
     period_month,
+    revenue_card,
+    super_admin_analytics,
     system_fee_card,
     today_tashkent,
 )
@@ -417,26 +418,6 @@ class SuperAdminService:
         return len(orders)
 
     # --- Dashboard ---
-    async def _pending_admin_approvals_card(self, today: date) -> SummaryCard:
-        value = await self.session.scalar(
-            select(func.count())
-            .select_from(User)
-            .where(
-                User.account_status == AccountStatus.PENDING_APPROVAL,
-                User.role.in_([UserRole.KITCHEN_ADMIN, UserRole.COMPANY_ADMIN]),
-            )
-        )
-        history = [
-            HistoryPoint(date=today - timedelta(days=offset), value=value or 0)
-            for offset in range(7, -1, -1)
-        ]
-        return SummaryCard(
-            key="pending_admin_approvals",
-            value=value or 0,
-            trend_percent=None,
-            history=history,
-        )
-
     async def dashboard(self, year: int | None = None):
         """Super admin uchun kunlik operatsion va platforma daromad KPIlari."""
         today = today_tashkent()
@@ -447,6 +428,15 @@ class SuperAdminService:
             await system_fee_card(
                 self.session, order_where, False, "monthly_system_fee", today, period_month(today)
             ),
-            await self._pending_admin_approvals_card(today),
+            await revenue_card(
+                self.session, order_where, False, "monthly_total_revenue", today, period_month(today)
+            ),
         ]
-        return await build_dashboard(self.session, order_where, False, summary, year)
+        return await build_dashboard(
+            self.session,
+            order_where,
+            False,
+            summary,
+            year,
+            super_admin_analytics_data=await super_admin_analytics(self.session, today, year),
+        )

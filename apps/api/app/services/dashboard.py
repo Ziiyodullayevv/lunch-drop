@@ -17,16 +17,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.branch import Branch
+from app.models.company import Company
 from app.models.enums import OrderStatus
 from app.models.kitchen import BranchKitchen
+from app.models.meal import Meal, MenuSchedule
 from app.models.order import Order
 from app.models.user import User
 from app.schemas.dashboard import (
     DashboardResponse,
+    CompanyAdminAnalytics,
     HistoryPoint,
+    KitchenAdminAnalytics,
+    MonthlyAmount,
     MonthlyOrders,
+    MonthlySystemFee,
     OrderStatusTotals,
     SummaryCard,
+    SuperAdminAnalytics,
+    TopCompanyAnalytics,
 )
 
 _TZ = ZoneInfo(settings.timezone)
@@ -215,6 +223,28 @@ async def system_fee_card(session, where, join_user, key, today, period) -> Summ
     return _card_explicit(key, history, await total(cs, ce), await total(ps, pe))
 
 
+async def net_revenue_card(session, where, join_user, key, today, period) -> SummaryCard:
+    """Oshxonaning delivered buyurtmalardan sof tushumi (narx - tizim ulushi)."""
+    w = list(where) + [Order.status == OrderStatus.DELIVERED]
+    net_revenue = func.coalesce(func.sum(Order.historical_price - Order.system_fee), 0)
+    (cs, ce), (ps, pe) = period
+
+    async def total(start, end):
+        return int(
+            (
+                await session.execute(
+                    _order_select(w, join_user, net_revenue).where(
+                        Order.target_date >= start, Order.target_date <= end
+                    )
+                )
+            ).scalar_one()
+        )
+
+    by = await _daily(session, _order_select(w, join_user, Order.target_date, net_revenue), today)
+    history = [(day, by.get(day, 0)) for day in _last_8_days(today)]
+    return _card_explicit(key, history, await total(cs, ce), await total(ps, pe))
+
+
 async def distinct_card(
     session, where, join_user, key, col, today, period
 ) -> SummaryCard:
@@ -289,12 +319,170 @@ async def monthly_orders(
     return MonthlyOrders(year=year, delivered=delivered, cancelled=cancelled)
 
 
+async def _monthly_amounts(
+    session: AsyncSession, order_where: list, join_user: bool, year: int, amount
+) -> MonthlyAmount:
+    month_expr = extract("month", Order.target_date)
+    rows = await session.execute(
+        _order_select(order_where + [Order.status == OrderStatus.DELIVERED], join_user, month_expr, amount)
+        .where(extract("year", Order.target_date) == year)
+        .group_by(month_expr)
+    )
+    values = [0] * 12
+    for month, value in rows.all():
+        values[int(month) - 1] = int(value)
+    return MonthlyAmount(year=year, values=values)
+
+
+async def company_admin_analytics(
+    session: AsyncSession, company_id: str, today: date, year: int
+) -> CompanyAdminAnalytics:
+    start = today - timedelta(days=6)
+    activity_rows = await session.execute(
+        _order_select(
+            [User.company_id == company_id, Order.status != OrderStatus.CANCELLED],
+            True,
+            Order.target_date,
+            func.count(distinct(Order.employee_id)),
+        )
+        .where(Order.target_date >= start, Order.target_date <= today)
+        .group_by(Order.target_date)
+    )
+    by_date = {day: int(value) for day, value in activity_rows.all()}
+    activity_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+    return CompanyAdminAnalytics(
+        lunch_activity=[HistoryPoint(date=day, value=by_date.get(day, 0)) for day in activity_days],
+        monthly_cost=await _monthly_amounts(
+            session,
+            [User.company_id == company_id],
+            True,
+            year,
+            func.coalesce(func.sum(Order.historical_price), 0),
+        ),
+    )
+
+
+async def kitchen_admin_analytics(
+    session: AsyncSession, kitchen_id: str, today: date, year: int
+) -> KitchenAdminAnalytics:
+    status_rows = await session.execute(
+        select(Order.status, func.count())
+        .where(Order.kitchen_id == kitchen_id, Order.target_date == today)
+        .group_by(Order.status)
+    )
+    statuses = {status: count for status, count in status_rows.all()}
+    monthly_net_revenue = await _monthly_amounts(
+        session,
+        [Order.kitchen_id == kitchen_id],
+        False,
+        year,
+        func.coalesce(func.sum(Order.historical_price - Order.system_fee), 0),
+    )
+    return KitchenAdminAnalytics(
+        today_order_statuses=OrderStatusTotals(
+            **{status.value: int(statuses.get(status, 0)) for status in OrderStatus}
+        ),
+        monthly_net_revenue=monthly_net_revenue,
+    )
+
+
+async def menu_items_today_card(session: AsyncSession, kitchen_id: str, today: date) -> SummaryCard:
+    """Xodimlarga bugun ochiq bo'lgan menyu: specific_date haftalik schedule'ni almashtiradi."""
+    specific = (
+        await session.execute(
+            select(MenuSchedule.meal_id)
+            .join(Meal, MenuSchedule.meal_id == Meal.id)
+            .where(
+                MenuSchedule.kitchen_id == kitchen_id,
+                MenuSchedule.specific_date == today,
+                Meal.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    if specific:
+        value = len(set(specific))
+    else:
+        weekly = (
+            await session.execute(
+                select(MenuSchedule.meal_id)
+                .join(Meal, MenuSchedule.meal_id == Meal.id)
+                .where(
+                    MenuSchedule.kitchen_id == kitchen_id,
+                    MenuSchedule.day_of_week == today.isoweekday(),
+                    MenuSchedule.specific_date.is_(None),
+                    Meal.deleted_at.is_(None),
+                )
+            )
+        ).scalars().all()
+        value = len(set(weekly))
+    history = [(day, value) for day in _last_8_days(today)]
+    return _card_explicit("menu_items_today", history, value, value)
+
+
+async def super_admin_analytics(
+    session: AsyncSession, today: date, year: int
+) -> SuperAdminAnalytics:
+    month_expr = extract("month", Order.target_date)
+    fee_rows = await session.execute(
+        select(month_expr, func.coalesce(func.sum(Order.system_fee), 0))
+        .where(
+            extract("year", Order.target_date) == year,
+            Order.status == OrderStatus.DELIVERED,
+        )
+        .group_by(month_expr)
+    )
+    monthly_fee = [0] * 12
+    for month, value in fee_rows.all():
+        monthly_fee[int(month) - 1] = int(value)
+
+    month_start = today.replace(day=1)
+    system_fee = func.coalesce(func.sum(Order.system_fee), 0)
+    revenue = func.coalesce(func.sum(Order.historical_price), 0)
+    top_company_rows = await session.execute(
+        select(
+            Company.id,
+            Company.name,
+            func.count(Order.id),
+            revenue,
+            system_fee,
+        )
+        .select_from(Order)
+        .join(User, Order.employee_id == User.id)
+        .join(Company, User.company_id == Company.id)
+        .where(
+            Order.target_date.between(month_start, today),
+            Order.status == OrderStatus.DELIVERED,
+            Company.deleted_at.is_(None),
+        )
+        .group_by(Company.id, Company.name)
+        .order_by(system_fee.desc())
+        .limit(3)
+    )
+
+    return SuperAdminAnalytics(
+        monthly_system_fee=MonthlySystemFee(year=year, values=monthly_fee),
+        top_companies=[
+            TopCompanyAnalytics(
+                company_id=company_id,
+                company_name=company_name,
+                delivered_orders=delivered_orders,
+                revenue=int(company_revenue),
+                system_fee=int(company_system_fee),
+            )
+            for company_id, company_name, delivered_orders, company_revenue, company_system_fee in top_company_rows.all()
+        ],
+    )
+
+
 async def build_dashboard(
     session: AsyncSession,
     order_where: list,
     join_user: bool,
     summary: list[SummaryCard],
     year: int,
+    super_admin_analytics_data: SuperAdminAnalytics | None = None,
+    company_admin_analytics_data: CompanyAdminAnalytics | None = None,
+    kitchen_admin_analytics_data: KitchenAdminAnalytics | None = None,
 ) -> DashboardResponse:
     return DashboardResponse(
         year=year,
@@ -305,4 +493,7 @@ async def build_dashboard(
             session, order_where, join_user, year
         ),
         monthly_orders=await monthly_orders(session, order_where, join_user, year),
+        super_admin_analytics=super_admin_analytics_data,
+        company_admin_analytics=company_admin_analytics_data,
+        kitchen_admin_analytics=kitchen_admin_analytics_data,
     )

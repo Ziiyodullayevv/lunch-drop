@@ -28,9 +28,11 @@ import { useAuthContext } from 'src/auth/hooks';
 
 import { AppWelcome } from '../app-welcome';
 import { AppFeatured } from '../app-featured';
-import { AppAreaInstalled } from '../app-area-installed';
+import { AppTopCompanies } from '../app-top-companies';
 import { AppWidgetSummary } from '../app-widget-summary';
-import { AppCurrentDownload } from '../app-current-download';
+import { AppLunchActivity } from '../app-lunch-activity';
+import { AppMonthlyAmount } from '../app-monthly-amount';
+import { AppTodayOrderStatuses } from '../app-today-order-statuses';
 import { getDashboardFeaturedItems } from '../dashboard-featured-items';
 
 // ----------------------------------------------------------------------
@@ -51,6 +53,12 @@ const SUMMARY_META: Record<
   cancelled_today: { title: 'cancelledToday', color: 'error' },
   orders_total: { title: 'ordersTotal', color: 'primary' },
   revenue_total: { title: 'revenueTotal', color: 'info', currency: true },
+  monthly_total_revenue: {
+    title: 'monthlyTotalRevenue',
+    color: 'success',
+    currency: true,
+    translationKey: 'superAdminKpis.monthlyTotalRevenue',
+  },
   monthly_system_fee: {
     title: 'monthlySystemFee',
     color: 'info',
@@ -70,7 +78,10 @@ const SUMMARY_META: Record<
   delivered_total: { title: 'deliveredTotal', color: 'success' },
   branches_total: { title: 'branchesTotal', color: 'warning' },
   active_employees: { title: 'activeEmployees', color: 'primary' },
+  weekly_delivered_orders: { title: 'weeklyDeliveredOrders', color: 'success' },
   portions_today: { title: 'portionsToday', color: 'primary' },
+  weekly_net_revenue: { title: 'weeklyNetRevenue', color: 'info', currency: true },
+  menu_items_today: { title: 'menuItemsToday', color: 'warning' },
   weekly_revenue: { title: 'weeklyRevenue', color: 'info', currency: true },
   connected_companies: { title: 'connectedCompanies', color: 'warning' },
 };
@@ -86,7 +97,19 @@ const STATUS_META = [
 const SUPER_ADMIN_SUMMARY_KEYS: DashboardSummaryKey[] = [
   'orders_today',
   'monthly_system_fee',
-  'pending_admin_approvals',
+  'monthly_total_revenue',
+];
+
+const COMPANY_ADMIN_SUMMARY_KEYS: DashboardSummaryKey[] = [
+  'active_employees',
+  'monthly_cost',
+  'weekly_delivered_orders',
+];
+
+const KITCHEN_ADMIN_SUMMARY_KEYS: DashboardSummaryKey[] = [
+  'portions_today',
+  'weekly_net_revenue',
+  'menu_items_today',
 ];
 
 function isDashboardRole(role: unknown): role is DashboardRole {
@@ -121,47 +144,27 @@ export function OverviewAppView() {
     error: theme.palette.error.main,
   };
 
-  const statusSeries = data
+  const kitchenAnalytics = data?.kitchen_admin_analytics;
+  const kitchenStatusSeries = kitchenAnalytics
     ? STATUS_META.map(({ key, label }) => ({
         label: t(`dashboard.status.${label}`),
-        value: data.order_status_totals[key],
+        value: kitchenAnalytics.today_order_statuses[key],
       }))
     : [];
 
-  const summaryCards =
+  const summaryKeys =
     role === 'super_admin'
-      ? data?.summary.filter((card) => SUPER_ADMIN_SUMMARY_KEYS.includes(card.key))
-      : data?.summary;
-
-  const summarySkeletonCount = role === 'super_admin' ? 3 : 6;
-
-  const monthlyChart = data
-    ? {
-        categories: MONTH_KEYS.map((key) => t(`dashboard.months.${key}`)),
-        series: [
-          {
-            name: String(data.monthly_orders.year),
-            data: [
-              { name: t('dashboard.status.delivered'), data: data.monthly_orders.delivered },
-              { name: t('dashboard.status.cancelled'), data: data.monthly_orders.cancelled },
-            ],
-          },
-        ],
-      }
-    : {
-        categories: MONTH_KEYS.map((key) => t(`dashboard.months.${key}`)),
-        series: [
-          {
-            name: String(new Date().getFullYear()),
-            data: [
-              { name: t('dashboard.status.delivered'), data: Array(12).fill(0) },
-              { name: t('dashboard.status.cancelled'), data: Array(12).fill(0) },
-            ],
-          },
-        ],
-      };
+      ? SUPER_ADMIN_SUMMARY_KEYS
+      : role === 'company_admin'
+        ? COMPANY_ADMIN_SUMMARY_KEYS
+        : KITCHEN_ADMIN_SUMMARY_KEYS;
+  const summaryCards = data?.summary.filter((card) => summaryKeys.includes(card.key));
+  const summarySkeletonCount = 3;
 
   const featuredItems = role ? getDashboardFeaturedItems(role, t) : [];
+  const superAdminAnalytics = data?.super_admin_analytics;
+  const companyAnalytics = data?.company_admin_analytics;
+  const monthCategories = MONTH_KEYS.map((key) => t(`dashboard.months.${key}`));
 
   return (
     <DashboardContent maxWidth="xl">
@@ -225,37 +228,82 @@ export function OverviewAppView() {
         )}
 
         <Grid size={{ xs: 12 }}>
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
-              <AppCurrentDownload
-                title={t('dashboard.orderStatus')}
-                subheader={data ? t('dashboard.year', { year: data.year }) : undefined}
-                chart={{
-                  colors: [
-                    theme.palette.grey[400],
-                    theme.palette.warning.main,
-                    theme.palette.info.main,
-                    theme.palette.success.main,
-                    theme.palette.error.main,
-                  ],
-                  series: statusSeries,
-                }}
-                sx={{ width: 1, height: 1 }}
-              />
-            </Grid>
+          {role === 'super_admin' ? (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
+                <AppTopCompanies
+                  title={t('superAdminAnalytics.topCompanies')}
+                  subheader={t('superAdminAnalytics.currentMonth')}
+                  emptyText={t('superAdminAnalytics.noCompanies')}
+                  ordersLabel={t('order.unit')}
+                  list={superAdminAnalytics?.top_companies ?? []}
+                  sx={{ width: 1, height: 1 }}
+                />
+              </Grid>
 
-            <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
-              <AppAreaInstalled
-                title={t('dashboard.orderTrend')}
-                subheader={data ? t('dashboard.monthly', { year: data.monthly_orders.year }) : undefined}
-                chart={{
-                  colors: [theme.palette.success.main, theme.palette.error.main],
-                  ...monthlyChart,
-                }}
-                sx={{ width: 1, height: 1 }}
-              />
+              <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
+                <AppMonthlyAmount
+                  title={t('superAdminAnalytics.monthlySystemFee')}
+                  subheader={t('dashboard.year', { year: superAdminAnalytics?.monthly_system_fee.year ?? data?.year })}
+                  totalLabel={t('superAdminAnalytics.yearlyTotal')}
+                  categories={monthCategories}
+                  series={superAdminAnalytics?.monthly_system_fee.values ?? Array(12).fill(0)}
+                  sx={{ width: 1, height: 1 }}
+                />
+              </Grid>
             </Grid>
-          </Grid>
+          ) : role === 'company_admin' ? (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
+                <AppLunchActivity
+                  title={t('companyAnalytics.lunchActivity')}
+                  subheader={t('companyAnalytics.lastSevenDays')}
+                  emptyText={t('companyAnalytics.noLunchActivity')}
+                  categories={(companyAnalytics?.lunch_activity ?? []).map((point) =>
+                    new Intl.DateTimeFormat('uz-UZ', { weekday: 'short' }).format(
+                      new Date(`${point.date}T00:00:00`)
+                    )
+                  )}
+                  series={(companyAnalytics?.lunch_activity ?? []).map((point) => point.value)}
+                  sx={{ width: 1, height: 1 }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
+                <AppMonthlyAmount
+                  title={t('companyAnalytics.monthlyCost')}
+                  subheader={t('dashboard.year', { year: companyAnalytics?.monthly_cost.year ?? data?.year })}
+                  totalLabel={t('companyAnalytics.yearlyTotal')}
+                  categories={monthCategories}
+                  series={companyAnalytics?.monthly_cost.values ?? Array(12).fill(0)}
+                  sx={{ width: 1, height: 1 }}
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
+                <AppTodayOrderStatuses
+                  title={t('kitchenAnalytics.todayOrderStatuses')}
+                  subheader={t('kitchenAnalytics.today')}
+                  emptyText={t('kitchenAnalytics.noOrdersToday')}
+                  statuses={kitchenStatusSeries}
+                  sx={{ width: 1, height: 1 }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
+                <AppMonthlyAmount
+                  title={t('kitchenAnalytics.monthlyNetRevenue')}
+                  subheader={t('dashboard.year', { year: kitchenAnalytics?.monthly_net_revenue.year ?? data?.year })}
+                  totalLabel={t('kitchenAnalytics.yearlyTotal')}
+                  categories={monthCategories}
+                  series={kitchenAnalytics?.monthly_net_revenue.values ?? Array(12).fill(0)}
+                  sx={{ width: 1, height: 1 }}
+                />
+              </Grid>
+            </Grid>
+          )}
         </Grid>
       </Grid>
     </DashboardContent>

@@ -31,12 +31,10 @@ from app.schemas.company_admin import (
 from app.schemas.order import OrderRead
 from app.services.dashboard import (
     build_dashboard,
-    distinct_card,
-    order_card,
+    company_admin_analytics,
     order_count_card,
     period_month,
-    period_today,
-    period_year,
+    period_week,
     revenue_card,
     snapshot_card,
     today_tashkent,
@@ -647,15 +645,6 @@ class CompanyAdminService:
         year = year or today.year
         order_where = [User.company_id == self.company_id]
         summary = [
-            await distinct_card(
-                self.session,
-                order_where,
-                True,
-                "lunch_subscribers_today",
-                Order.employee_id,
-                today,
-                period_today(today),
-            ),
             await revenue_card(
                 self.session,
                 order_where,
@@ -663,15 +652,6 @@ class CompanyAdminService:
                 "monthly_cost",
                 today,
                 period_month(today),
-            ),
-            await order_count_card(
-                self.session,
-                order_where,
-                True,
-                "delivered_total",
-                today,
-                period_year(year),
-                OrderStatus.DELIVERED,
             ),
             await snapshot_card(
                 self.session,
@@ -691,6 +671,23 @@ class CompanyAdminService:
                 Branch.created_at,
                 today,
             ),
-            await order_card(self.session, order_where, True, "orders_today", today),
+            await order_count_card(
+                self.session,
+                order_where,
+                True,
+                "weekly_delivered_orders",
+                today,
+                period_week(today),
+                OrderStatus.DELIVERED,
+            ),
         ]
-        return await build_dashboard(self.session, order_where, True, summary, year)
+        return await build_dashboard(
+            self.session,
+            order_where,
+            True,
+            summary,
+            year,
+            company_admin_analytics_data=await company_admin_analytics(
+                self.session, self.company_id, today, year
+            ),
+        )

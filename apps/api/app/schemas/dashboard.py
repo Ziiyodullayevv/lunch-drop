@@ -1,6 +1,6 @@
 """Dashboard analytics response modellari — type-safe OpenAPI kontrakt (uchala rol).
 
-Pul qiymatlari (revenue_total, monthly_cost, weekly_revenue) — **UZS** (butun son),
+Pul qiymatlari (revenue_total, monthly_cost, weekly_net_revenue) — **UZS** (butun son),
 yetkazilgan (delivered) buyurtmalarning historical_price yig'indisi.
 """
 
@@ -18,6 +18,7 @@ SummaryKey = Literal[
     # super_admin
     "orders_total",
     "revenue_total",        # UZS
+    "monthly_total_revenue",  # UZS, barcha kompaniyalarning joriy oy aylanmasi
     "monthly_system_fee",   # UZS, delivered buyurtmalardan platformaning 3% ulushi
     "pending_admin_approvals",
     "active_companies",
@@ -29,9 +30,12 @@ SummaryKey = Literal[
     "delivered_total",
     "branches_total",
     "active_employees",
+    "weekly_delivered_orders",
     # kitchen_admin
     "portions_today",
-    "weekly_revenue",       # UZS
+    "weekly_revenue",       # UZS, eski clientlar uchun
+    "weekly_net_revenue",   # UZS, kitchen uchun system_fee ayirilgandan keyin
+    "menu_items_today",
     "connected_companies",
 ]
 
@@ -65,6 +69,39 @@ class MonthlyOrders(BaseModel):
     cancelled: list[int] = Field(min_length=12, max_length=12)
 
 
+class MonthlySystemFee(BaseModel):
+    year: int
+    values: list[int] = Field(min_length=12, max_length=12)
+
+
+class TopCompanyAnalytics(BaseModel):
+    company_id: str
+    company_name: str
+    delivered_orders: int = Field(ge=0)
+    revenue: int = Field(ge=0)
+    system_fee: int = Field(ge=0)
+
+
+class SuperAdminAnalytics(BaseModel):
+    monthly_system_fee: MonthlySystemFee
+    top_companies: list[TopCompanyAnalytics] = Field(default_factory=list, max_length=3)
+
+
+class MonthlyAmount(BaseModel):
+    year: int
+    values: list[int] = Field(min_length=12, max_length=12)
+
+
+class CompanyAdminAnalytics(BaseModel):
+    lunch_activity: list[HistoryPoint] = Field(min_length=7, max_length=7)
+    monthly_cost: MonthlyAmount
+
+
+class KitchenAdminAnalytics(BaseModel):
+    today_order_statuses: OrderStatusTotals
+    monthly_net_revenue: MonthlyAmount
+
+
 class DashboardResponse(BaseModel):
     year: int
     timezone: Literal["Asia/Tashkent"]
@@ -72,3 +109,6 @@ class DashboardResponse(BaseModel):
     summary: list[SummaryCard]
     order_status_totals: OrderStatusTotals
     monthly_orders: MonthlyOrders
+    super_admin_analytics: SuperAdminAnalytics | None = None
+    company_admin_analytics: CompanyAdminAnalytics | None = None
+    kitchen_admin_analytics: KitchenAdminAnalytics | None = None

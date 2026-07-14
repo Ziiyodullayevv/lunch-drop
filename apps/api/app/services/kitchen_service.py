@@ -18,12 +18,12 @@ from app.schemas.meal import MealCreate, MealUpdate, ScheduleMenuRequest
 from app.schemas.order import OrderRead
 from app.services.dashboard import (
     build_dashboard,
-    connected_companies_card,
-    order_card,
+    kitchen_admin_analytics,
+    menu_items_today_card,
+    net_revenue_card,
     order_count_card,
     period_today,
     period_week,
-    revenue_card,
     today_tashkent,
 )
 from app.services.order_read import build_order_read, build_order_reads
@@ -276,19 +276,19 @@ class KitchenService:
                 self.session, order_where, False, "portions_today", today,
                 period_today(today),
             ),
-            await revenue_card(
-                self.session, order_where, False, "weekly_revenue", today,
+            await net_revenue_card(
+                self.session, order_where, False, "weekly_net_revenue", today,
                 period_week(today),
             ),
-            await connected_companies_card(self.session, self.kitchen_id, today),
-            await order_card(self.session, order_where, False, "orders_today", today),
-            await order_card(
-                self.session, order_where, False, "delivered_today", today,
-                OrderStatus.DELIVERED,
-            ),
-            await order_card(
-                self.session, order_where, False, "cancelled_today", today,
-                OrderStatus.CANCELLED,
-            ),
+            await menu_items_today_card(self.session, self.kitchen_id, today),
         ]
-        return await build_dashboard(self.session, order_where, False, cards, year)
+        return await build_dashboard(
+            self.session,
+            order_where,
+            False,
+            cards,
+            year,
+            kitchen_admin_analytics_data=await kitchen_admin_analytics(
+                self.session, self.kitchen_id, today, year
+            ),
+        )
