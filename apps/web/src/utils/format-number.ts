@@ -60,14 +60,14 @@ export function fShortCurrency(inputValue: InputNumberValue) {
   if (number === null) return '';
 
   if (Math.abs(number) >= 1_000_000) {
-    return `${fNumber(number / 1_000_000, { maximumFractionDigits: 1 })} mln so'm`;
+    return `${fNumber(number / 1_000_000, { maximumFractionDigits: 1 })} mln`;
   }
 
   if (Math.abs(number) >= 1_000) {
-    return `${fNumber(number / 1_000, { maximumFractionDigits: 0 })} ming so'm`;
+    return `${fNumber(number / 1_000, { maximumFractionDigits: 0 })} ming`;
   }
 
-  return `${fNumber(number)} so'm`;
+  return fNumber(number);
 }
 
 // ----------------------------------------------------------------------
