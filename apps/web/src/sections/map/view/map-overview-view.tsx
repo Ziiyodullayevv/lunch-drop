@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent, ReactNode } from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { MapRef, MarkerEvent } from 'react-map-gl/maplibre';
 
