@@ -101,6 +101,7 @@ class CompanyAdminAnalytics(BaseModel):
 class KitchenAdminAnalytics(BaseModel):
     today_order_statuses: OrderStatusTotals
     monthly_net_revenue: MonthlyAmount
+    monthly_system_fee: MonthlyAmount
 
 
 class DashboardResponse(BaseModel):

@@ -137,6 +137,7 @@ class _KitchenAnalyticsSession:
         self._results = [
             _Result(rows=[(OrderStatus.CREATED, 2), (OrderStatus.DELIVERED, 4)]),
             _Result(rows=[(7, Decimal("97000"))]),
+            _Result(rows=[(7, Decimal("3000"))]),
         ]
 
     async def execute(self, _statement):
@@ -152,6 +153,7 @@ def test_kitchen_analytics_returns_today_statuses_and_monthly_net_revenue() -> N
     assert analytics.today_order_statuses.delivered == 4
     assert analytics.today_order_statuses.cancelled == 0
     assert analytics.monthly_net_revenue.values[6] == 97_000
+    assert analytics.monthly_system_fee.values[6] == 3_000
 
 
 class _NetRevenueSession:

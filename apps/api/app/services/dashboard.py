@@ -378,11 +378,19 @@ async def kitchen_admin_analytics(
         year,
         func.coalesce(func.sum(Order.historical_price - Order.system_fee), 0),
     )
+    monthly_system_fee = await _monthly_amounts(
+        session,
+        [Order.kitchen_id == kitchen_id],
+        False,
+        year,
+        func.coalesce(func.sum(Order.system_fee), 0),
+    )
     return KitchenAdminAnalytics(
         today_order_statuses=OrderStatusTotals(
             **{status.value: int(statuses.get(status, 0)) for status in OrderStatus}
         ),
         monthly_net_revenue=monthly_net_revenue,
+        monthly_system_fee=monthly_system_fee,
     )
 
 

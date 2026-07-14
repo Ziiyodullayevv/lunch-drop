@@ -297,12 +297,17 @@ export function OverviewAppView() {
               </Grid>
 
               <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex' }}>
-                <AppMonthlyAmount
-                  title={t('kitchenAnalytics.monthlyNetRevenue')}
+                <AppMonthlyRevenueSplit
+                  title={t('kitchenAnalytics.monthlyRevenueAndFee')}
                   subheader={t('dashboard.year', { year: kitchenAnalytics?.monthly_net_revenue.year ?? data?.year })}
-                  totalLabel={t('kitchenAnalytics.yearlyTotal')}
+                  totalRevenueLabel={t('kitchenAnalytics.totalRevenue')}
+                  kitchenShareLabel={t('kitchenAnalytics.netRevenue')}
+                  systemFeeLabel={t('kitchenAnalytics.systemFee')}
                   categories={monthCategories}
-                  series={kitchenAnalytics?.monthly_net_revenue.values ?? Array(12).fill(0)}
+                  revenue={(kitchenAnalytics?.monthly_net_revenue.values ?? Array(12).fill(0)).map(
+                    (value, index) => value + (kitchenAnalytics?.monthly_system_fee.values[index] ?? 0)
+                  )}
+                  systemFee={kitchenAnalytics?.monthly_system_fee.values ?? Array(12).fill(0)}
                   sx={{ width: 1, height: 1 }}
                 />
               </Grid>

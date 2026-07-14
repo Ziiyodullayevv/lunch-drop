@@ -78,6 +78,7 @@ export type DashboardCompanyAdminAnalytics = {
 export type DashboardKitchenAdminAnalytics = {
   today_order_statuses: DashboardOrderStatusTotals;
   monthly_net_revenue: DashboardMonthlyAmount;
+  monthly_system_fee: DashboardMonthlyAmount;
 };
 
 export type DashboardResponse = {
