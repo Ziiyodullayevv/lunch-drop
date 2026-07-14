@@ -52,7 +52,6 @@ function mapOrderStatus(raw: string): OrderStatus {
 
 export function mapOrder(dto: OrderHistoryDto): Order {
   const price = parseFloat(dto.historical_price) || 0;
-  const fee = parseFloat(dto.system_fee) || 0;
   return {
     id: dto.id,
     kitchenId: dto.kitchen_id,
@@ -76,7 +75,9 @@ export function mapOrder(dto: OrderHistoryDto): Order {
         imageUrl: dto.meal_image_url ?? undefined,
       },
     ],
-    total: price + fee,
+    // The platform fee is withheld from the kitchen's payout. Employees pay
+    // only the meal price stored on the order.
+    total: price,
     targetDate: dto.target_date,
     createdAt: dto.created_at,
     deliveryWindow: '',
@@ -88,7 +89,6 @@ export function mapOrder(dto: OrderHistoryDto): Order {
 // Minimal mapper for create/cancel/confirm responses (no meal/branch enrichment)
 export function mapOrderRead(dto: OrderReadDto): Order {
   const price = parseFloat(dto.historical_price) || 0;
-  const fee = parseFloat(dto.system_fee) || 0;
   return {
     id: dto.id,
     kitchenId: dto.kitchen_id,
@@ -111,7 +111,9 @@ export function mapOrderRead(dto: OrderReadDto): Order {
         price,
       },
     ],
-    total: price + fee,
+    // The platform fee is withheld from the kitchen's payout. Employees pay
+    // only the meal price stored on the order.
+    total: price,
     targetDate: dto.target_date,
     createdAt: dto.created_at,
     deliveryWindow: '',
