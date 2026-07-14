@@ -672,16 +672,22 @@ export function MapOverviewView() {
                   arrow: { hide: true, placement: 'top-left' },
                   paper: {
                     sx: {
-                      width: hoveredCompanyBranches.length ? 440 : 220,
-                      maxWidth: 'calc(100vw - 32px)',
-                      overflow: 'hidden',
+                      width: 220,
+                      overflow: 'visible',
                     },
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1, p: 1 }}>
+                <Box
+                  onMouseLeave={() => setHoveredCompanyId('')}
+                  sx={{ position: 'relative', p: 1 }}
+                >
                   <MenuList disablePadding sx={{ width: 220, flexShrink: 0 }}>
-                    <MenuItem selected={!companyFilter} onClick={() => handleCompanySelect('')}>
+                    <MenuItem
+                      selected={!companyFilter}
+                      onClick={() => handleCompanySelect('')}
+                      onMouseEnter={() => setHoveredCompanyId('')}
+                    >
                       {t('map.allCompanies')}
                     </MenuItem>
                     {companiesWithBranches.map((company) => (
@@ -699,9 +705,19 @@ export function MapOverviewView() {
                     ))}
                   </MenuList>
                   {hoveredCompanyBranches.length > 0 && (
-                    <>
-                      <Divider orientation="vertical" flexItem />
-                      <MenuList disablePadding sx={{ width: 220, flexShrink: 0 }}>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 'calc(100% + 8px)',
+                        width: 220,
+                        p: 1,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1.5,
+                        boxShadow: (theme) => theme.customShadows.z20,
+                      }}
+                    >
+                      <MenuList disablePadding>
                         {hoveredCompanyBranches.map((branch) => (
                           <MenuItem
                             key={branch.id}
@@ -712,7 +728,7 @@ export function MapOverviewView() {
                           </MenuItem>
                         ))}
                       </MenuList>
-                    </>
+                    </Box>
                   )}
                 </Box>
               </CustomPopover>
