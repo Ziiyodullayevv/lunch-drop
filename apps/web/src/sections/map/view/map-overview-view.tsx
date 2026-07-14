@@ -396,7 +396,13 @@ export function MapOverviewView() {
             };
           })
         );
-        setKitchens(catalog.kitchens.filter((kitchen) => kitchen.is_active));
+        // Company admins may only see kitchens that have an approved
+        // connection to one of their own branches.
+        setKitchens(
+          catalog.kitchens.filter(
+            (kitchen) => kitchen.is_active && kitchen.connected_branch_ids.length > 0
+          )
+        );
         return;
       }
 
@@ -477,12 +483,9 @@ export function MapOverviewView() {
     () =>
       kitchensWithCoords.filter((kitchen) => {
         if (kitchenFilter && kitchen.id !== kitchenFilter) return false;
-        if (
-          isCompanyAdmin &&
-          branchFilter &&
-          !kitchen.connected_branch_ids?.includes(branchFilter)
-        ) {
-          return false;
+        if (isCompanyAdmin) {
+          if (!kitchen.connected_branch_ids?.length) return false;
+          if (branchFilter && !kitchen.connected_branch_ids.includes(branchFilter)) return false;
         }
         return true;
       }),
