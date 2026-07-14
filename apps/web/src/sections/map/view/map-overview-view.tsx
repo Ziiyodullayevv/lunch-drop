@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { MapRef, MarkerEvent } from 'react-map-gl/maplibre';
 
@@ -14,6 +14,7 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
+import MenuList from '@mui/material/MenuList';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
@@ -30,6 +31,7 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import { fetchCompanyKitchenCatalog } from 'src/lib/api/companies';
 
 import { Iconify } from 'src/components/iconify';
+import { CustomPopover } from 'src/components/custom-popover';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import { Map, MapPopup, MapMarker, MAP_STYLES, MapControls } from 'src/components/map';
 
@@ -331,6 +333,7 @@ function BranchPopupCard({
 export function MapOverviewView() {
   const { t } = useTranslate('common');
   const mapRef = useRef<MapRef | null>(null);
+  const companySelectRef = useRef<HTMLDivElement | null>(null);
   const isCompactMap = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { user } = useAuthContext();
   const role = user?.role as UserRole | undefined;
@@ -346,6 +349,9 @@ export function MapOverviewView() {
   const [entityType, setEntityType] = useState<EntityType>('all');
   const [companyFilter, setCompanyFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  const [companySelectOpen, setCompanySelectOpen] = useState(false);
+  const [hoveredCompanyId, setHoveredCompanyId] = useState('');
+  const [companySubmenuAnchor, setCompanySubmenuAnchor] = useState<HTMLElement | null>(null);
   const [kitchenFilter, setKitchenFilter] = useState('');
   const [selected, setSelected] = useState<MarkerItem | null>(null);
   const [popupCoords, setPopupCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -452,6 +458,16 @@ export function MapOverviewView() {
     [branches, companyFilter]
   );
 
+  const companiesWithBranches = useMemo(
+    () => companies.filter((company) => branches.some((branch) => branch.company_id === company.id)),
+    [branches, companies]
+  );
+
+  const hoveredCompanyBranches = useMemo(
+    () => branches.filter((branch) => branch.company_id === hoveredCompanyId),
+    [branches, hoveredCompanyId]
+  );
+
   const kitchenOptions = useMemo(() => {
     if (!isCompanyAdmin || !branchFilter) return kitchens;
 
@@ -519,11 +535,32 @@ export function MapOverviewView() {
     []
   );
 
-  const handleCompanyChange = (event: SelectChangeEvent<string>) => {
-    setCompanyFilter(event.target.value);
+  const closeCompanySelect = () => {
+    setCompanySelectOpen(false);
+    setHoveredCompanyId('');
+    setCompanySubmenuAnchor(null);
+  };
+
+  const handleCompanySelect = (companyId: string) => {
+    setCompanyFilter(companyId);
     setBranchFilter('');
     setSelected(null);
     setPopupCoords(null);
+    closeCompanySelect();
+  };
+
+  const handleCompanyHover = (event: MouseEvent<HTMLElement>, companyId: string) => {
+    setHoveredCompanyId(companyId);
+    setCompanySubmenuAnchor(event.currentTarget);
+  };
+
+  const handleCompanyBranchSelect = (branch: Branch) => {
+    setCompanyFilter(branch.company_id);
+    setBranchFilter(branch.id);
+    setKitchenFilter('');
+    setSelected(null);
+    setPopupCoords(null);
+    closeCompanySelect();
   };
 
   const handleBranchChange = (event: SelectChangeEvent<string>) => {
@@ -595,21 +632,87 @@ export function MapOverviewView() {
 
           {(isSuperAdmin || isKitchenAdmin) && entityType !== 'kitchen' && (
             <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
-              <InputLabel>{t('map.company')}</InputLabel>
-              <Select
-                size="small"
-                label={t('map.company')}
-                value={companyFilter}
-                onChange={handleCompanyChange}
-                sx={{ '& .MuiSelect-select': { display: 'flex', alignItems: 'center' } }}
+              <Box
+                ref={companySelectRef}
+                role="button"
+                tabIndex={0}
+                aria-haspopup="menu"
+                aria-expanded={companySelectOpen}
+                onClick={() => setCompanySelectOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') setCompanySelectOpen(true);
+                }}
+                sx={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  minHeight: 40,
+                  px: 1.5,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  cursor: 'pointer',
+                  '&:hover': { borderColor: 'text.primary' },
+                }}
               >
-                <MenuItem value="">{t('map.allCompanies')}</MenuItem>
-                {companies.map((company) => (
-                  <MenuItem key={company.id} value={company.id}>
-                    {company.name}
+                <Typography
+                  variant="caption"
+                  sx={{ position: 'absolute', top: -9, left: 10, px: 0.5, bgcolor: 'background.paper' }}
+                >
+                  {t('map.company')}
+                </Typography>
+                <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+                  {companies.find((company) => company.id === companyFilter)?.name ?? t('map.allCompanies')}
+                </Typography>
+                <Iconify icon="eva:arrow-ios-downward-fill" width={18} sx={{ color: 'text.disabled' }} />
+              </Box>
+              <CustomPopover
+                open={companySelectOpen}
+                anchorEl={companySelectRef.current}
+                onClose={closeCompanySelect}
+                slotProps={{ arrow: { hide: true, placement: 'top-left' }, paper: { sx: { width: 220 } } }}
+              >
+                <MenuList sx={{ p: 1 }}>
+                  <MenuItem sx={{ borderRadius: 1 }} selected={!companyFilter} onClick={() => handleCompanySelect('')}>
+                    {t('map.allCompanies')}
                   </MenuItem>
-                ))}
-              </Select>
+                  {companiesWithBranches.map((company) => (
+                    <MenuItem
+                      key={company.id}
+                      sx={{ borderRadius: 1 }}
+                      selected={companyFilter === company.id}
+                      onClick={() => handleCompanySelect(company.id)}
+                      onMouseEnter={(event) => handleCompanyHover(event, company.id)}
+                    >
+                      <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+                        {company.name}
+                      </Typography>
+                      <Iconify icon="eva:arrow-ios-forward-fill" width={18} sx={{ ml: 1, color: 'text.disabled' }} />
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </CustomPopover>
+              <CustomPopover
+                open={Boolean(companySubmenuAnchor) && hoveredCompanyBranches.length > 0}
+                anchorEl={companySubmenuAnchor}
+                onClose={() => setCompanySubmenuAnchor(null)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                slotProps={{ arrow: { hide: true, placement: 'top-left' }, paper: { sx: { width: 220 } } }}
+              >
+                <MenuList sx={{ p: 1 }}>
+                  {hoveredCompanyBranches.map((branch) => (
+                    <MenuItem
+                      key={branch.id}
+                      sx={{ borderRadius: 1 }}
+                      selected={branchFilter === branch.id}
+                      onClick={() => handleCompanyBranchSelect(branch)}
+                    >
+                      {branch.name}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </CustomPopover>
             </FormControl>
           )}
 
