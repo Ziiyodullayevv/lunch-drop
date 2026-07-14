@@ -33,7 +33,7 @@ export function AppMonthlyAmount({
   const total = series.reduce((sum, value) => sum + value, 0);
   const chartOptions = useChart({
     chart: { toolbar: { show: false } },
-    colors: [theme.vars.palette.primary.main],
+    colors: [theme.vars.palette.primary.dark],
     stroke: { width: 0 },
     xaxis: { categories },
     yaxis: { labels: { formatter: (value: number) => fCurrency(value) } },
