@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { Keyboard, TouchableWithoutFeedback } from "react-native";
+import { useEffect, useState } from "react";
+import { BackHandler, Keyboard, TouchableWithoutFeedback } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Input, Spinner, Text, XStack, YStack } from "tamagui";
 
@@ -27,6 +27,17 @@ export function LoginScreen() {
   const { showAlert } = useCustomAlert();
   const auth = useAuth();
   const [phoneFocused, setPhoneFocused] = useState(false);
+
+  // This is the unauthenticated entry screen. Going back used to reveal the
+  // index route, which immediately redirected here and created a loop.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      BackHandler.exitApp();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   const form = useForm<PhoneFormValues>({
     resolver: zodResolver(phoneSchema),

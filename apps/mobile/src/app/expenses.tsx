@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -149,6 +149,17 @@ export default function ExpensesScreen() {
   const currentYear = currentDate.getFullYear();
   const [year, setYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const monthScrollRef = useRef<ScrollView>(null);
+
+  // The selected month was already the current one, but the horizontal list
+  // itself always opened at January. Keep the current month in view on entry.
+  useEffect(() => {
+    const cardWidthWithGap = 158;
+    monthScrollRef.current?.scrollTo({
+      x: Math.max(0, selectedMonth * cardWidthWithGap - 16),
+      animated: false,
+    });
+  }, [selectedMonth, year]);
 
   const monthQueries = useQueries({
     queries: MONTHS.map((_, monthIndex) => ({
@@ -260,6 +271,7 @@ export default function ExpensesScreen() {
             {isInitialLoading ? <Spinner size="small" color={ACCENT} /> : null}
           </XStack>
           <ScrollView
+            ref={monthScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
