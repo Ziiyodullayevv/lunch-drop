@@ -241,17 +241,13 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
     class FakeBot:
         def __init__(self) -> None:
             self.messages: list[str] = []
-            self.photos: list[str] = []
-            self.albums: list[list] = []
+            self.photos: list[tuple[str, str, object]] = []
 
         async def send_message(self, _chat_id: int, text: str, **_kwargs) -> None:
             self.messages.append(text)
 
         async def send_photo(self, _chat_id: int, photo: str, **_kwargs) -> None:
-            self.photos.append(photo)
-
-        async def send_media_group(self, _chat_id: int, media: list) -> None:
-            self.albums.append(media)
+            self.photos.append((photo, _kwargs["caption"], _kwargs["reply_markup"]))
 
     bot = FakeBot()
     sent = await send_employee_menu(
@@ -259,9 +255,12 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
     )
     assert sent == 1
     assert bot.photos
-    assert bot.photos[0].endswith("/media/osh.jpg")
-    assert "10:30 gacha" in bot.messages[-1]
-    assert "12:30–13:00" in bot.messages[-1]
+    photo, caption, markup = bot.photos[0]
+    assert photo.endswith("/media/osh.jpg")
+    assert "10:30 gacha" in caption
+    assert "12:30–13:00" in caption
+    assert markup.inline_keyboard[0][0].callback_data == "eo:start"
+    assert not bot.messages
 
 
 @pytest.mark.asyncio

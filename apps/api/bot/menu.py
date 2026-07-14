@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 import structlog
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -64,7 +64,7 @@ async def send_employee_menu(
 
 
 async def send_menu_response(bot: Bot, *, chat_id: int, target_date: date, menu) -> int:
-    """Tayyor menyuni Telegram albomi va bitta action xabari sifatida yuboradi."""
+    """Tayyor menyuni rasm, tavsif va action tugmasi bilan bitta xabar qilib yuboradi."""
     if not menu.items:
         await bot.send_message(
             chat_id,
@@ -72,25 +72,6 @@ async def send_menu_response(bot: Bot, *, chat_id: int, target_date: date, menu)
             "Bu sana uchun menyu hali belgilanmagan.",
         )
         return 0
-
-    image_urls = [url for item in menu.items if (url := _image_url(item.image_url))]
-    for start in range(0, len(image_urls), 10):
-        chunk = image_urls[start : start + 10]
-        try:
-            if len(chunk) == 1:
-                await bot.send_photo(chat_id, photo=chunk[0])
-            else:
-                await bot.send_media_group(
-                    chat_id,
-                    media=[InputMediaPhoto(media=url) for url in chunk],
-                )
-        except Exception as exc:
-            log.warning(
-                "telegram_menu_album_failed",
-                chat_id=chat_id,
-                image_count=len(chunk),
-                error=str(exc),
-            )
 
     lines = [
         f"<b>🍽 Kunlik menyu — {target_date.strftime('%d.%m.%Y')}</b>",
@@ -106,16 +87,32 @@ async def send_menu_response(bot: Bot, *, chat_id: int, target_date: date, menu)
             ]
         )
     lines.extend(["", "Quyidagi tugma orqali buyurtma bering."])
-    await bot.send_message(
-        chat_id,
-        "\n".join(lines),
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="🛒 Buyurtma berish", callback_data="eo:start")]
-            ]
-        ),
+    text = "\n".join(lines)
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🛒 Buyurtma berish", callback_data="eo:start")]
+        ]
     )
+    image_url = next(
+        (url for item in menu.items if (url := _image_url(item.image_url))), None
+    )
+    if image_url:
+        try:
+            await bot.send_photo(
+                chat_id,
+                photo=image_url,
+                caption=text,
+                parse_mode="HTML",
+                reply_markup=markup,
+            )
+            return len(menu.items)
+        except Exception as exc:
+            log.warning(
+                "telegram_menu_photo_failed",
+                chat_id=chat_id,
+                error=str(exc),
+            )
+    await bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=markup)
     return len(menu.items)
 
 

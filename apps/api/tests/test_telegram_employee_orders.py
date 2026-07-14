@@ -13,14 +13,10 @@ from bot.order_status import format_order_status_message, order_actions_markup
 class FakeBot:
     def __init__(self):
         self.photos = []
-        self.albums = []
         self.messages = []
 
     async def send_photo(self, chat_id, photo, **kwargs):
         self.photos.append((chat_id, photo, kwargs))
-
-    async def send_media_group(self, chat_id, media):
-        self.albums.append((chat_id, media))
 
     async def send_message(self, chat_id, text, **kwargs):
         self.messages.append((chat_id, text, kwargs))
@@ -45,25 +41,20 @@ def _menu(count: int, *, images: bool = True):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("count", "album_sizes", "single_photos"),
-    [(1, [], 1), (6, [6], 0), (10, [10], 0), (11, [10], 1)],
-)
-async def test_menu_images_are_batched_as_telegram_albums(
-    count, album_sizes, single_photos
-):
+@pytest.mark.parametrize("count", [1, 6, 10, 11])
+async def test_menu_with_images_is_sent_as_one_photo_message(count):
     bot = FakeBot()
     sent = await send_menu_response(
         bot, chat_id=7, target_date=date(2026, 7, 14), menu=_menu(count)
     )
 
     assert sent == count
-    assert [len(media) for _, media in bot.albums] == album_sizes
-    assert len(bot.photos) == single_photos
-    assert len(bot.messages) == 1
-    assert "Buyurtma berish" == bot.messages[0][2]["reply_markup"].inline_keyboard[0][
-        0
-    ].text.removeprefix("🛒 ")
+    assert len(bot.photos) == 1
+    assert not bot.messages
+    _, photo, kwargs = bot.photos[0]
+    assert photo == "https://example.com/0.jpg"
+    assert "1. Taom 0" in kwargs["caption"]
+    assert "Buyurtma berish" == kwargs["reply_markup"].inline_keyboard[0][0].text.removeprefix("🛒 ")
 
 
 @pytest.mark.asyncio
@@ -72,7 +63,7 @@ async def test_menu_without_images_still_has_single_action_message():
     await send_menu_response(
         bot, chat_id=7, target_date=date(2026, 7, 14), menu=_menu(6, images=False)
     )
-    assert not bot.albums and not bot.photos
+    assert not bot.photos
     assert len(bot.messages) == 1
     assert "1. Taom 0" in bot.messages[0][1]
 
