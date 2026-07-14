@@ -82,6 +82,12 @@ const SUMMARY_META: Record<
   weekly_delivered_orders: { title: 'weeklyDeliveredOrders', color: 'success' },
   portions_today: { title: 'portionsToday', color: 'primary' },
   weekly_net_revenue: { title: 'weeklyNetRevenue', color: 'info', currency: true },
+  weekly_system_fee: {
+    title: 'weeklySystemFee',
+    color: 'warning',
+    currency: true,
+    translationKey: 'kitchenAnalytics.weeklySystemFee',
+  },
   menu_items_today: { title: 'menuItemsToday', color: 'warning' },
   weekly_revenue: { title: 'weeklyRevenue', color: 'info', currency: true },
   connected_companies: { title: 'connectedCompanies', color: 'warning' },
@@ -110,7 +116,7 @@ const COMPANY_ADMIN_SUMMARY_KEYS: DashboardSummaryKey[] = [
 const KITCHEN_ADMIN_SUMMARY_KEYS: DashboardSummaryKey[] = [
   'portions_today',
   'weekly_net_revenue',
-  'menu_items_today',
+  'weekly_system_fee',
 ];
 
 function isDashboardRole(role: unknown): role is DashboardRole {

@@ -19,11 +19,11 @@ from app.schemas.order import OrderRead
 from app.services.dashboard import (
     build_dashboard,
     kitchen_admin_analytics,
-    menu_items_today_card,
     net_revenue_card,
     order_count_card,
     period_today,
     period_week,
+    system_fee_card,
     today_tashkent,
 )
 from app.services.order_read import build_order_read, build_order_reads
@@ -280,7 +280,9 @@ class KitchenService:
                 self.session, order_where, False, "weekly_net_revenue", today,
                 period_week(today),
             ),
-            await menu_items_today_card(self.session, self.kitchen_id, today),
+            await system_fee_card(
+                self.session, order_where, False, "weekly_system_fee", today, period_week(today)
+            ),
         ]
         return await build_dashboard(
             self.session,

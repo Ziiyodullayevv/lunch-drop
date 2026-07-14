@@ -35,6 +35,7 @@ SummaryKey = Literal[
     "portions_today",
     "weekly_revenue",       # UZS, eski clientlar uchun
     "weekly_net_revenue",   # UZS, kitchen uchun system_fee ayirilgandan keyin
+    "weekly_system_fee",    # UZS, kitchen buyurtmalaridan ushlab qolinadigan 3%
     "menu_items_today",
     "connected_companies",
 ]

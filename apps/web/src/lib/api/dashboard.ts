@@ -24,6 +24,7 @@ export type DashboardSummaryKey =
   | 'weekly_delivered_orders'
   | 'portions_today'
   | 'weekly_net_revenue'
+  | 'weekly_system_fee'
   | 'menu_items_today'
   | 'weekly_revenue'
   | 'connected_companies';
