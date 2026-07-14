@@ -4,6 +4,7 @@ import type { ReactNode, MouseEvent } from 'react';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { MapRef, MarkerEvent } from 'react-map-gl/maplibre';
 
+import { usePopoverHover } from 'minimal-shared/hooks';
 import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
@@ -330,10 +331,83 @@ function BranchPopupCard({
 
 // ----------------------------------------------------------------------
 
+function CompanyCascadeItem({
+  company,
+  branches,
+  selectedCompanyId,
+  selectedBranchId,
+  onCompanySelect,
+  onBranchSelect,
+}: {
+  company: Company;
+  branches: Branch[];
+  selectedCompanyId: string;
+  selectedBranchId: string;
+  onCompanySelect: (companyId: string) => void;
+  onBranchSelect: (branch: Branch) => void;
+}) {
+  const { open, onOpen, onClose, anchorEl, elementRef } = usePopoverHover<HTMLLIElement>();
+
+  return (
+    <>
+      <MenuItem
+        ref={elementRef}
+        selected={selectedCompanyId === company.id && !selectedBranchId}
+        sx={{ borderRadius: 1 }}
+        onClick={() => onCompanySelect(company.id)}
+        onMouseEnter={onOpen}
+        onMouseLeave={onClose}
+      >
+        <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+          {company.name}
+        </Typography>
+        <Iconify icon="eva:arrow-ios-forward-fill" width={18} sx={{ ml: 1, color: 'text.disabled' }} />
+      </MenuItem>
+
+      <CustomPopover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={onClose}
+        anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'center', horizontal: 'left' }}
+        slotProps={{
+          arrow: { hide: true, placement: 'right-center' },
+          paper: {
+            sx: { width: 220 },
+            onMouseEnter: onOpen,
+            onMouseLeave: onClose,
+          },
+        }}
+      >
+        <MenuList sx={{ p: 1 }}>
+          {branches.map((branch) => (
+            <MenuItem
+              key={branch.id}
+              selected={selectedBranchId === branch.id}
+              sx={{ borderRadius: 1 }}
+              onClick={() => onBranchSelect(branch)}
+            >
+              {branch.name}
+            </MenuItem>
+          ))}
+        </MenuList>
+      </CustomPopover>
+    </>
+  );
+}
+
+// ----------------------------------------------------------------------
+
 export function MapOverviewView() {
   const { t } = useTranslate('common');
   const mapRef = useRef<MapRef | null>(null);
-  const companySelectRef = useRef<HTMLDivElement | null>(null);
+  const {
+    open: companySelectOpen,
+    onOpen: onOpenCompanySelect,
+    onClose: onCloseCompanySelect,
+    anchorEl: companySelectAnchor,
+    elementRef: companySelectRef,
+  } = usePopoverHover<HTMLDivElement>();
   const isCompactMap = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { user } = useAuthContext();
   const role = user?.role as UserRole | undefined;
@@ -349,9 +423,6 @@ export function MapOverviewView() {
   const [entityType, setEntityType] = useState<EntityType>('all');
   const [companyFilter, setCompanyFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
-  const [companySelectOpen, setCompanySelectOpen] = useState(false);
-  const [hoveredCompanyId, setHoveredCompanyId] = useState('');
-  const [companySubmenuAnchor, setCompanySubmenuAnchor] = useState<HTMLElement | null>(null);
   const [kitchenFilter, setKitchenFilter] = useState('');
   const [selected, setSelected] = useState<MarkerItem | null>(null);
   const [popupCoords, setPopupCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -463,11 +534,6 @@ export function MapOverviewView() {
     [branches, companies]
   );
 
-  const hoveredCompanyBranches = useMemo(
-    () => branches.filter((branch) => branch.company_id === hoveredCompanyId),
-    [branches, hoveredCompanyId]
-  );
-
   const kitchenOptions = useMemo(() => {
     if (!isCompanyAdmin || !branchFilter) return kitchens;
 
@@ -536,9 +602,7 @@ export function MapOverviewView() {
   );
 
   const closeCompanySelect = () => {
-    setCompanySelectOpen(false);
-    setHoveredCompanyId('');
-    setCompanySubmenuAnchor(null);
+    onCloseCompanySelect();
   };
 
   const handleCompanySelect = (companyId: string) => {
@@ -547,11 +611,6 @@ export function MapOverviewView() {
     setSelected(null);
     setPopupCoords(null);
     closeCompanySelect();
-  };
-
-  const handleCompanyHover = (event: MouseEvent<HTMLElement>, companyId: string) => {
-    setHoveredCompanyId(companyId);
-    setCompanySubmenuAnchor(event.currentTarget);
   };
 
   const handleCompanyBranchSelect = (branch: Branch) => {
@@ -638,9 +697,11 @@ export function MapOverviewView() {
                 tabIndex={0}
                 aria-haspopup="menu"
                 aria-expanded={companySelectOpen}
-                onClick={() => setCompanySelectOpen(true)}
+                onClick={onOpenCompanySelect}
+                onMouseEnter={onOpenCompanySelect}
+                onMouseLeave={onCloseCompanySelect}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') setCompanySelectOpen(true);
+                  if (event.key === 'Enter' || event.key === ' ') onOpenCompanySelect();
                 }}
                 sx={{
                   position: 'relative',
@@ -668,48 +729,31 @@ export function MapOverviewView() {
               </Box>
               <CustomPopover
                 open={companySelectOpen}
-                anchorEl={companySelectRef.current}
+                anchorEl={companySelectAnchor}
                 onClose={closeCompanySelect}
-                slotProps={{ arrow: { hide: true, placement: 'top-left' }, paper: { sx: { width: 220 } } }}
+                slotProps={{
+                  arrow: { hide: true, placement: 'top-left' },
+                  paper: {
+                    sx: { width: 220 },
+                    onMouseEnter: onOpenCompanySelect,
+                    onMouseLeave: onCloseCompanySelect,
+                  },
+                }}
               >
                 <MenuList sx={{ p: 1 }}>
                   <MenuItem sx={{ borderRadius: 1 }} selected={!companyFilter} onClick={() => handleCompanySelect('')}>
                     {t('map.allCompanies')}
                   </MenuItem>
                   {companiesWithBranches.map((company) => (
-                    <MenuItem
+                    <CompanyCascadeItem
                       key={company.id}
-                      sx={{ borderRadius: 1 }}
-                      selected={companyFilter === company.id}
-                      onClick={() => handleCompanySelect(company.id)}
-                      onMouseEnter={(event) => handleCompanyHover(event, company.id)}
-                    >
-                      <Typography variant="body2" noWrap sx={{ flex: 1 }}>
-                        {company.name}
-                      </Typography>
-                      <Iconify icon="eva:arrow-ios-forward-fill" width={18} sx={{ ml: 1, color: 'text.disabled' }} />
-                    </MenuItem>
-                  ))}
-                </MenuList>
-              </CustomPopover>
-              <CustomPopover
-                open={Boolean(companySubmenuAnchor) && hoveredCompanyBranches.length > 0}
-                anchorEl={companySubmenuAnchor}
-                onClose={() => setCompanySubmenuAnchor(null)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                slotProps={{ arrow: { hide: true, placement: 'top-left' }, paper: { sx: { width: 220 } } }}
-              >
-                <MenuList sx={{ p: 1 }}>
-                  {hoveredCompanyBranches.map((branch) => (
-                    <MenuItem
-                      key={branch.id}
-                      sx={{ borderRadius: 1 }}
-                      selected={branchFilter === branch.id}
-                      onClick={() => handleCompanyBranchSelect(branch)}
-                    >
-                      {branch.name}
-                    </MenuItem>
+                      company={company}
+                      branches={branches.filter((branch) => branch.company_id === company.id)}
+                      selectedCompanyId={companyFilter}
+                      selectedBranchId={branchFilter}
+                      onCompanySelect={handleCompanySelect}
+                      onBranchSelect={handleCompanyBranchSelect}
+                    />
                   ))}
                 </MenuList>
               </CustomPopover>
