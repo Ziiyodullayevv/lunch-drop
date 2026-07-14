@@ -59,6 +59,8 @@ class _AnalyticsSession:
                     ("company-1", "Atlas", 12, Decimal("30000"), Decimal("900")),
                     ("company-2", "Orzu", 7, Decimal("21000"), Decimal("630")),
                     ("company-3", "Zarafshon", 3, Decimal("9000"), Decimal("270")),
+                    ("company-4", "Samarqand", 2, Decimal("6000"), Decimal("180")),
+                    ("company-5", "Buxoro", 1, Decimal("3000"), Decimal("90")),
                 ]
             ),
         ]
@@ -96,12 +98,12 @@ def test_monthly_company_revenue_card_uses_delivered_order_totals() -> None:
     assert len(card.history) == 8
 
 
-def test_super_admin_analytics_returns_monthly_fee_and_top_three_companies() -> None:
+def test_super_admin_analytics_returns_monthly_fee_and_top_five_companies() -> None:
     analytics = asyncio.run(super_admin_analytics(_AnalyticsSession(), date(2026, 7, 14), 2026))
 
     assert analytics.monthly_system_fee.values[0] == 300
     assert analytics.monthly_system_fee.values[6] == 900
-    assert len(analytics.top_companies) == 3
+    assert len(analytics.top_companies) == 5
     assert analytics.top_companies[0].company_name == "Atlas"
     assert analytics.top_companies[0].system_fee == 900
 

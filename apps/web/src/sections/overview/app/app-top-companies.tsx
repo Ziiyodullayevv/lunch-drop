@@ -32,8 +32,17 @@ export function AppTopCompanies({ title, subheader, emptyText, ordersLabel, list
           {list.map((item, index) => (
             <Box key={item.company_id}>
               <Box sx={{ gap: 1.5, mb: 1.25, display: 'flex', alignItems: 'center' }}>
-                <Box
-                  sx={(theme) => ({
+                <Box sx={(theme) => {
+                  const colors = [
+                    theme.vars.palette.primary,
+                    theme.vars.palette.info,
+                    theme.vars.palette.warning,
+                    theme.vars.palette.secondary,
+                    theme.vars.palette.error,
+                  ];
+                  const color = colors[index % colors.length];
+
+                  return {
                     width: 28,
                     height: 28,
                     display: 'flex',
@@ -41,11 +50,11 @@ export function AppTopCompanies({ title, subheader, emptyText, ordersLabel, list
                     borderRadius: '50%',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    bgcolor: theme.vars.palette.primary.light,
-                    color: theme.vars.palette.primary.darker,
+                    bgcolor: color.light,
+                    color: color.darker,
                     typography: 'subtitle2',
-                  })}
-                >
+                  };
+                }}>
                   {index + 1}
                 </Box>
 
@@ -58,7 +67,17 @@ export function AppTopCompanies({ title, subheader, emptyText, ordersLabel, list
                   </Typography>
                 </Box>
 
-                <Typography variant="subtitle2" sx={{ color: 'primary.dark', whiteSpace: 'nowrap' }}>
+                <Typography sx={(theme) => {
+                  const colors = [
+                    theme.vars.palette.primary,
+                    theme.vars.palette.info,
+                    theme.vars.palette.warning,
+                    theme.vars.palette.secondary,
+                    theme.vars.palette.error,
+                  ];
+
+                  return { color: colors[index % colors.length].dark, whiteSpace: 'nowrap' };
+                }} variant="subtitle2">
                   {fCurrency(item.system_fee)}
                 </Typography>
               </Box>
@@ -66,15 +85,26 @@ export function AppTopCompanies({ title, subheader, emptyText, ordersLabel, list
               <LinearProgress
                 variant="determinate"
                 value={item.system_fee / maxFee * 100}
-                sx={(theme) => ({
-                  height: 7,
-                  borderRadius: 99,
-                  bgcolor: theme.vars.palette.primary.lighter,
-                  '& .MuiLinearProgress-bar': {
+                sx={(theme) => {
+                  const colors = [
+                    theme.vars.palette.primary,
+                    theme.vars.palette.info,
+                    theme.vars.palette.warning,
+                    theme.vars.palette.secondary,
+                    theme.vars.palette.error,
+                  ];
+                  const color = colors[index % colors.length];
+
+                  return {
+                    height: 7,
                     borderRadius: 99,
-                    bgcolor: theme.vars.palette.primary.main,
-                  },
-                })}
+                    bgcolor: color.lighter,
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 99,
+                      bgcolor: color.main,
+                    },
+                  };
+                }}
               />
             </Box>
           ))}

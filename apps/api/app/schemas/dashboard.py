@@ -84,7 +84,7 @@ class TopCompanyAnalytics(BaseModel):
 
 class SuperAdminAnalytics(BaseModel):
     monthly_system_fee: MonthlySystemFee
-    top_companies: list[TopCompanyAnalytics] = Field(default_factory=list, max_length=3)
+    top_companies: list[TopCompanyAnalytics] = Field(default_factory=list, max_length=5)
 
 
 class MonthlyAmount(BaseModel):

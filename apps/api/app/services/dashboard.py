@@ -456,7 +456,7 @@ async def super_admin_analytics(
         )
         .group_by(Company.id, Company.name)
         .order_by(system_fee.desc())
-        .limit(3)
+        .limit(5)
     )
 
     return SuperAdminAnalytics(
