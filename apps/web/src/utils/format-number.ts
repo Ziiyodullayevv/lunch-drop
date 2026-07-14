@@ -55,6 +55,23 @@ export function fCurrency(inputValue: InputNumberValue, options?: Options) {
 
 // ----------------------------------------------------------------------
 
+export function fShortCurrency(inputValue: InputNumberValue) {
+  const number = processInput(inputValue);
+  if (number === null) return '';
+
+  if (Math.abs(number) >= 1_000_000) {
+    return `${fNumber(number / 1_000_000, { maximumFractionDigits: 1 })} mln so'm`;
+  }
+
+  if (Math.abs(number) >= 1_000) {
+    return `${fNumber(number / 1_000, { maximumFractionDigits: 0 })} ming so'm`;
+  }
+
+  return `${fNumber(number)} so'm`;
+}
+
+// ----------------------------------------------------------------------
+
 export function fPercent(inputValue: InputNumberValue, options?: Options) {
   const locale = formatNumberLocale() || DEFAULT_LOCALE;
 
