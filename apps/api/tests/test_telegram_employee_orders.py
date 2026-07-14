@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import bot.menu as menu_module
 from app.models.enums import OrderStatus
 from app.models.telegram import TelegramOrderDraft, TelegramOrderStatusOutbox
 from bot.menu import send_menu_response
@@ -42,7 +43,14 @@ def _menu(count: int, *, images: bool = True):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("count", [1, 6, 10, 11])
-async def test_menu_with_images_is_sent_as_one_photo_message(count):
+async def test_menu_with_images_is_sent_as_one_photo_message(count, monkeypatch):
+    captured_urls = []
+
+    async def fake_collage(image_urls):
+        captured_urls.extend(image_urls)
+        return "menu-collage.jpg"
+
+    monkeypatch.setattr(menu_module, "_menu_collage", fake_collage)
     bot = FakeBot()
     sent = await send_menu_response(
         bot, chat_id=7, target_date=date(2026, 7, 14), menu=_menu(count)
@@ -52,13 +60,20 @@ async def test_menu_with_images_is_sent_as_one_photo_message(count):
     assert len(bot.photos) == 1
     assert not bot.messages
     _, photo, kwargs = bot.photos[0]
-    assert photo == "https://example.com/0.jpg"
+    assert photo == "menu-collage.jpg"
+    assert captured_urls == [
+        f"https://example.com/{index}.jpg" for index in range(count)
+    ]
     assert "1. Taom 0" in kwargs["caption"]
     assert "Buyurtma berish" == kwargs["reply_markup"].inline_keyboard[0][0].text.removeprefix("🛒 ")
 
 
 @pytest.mark.asyncio
-async def test_menu_without_images_still_has_single_action_message():
+async def test_menu_without_images_still_has_single_action_message(monkeypatch):
+    async def fail_collage(_image_urls):
+        raise AssertionError("Rasmsiz menyu uchun kollaj yaratilmasligi kerak")
+
+    monkeypatch.setattr(menu_module, "_menu_collage", fail_collage)
     bot = FakeBot()
     await send_menu_response(
         bot, chat_id=7, target_date=date(2026, 7, 14), menu=_menu(6, images=False)

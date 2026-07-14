@@ -1,14 +1,18 @@
 """Xodimlarga bugungi menyuni Telegram orqali ko'rsatish va yuborish."""
 
+import asyncio
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from html import escape
+from io import BytesIO
 from urllib.parse import urljoin
 from zoneinfo import ZoneInfo
 
+import httpx
 import structlog
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import BufferedInputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -20,6 +24,9 @@ from app.models.user import User
 from app.services.employee_service import EmployeeService
 
 log = structlog.get_logger()
+
+MENU_COLLAGE_TILE_SIZE = 480
+MENU_COLLAGE_COLUMNS = 2
 
 
 def _time(value) -> str:
@@ -38,6 +45,50 @@ def _image_url(value: str | None) -> str | None:
     if not settings.public_base_url:
         return None
     return urljoin(f"{settings.public_base_url.rstrip('/')}/", value.lstrip("/"))
+
+
+async def _download_menu_image(client: httpx.AsyncClient, url: str) -> Image.Image | None:
+    try:
+        response = await client.get(url)
+        response.raise_for_status()
+        image = Image.open(BytesIO(response.content)).convert("RGB")
+        return ImageOps.fit(
+            image,
+            (MENU_COLLAGE_TILE_SIZE, MENU_COLLAGE_TILE_SIZE),
+            method=Image.Resampling.LANCZOS,
+        )
+    except (httpx.HTTPError, OSError, UnidentifiedImageError) as exc:
+        log.warning("telegram_menu_image_download_failed", image_url=url, error=str(exc))
+        return None
+
+
+async def _menu_collage(image_urls: list[str]) -> BufferedInputFile | None:
+    """Menyudagi barcha mavjud rasmlardan bitta Telegramga mos kollaj tayyorlaydi."""
+    if not image_urls:
+        return None
+
+    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        images = await asyncio.gather(
+            *(_download_menu_image(client, url) for url in image_urls)
+        )
+    tiles = [image for image in images if image is not None]
+    if not tiles:
+        return None
+
+    rows = (len(tiles) + MENU_COLLAGE_COLUMNS - 1) // MENU_COLLAGE_COLUMNS
+    collage = Image.new(
+        "RGB",
+        (MENU_COLLAGE_COLUMNS * MENU_COLLAGE_TILE_SIZE, rows * MENU_COLLAGE_TILE_SIZE),
+        "white",
+    )
+    for index, image in enumerate(tiles):
+        x = index % MENU_COLLAGE_COLUMNS * MENU_COLLAGE_TILE_SIZE
+        y = index // MENU_COLLAGE_COLUMNS * MENU_COLLAGE_TILE_SIZE
+        collage.paste(image, (x, y))
+
+    output = BytesIO()
+    collage.save(output, format="JPEG", quality=85, optimize=True)
+    return BufferedInputFile(output.getvalue(), filename="kunlik-menyu.jpg")
 
 
 async def send_employee_menu(
@@ -93,14 +144,13 @@ async def send_menu_response(bot: Bot, *, chat_id: int, target_date: date, menu)
             [InlineKeyboardButton(text="🛒 Buyurtma berish", callback_data="eo:start")]
         ]
     )
-    image_url = next(
-        (url for item in menu.items if (url := _image_url(item.image_url))), None
-    )
-    if image_url:
+    image_urls = [url for item in menu.items if (url := _image_url(item.image_url))]
+    collage = await _menu_collage(image_urls) if image_urls else None
+    if collage:
         try:
             await bot.send_photo(
                 chat_id,
-                photo=image_url,
+                photo=collage,
                 caption=text,
                 parse_mode="HTML",
                 reply_markup=markup,

@@ -249,6 +249,10 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
         async def send_photo(self, _chat_id: int, photo: str, **_kwargs) -> None:
             self.photos.append((photo, _kwargs["caption"], _kwargs["reply_markup"]))
 
+    async def fake_collage(_image_urls):
+        return "menu-collage.jpg"
+
+    monkeypatch.setattr("bot.menu._menu_collage", fake_collage)
     bot = FakeBot()
     sent = await send_employee_menu(
         bot, user_id=ids["employee"], chat_id=104, target_date=target_date
@@ -256,7 +260,7 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
     assert sent == 1
     assert bot.photos
     photo, caption, markup = bot.photos[0]
-    assert photo.endswith("/media/osh.jpg")
+    assert photo == "menu-collage.jpg"
     assert "10:30 gacha" in caption
     assert "12:30–13:00" in caption
     assert markup.inline_keyboard[0][0].callback_data == "eo:start"

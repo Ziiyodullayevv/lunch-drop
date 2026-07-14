@@ -29,3 +29,4 @@ apscheduler==3.11.2      # workers/scheduler.py — avtomatik status o'zgarish
 boto3==1.43.19           # S3 rasm yuklash
 httpx==0.28.1            # SMS OTP va tashqi HTTP
 aiogram==3.28.2          # Telegram bot (vaqtincha OTP yetkazish, SMS ulanmaguncha)
+pillow==12.1.1           # Telegram menyu rasmlarini bitta kollajga birlashtirish
