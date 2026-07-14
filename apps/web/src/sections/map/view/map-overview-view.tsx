@@ -679,7 +679,7 @@ export function MapOverviewView() {
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1, p: 1 }}>
                   <MenuList disablePadding sx={{ width: 220, flexShrink: 0 }}>
                     <MenuItem selected={!companyFilter} onClick={() => handleCompanySelect('')}>
                       {t('map.allCompanies')}
@@ -699,25 +699,20 @@ export function MapOverviewView() {
                     ))}
                   </MenuList>
                   {hoveredCompanyBranches.length > 0 && (
-                    <MenuList
-                      disablePadding
-                      sx={{
-                        width: 220,
-                        flexShrink: 0,
-                        pl: 1,
-                        borderLeft: (theme) => `1px solid ${theme.vars.palette.divider}`,
-                      }}
-                    >
-                      {hoveredCompanyBranches.map((branch) => (
-                        <MenuItem
-                          key={branch.id}
-                          selected={branchFilter === branch.id}
-                          onClick={() => handleCompanyBranchSelect(branch)}
-                        >
-                          {branch.name}
-                        </MenuItem>
-                      ))}
-                    </MenuList>
+                    <>
+                      <Divider orientation="vertical" flexItem />
+                      <MenuList disablePadding sx={{ width: 220, flexShrink: 0 }}>
+                        {hoveredCompanyBranches.map((branch) => (
+                          <MenuItem
+                            key={branch.id}
+                            selected={branchFilter === branch.id}
+                            onClick={() => handleCompanyBranchSelect(branch)}
+                          >
+                            {branch.name}
+                          </MenuItem>
+                        ))}
+                      </MenuList>
+                    </>
                   )}
                 </Box>
               </CustomPopover>
