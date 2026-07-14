@@ -2,11 +2,13 @@
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from html import escape
 from urllib.parse import urljoin
 from zoneinfo import ZoneInfo
 
 import structlog
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -58,38 +60,62 @@ async def send_employee_menu(
             return 0
         menu = await EmployeeService(session, user).menu(target_date)
 
-    await bot.send_message(
-        chat_id,
-        f"🍽 Bugungi menyu — {target_date.strftime('%d.%m.%Y')}\n\n"
-        "Taomlar siz a'zo bo'lgan filiallarning faol oshxonalaridan olindi.",
-    )
+    return await send_menu_response(bot, chat_id=chat_id, target_date=target_date, menu=menu)
+
+
+async def send_menu_response(bot: Bot, *, chat_id: int, target_date: date, menu) -> int:
+    """Tayyor menyuni Telegram albomi va bitta action xabari sifatida yuboradi."""
     if not menu.items:
-        await bot.send_message(chat_id, "Bugun uchun menyu hali belgilanmagan.")
+        await bot.send_message(
+            chat_id,
+            f"🍽 Menyu — {target_date.strftime('%d.%m.%Y')}\n\n"
+            "Bu sana uchun menyu hali belgilanmagan.",
+        )
         return 0
 
-    for item in menu.items:
-        description = item.description.strip() if item.description else "Tavsif yo'q"
-        caption = (
-            f"🍲 {item.name}\n"
-            f"🏢 {item.kitchen_name or 'Oshxona'}\n"
-            f"💰 {_price(item.price)} so'm\n\n"
-            f"{description}\n\n"
-            f"⏰ Buyurtma qabul qilish: {_time(item.order_cutoff_time)} gacha\n"
-            f"🚚 Yetkazish: {_time(item.delivery_start_time)}–{_time(item.delivery_end_time)}"
-        )
-        image_url = _image_url(item.image_url)
-        if image_url:
-            try:
-                await bot.send_photo(chat_id, photo=image_url, caption=caption)
-                continue
-            except Exception as exc:
-                log.warning(
-                    "telegram_menu_photo_failed",
-                    meal_id=item.id,
-                    chat_id=chat_id,
-                    error=str(exc),
+    image_urls = [url for item in menu.items if (url := _image_url(item.image_url))]
+    for start in range(0, len(image_urls), 10):
+        chunk = image_urls[start : start + 10]
+        try:
+            if len(chunk) == 1:
+                await bot.send_photo(chat_id, photo=chunk[0])
+            else:
+                await bot.send_media_group(
+                    chat_id,
+                    media=[InputMediaPhoto(media=url) for url in chunk],
                 )
-        await bot.send_message(chat_id, caption)
+        except Exception as exc:
+            log.warning(
+                "telegram_menu_album_failed",
+                chat_id=chat_id,
+                image_count=len(chunk),
+                error=str(exc),
+            )
+
+    lines = [
+        f"<b>🍽 Kunlik menyu — {target_date.strftime('%d.%m.%Y')}</b>",
+        "",
+    ]
+    for index, item in enumerate(menu.items, start=1):
+        lines.extend(
+            [
+                f"<b>{index}. {escape(item.name)}</b> — {_price(item.price)} so‘m",
+                f"   🏢 {escape(item.kitchen_name or 'Oshxona')}",
+                f"   ⏰ {_time(item.order_cutoff_time)} gacha · 🚚 "
+                f"{_time(item.delivery_start_time)}–{_time(item.delivery_end_time)}",
+            ]
+        )
+    lines.extend(["", "Quyidagi tugma orqali buyurtma bering."])
+    await bot.send_message(
+        chat_id,
+        "\n".join(lines),
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🛒 Buyurtma berish", callback_data="eo:start")]
+            ]
+        ),
+    )
     return len(menu.items)
 
 

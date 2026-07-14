@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal
 from html import escape
 from zoneinfo import ZoneInfo
 
@@ -14,12 +13,12 @@ from sqlalchemy import select, update
 
 from app.config import settings
 from app.db.session import AsyncSessionLocal
-from app.models.enums import AccountStatus, ORDER_STATUS_LABELS, OrderStatus, UserRole
+from app.models.enums import AccountStatus, OrderStatus, UserRole
 from app.models.kitchen import Kitchen
 from app.models.order import Order
 from app.models.telegram import TelegramAccount, TelegramDeliveryPrompt
 from app.models.user import User
-from app.services.notification_service import notify
+from app.services.order_status import record_order_status
 from bot.approvals import TelegramApprovalError, get_linked_user
 from bot.config import bot_settings
 from bot.orders import KitchenOrderSummary, build_kitchen_order_summaries
@@ -241,18 +240,7 @@ async def process_delivery_confirmation(
             )
         ).scalars().all()
         for order in orders:
-            if target_status == OrderStatus.DELIVERED and order.system_fee == 0:
-                order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
-                    Decimal("0.01")
-                )
-            order.status = target_status
-            await notify(
-                session,
-                order.employee_id,
-                "order_status",
-                f"Buyurtma holati: {ORDER_STATUS_LABELS[target_status]}",
-                f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[target_status]}' ga o'zgardi.",
-            )
+            await record_order_status(session, order, target_status)
 
         confirmed_at = datetime.now(UTC)
         await session.execute(

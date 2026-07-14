@@ -3,7 +3,6 @@
 import asyncio
 
 from datetime import date, datetime
-from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -36,6 +35,7 @@ from app.schemas.employee import (
 )
 from app.schemas.order import OrderRead
 from app.services.order_read import build_order_read
+from app.services.order_status import record_order_status
 from bot.notifier import send_approval_notification
 
 
@@ -245,7 +245,9 @@ class EmployeeService:
         return MenuResponse(target_date=target_date, items=items)
 
     # --- Buyurtma ---
-    async def create_order(self, data: OrderCreate) -> OrderRead:
+    async def create_order(
+        self, data: OrderCreate, *, commit: bool = True
+    ) -> OrderRead:
         self._require_approved()
         now = self._now()
         today = now.date()
@@ -309,7 +311,14 @@ class EmployeeService:
             for item in data.items
         ]
         self.session.add(order)
-        await self.session.commit()  # bir kunda bir nechta buyurtma mumkin (cheklov yo'q)
+        await self.session.flush()
+        await record_order_status(
+            self.session, order, OrderStatus.CREATED, update_order=False
+        )
+        if commit:
+            await self.session.commit()
+        else:
+            await self.session.flush()
         return await build_order_read(self.session, order)
 
     # --- Buyurtmalar tarixi ---
@@ -422,11 +431,11 @@ class EmployeeService:
 
     async def confirm_delivery(self, order_id: str) -> OrderRead:
         order = await self._own_order(order_id)
-        if order.system_fee == 0:
-            order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
-                Decimal("0.01")
-            )
-        order.status = OrderStatus.DELIVERED
+        if order.status == OrderStatus.DELIVERED:
+            return await build_order_read(self.session, order)
+        if order.status != OrderStatus.ON_THE_WAY:
+            raise ConflictError("Faqat yo'ldagi buyurtmani yetkazildi deb tasdiqlash mumkin")
+        await record_order_status(self.session, order, OrderStatus.DELIVERED)
         await self.session.commit()
         return await build_order_read(self.session, order)
 
@@ -443,6 +452,6 @@ class EmployeeService:
         )
         if passed:
             raise ConflictError("Bekor qilish vaqti o'tgan")
-        order.status = OrderStatus.CANCELLED
+        await record_order_status(self.session, order, OrderStatus.CANCELLED)
         await self.session.commit()
         return await build_order_read(self.session, order)

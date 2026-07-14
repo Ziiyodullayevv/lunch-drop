@@ -31,6 +31,8 @@ from app.models.telegram import (
     TelegramDeliveryPrompt,
     TelegramKitchenOrderSummaryDelivery,
     TelegramMenuDelivery,
+    TelegramOrderDraft,
+    TelegramOrderStatusOutbox,
 )
 from app.models.user import User
 
@@ -63,6 +65,8 @@ __all__ = [
     "TelegramDeliveryPrompt",
     "TelegramKitchenOrderSummaryDelivery",
     "TelegramMenuDelivery",
+    "TelegramOrderDraft",
+    "TelegramOrderStatusOutbox",
     "User",
     "UserRole",
 ]

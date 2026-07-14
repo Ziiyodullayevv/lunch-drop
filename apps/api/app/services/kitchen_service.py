@@ -1,13 +1,12 @@
 """Kitchen Admin biznes logikasi — hammasi kitchen_id bo'yicha izolyatsiya qilingan."""
 
 from datetime import UTC, date, datetime
-from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
-from app.models.enums import ORDER_STATUS_LABELS, OrderStatus
+from app.models.enums import OrderStatus
 from app.models.kitchen import Kitchen
 from app.models.kitchen import BranchKitchen
 from app.models.company import Company
@@ -27,11 +26,8 @@ from app.services.dashboard import (
     revenue_card,
     today_tashkent,
 )
-from app.services.notification_service import notify
 from app.services.order_read import build_order_read, build_order_reads
-
-SYSTEM_FEE_RATE = Decimal("0.03")
-
+from app.services.order_status import record_order_status
 
 class KitchenService:
     def __init__(self, session: AsyncSession, kitchen_id: str) -> None:
@@ -236,17 +232,7 @@ class KitchenService:
             raise NotFoundError("Buyurtma topilmadi")
         if order.status == OrderStatus.CANCELLED:
             raise ConflictError("Bekor qilingan buyurtma o'zgartirilmaydi")
-        # DELIVERED bo'lganda tizim 3% komissiya hisoblaydi (bir marta).
-        if status == OrderStatus.DELIVERED and order.system_fee == 0:
-            order.system_fee = (order.historical_price * SYSTEM_FEE_RATE).quantize(
-                Decimal("0.01")
-            )
-        order.status = status
-        await notify(
-            self.session, order.employee_id, "order_status",
-            f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
-            f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
-        )
+        await record_order_status(self.session, order, status)
         await self.session.commit()
         return await build_order_read(self.session, order)
 
@@ -275,18 +261,7 @@ class KitchenService:
             )
         ).scalars().all()
         for order in orders:
-            if status == OrderStatus.DELIVERED and order.system_fee == 0:
-                order.system_fee = (order.historical_price * SYSTEM_FEE_RATE).quantize(
-                    Decimal("0.01")
-                )
-            order.status = status
-            await notify(
-                self.session,
-                order.employee_id,
-                "order_status",
-                f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
-                f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
-            )
+            await record_order_status(self.session, order, status)
         await self.session.commit()
         return len(orders)
 

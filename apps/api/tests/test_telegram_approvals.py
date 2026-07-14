@@ -20,7 +20,7 @@ from app.models.enums import (
 from app.models.kitchen import BranchKitchen, Kitchen
 from app.models.meal import Meal, MenuSchedule
 from app.models.order import Order
-from app.models.telegram import ApprovalAction
+from app.models.telegram import ApprovalAction, TelegramOrderStatusOutbox
 from app.models.user import User
 from bot.approvals import (
     TelegramApprovalError,
@@ -38,6 +38,9 @@ from app.services.kitchen_service import KitchenService
 from app.services.auth_service import AuthService
 from app.models.otp_code import OtpCode
 from app.core.security import verify_password
+from app.core.exceptions import ConflictError
+from app.services.employee_service import EmployeeService
+from app.services.order_status import record_order_status
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -238,13 +241,17 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
     class FakeBot:
         def __init__(self) -> None:
             self.messages: list[str] = []
-            self.photos: list[tuple[str, str]] = []
+            self.photos: list[str] = []
+            self.albums: list[list] = []
 
-        async def send_message(self, _chat_id: int, text: str) -> None:
+        async def send_message(self, _chat_id: int, text: str, **_kwargs) -> None:
             self.messages.append(text)
 
-        async def send_photo(self, _chat_id: int, photo: str, caption: str) -> None:
-            self.photos.append((photo, caption))
+        async def send_photo(self, _chat_id: int, photo: str, **_kwargs) -> None:
+            self.photos.append(photo)
+
+        async def send_media_group(self, _chat_id: int, media: list) -> None:
+            self.albums.append(media)
 
     bot = FakeBot()
     sent = await send_employee_menu(
@@ -252,9 +259,9 @@ async def test_approved_employee_can_link_and_view_daily_menu(monkeypatch) -> No
     )
     assert sent == 1
     assert bot.photos
-    assert bot.photos[0][0].endswith("/media/osh.jpg")
-    assert "Buyurtma qabul qilish" in bot.photos[0][1]
-    assert "Yetkazish" in bot.photos[0][1]
+    assert bot.photos[0].endswith("/media/osh.jpg")
+    assert "10:30 gacha" in bot.messages[-1]
+    assert "12:30–13:00" in bot.messages[-1]
 
 
 @pytest.mark.asyncio
@@ -441,3 +448,73 @@ async def test_telegram_otp_requires_matching_own_phone():
 
     with pytest.raises(TelegramApprovalError, match="Faol tasdiqlash"):
         await claim_telegram_otp(telegram_user_id=777, phone="+998901112233")
+
+
+@pytest.mark.asyncio
+async def test_order_status_outbox_is_idempotent_and_delivery_is_guarded() -> None:
+    ids = await _seed_approval_flow()
+    async with AsyncSessionLocal() as session:
+        employee = await session.get(User, ids["employee"])
+        assert employee
+        employee.account_status = AccountStatus.APPROVED
+        meal = Meal(
+            kitchen_id=ids["kitchen_entity"],
+            category_id=None,
+            name="Osh",
+            description=None,
+            price=30000,
+            image_url=None,
+        )
+        session.add(meal)
+        await session.flush()
+        order = Order(
+            employee_id=employee.id,
+            branch_id=ids["branch"],
+            kitchen_id=ids["kitchen_entity"],
+            meal_id=meal.id,
+            target_date=date.today(),
+            historical_price=30000,
+            status=OrderStatus.CREATED,
+        )
+        session.add(order)
+        await session.flush()
+        await record_order_status(
+            session, order, OrderStatus.CREATED, update_order=False
+        )
+        await record_order_status(
+            session, order, OrderStatus.CREATED, update_order=False
+        )
+        await session.commit()
+        order_id = order.id
+
+    async with AsyncSessionLocal() as session:
+        employee = await session.get(User, ids["employee"])
+        order = await session.get(Order, order_id)
+        assert employee and order
+        with pytest.raises(ConflictError, match="yo'ldagi"):
+            await EmployeeService(session, employee).confirm_delivery(order.id)
+
+        await record_order_status(session, order, OrderStatus.ON_THE_WAY)
+        await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        employee = await session.get(User, ids["employee"])
+        assert employee
+        delivered = await EmployeeService(session, employee).confirm_delivery(order_id)
+        assert delivered.status == OrderStatus.DELIVERED
+
+        statuses = list(
+            (
+                await session.execute(
+                    select(TelegramOrderStatusOutbox.status)
+                    .where(TelegramOrderStatusOutbox.order_id == order_id)
+                    .order_by(TelegramOrderStatusOutbox.status)
+                )
+            ).scalars()
+        )
+        assert statuses.count(OrderStatus.CREATED.value) == 1
+        assert set(statuses) == {
+            OrderStatus.CREATED.value,
+            OrderStatus.ON_THE_WAY.value,
+            OrderStatus.DELIVERED.value,
+        }

@@ -14,7 +14,16 @@ def _command_names(role: UserRole | None, *, multiple: bool = False) -> set[str]
 def test_employee_only_sees_employee_commands() -> None:
     commands = _command_names(UserRole.EMPLOYEE, multiple=True)
 
-    assert {"start", "menu", "hisobot", "rollar", "me", "unlink", "id"} == commands
+    assert {
+        "start",
+        "menu",
+        "buyurtmalar",
+        "hisobot",
+        "rollar",
+        "me",
+        "unlink",
+        "id",
+    } == commands
     assert "pending" not in commands
 
 

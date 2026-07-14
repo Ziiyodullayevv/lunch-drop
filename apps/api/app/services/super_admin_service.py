@@ -1,7 +1,6 @@
 """Super admin biznes logikasi — companies/kitchens/branches CRUD, assign, admin, dashboard."""
 
 from datetime import UTC, date, datetime
-from decimal import Decimal
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +10,6 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.models.branch import Branch
 from app.models.company import Company
 from app.models.enums import (
-    ORDER_STATUS_LABELS,
     AccountStatus,
     InvoiceStatus,
     OrderStatus,
@@ -43,6 +41,7 @@ from app.services.dashboard import (
 )
 from app.services.notification_service import notify
 from app.services.order_read import build_order_read, build_order_reads
+from app.services.order_status import record_order_status
 from app.services.company_service import CompanyAdminService
 
 
@@ -393,18 +392,7 @@ class SuperAdminService:
             raise NotFoundError("Buyurtma topilmadi")
         if order.status == OrderStatus.CANCELLED:
             raise ConflictError("Bekor qilingan buyurtma o'zgartirilmaydi")
-        if status == OrderStatus.DELIVERED and order.system_fee == 0:
-            order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
-                Decimal("0.01")
-            )
-        order.status = status
-        await notify(
-            self.session,
-            order.employee_id,
-            "order_status",
-            f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
-            f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
-        )
+        await record_order_status(self.session, order, status)
         await self.session.commit()
         return await build_order_read(self.session, order)
 
@@ -426,18 +414,7 @@ class SuperAdminService:
             await self.session.execute(select(Order).where(*filters))
         ).scalars().all()
         for order in orders:
-            if status == OrderStatus.DELIVERED and order.system_fee == 0:
-                order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
-                    Decimal("0.01")
-                )
-            order.status = status
-            await notify(
-                self.session,
-                order.employee_id,
-                "order_status",
-                f"Buyurtma holati: {ORDER_STATUS_LABELS[status]}",
-                f"Buyurtmangiz holati '{ORDER_STATUS_LABELS[status]}' ga o'zgardi.",
-            )
+            await record_order_status(self.session, order, status)
         await self.session.commit()
         return len(orders)
 

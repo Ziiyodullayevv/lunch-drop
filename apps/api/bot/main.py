@@ -35,6 +35,11 @@ from bot.approvals import (
 )
 from bot.config import bot_settings
 from bot.delivery import process_delivery_confirmation
+from bot.employee_orders import (
+    EmployeeOrderError,
+    handle_employee_order_callback,
+    send_recent_orders,
+)
 from bot.menu import send_employee_menu
 from bot.notifier import approval_markup
 from bot.reports import build_report
@@ -82,6 +87,7 @@ def _commands_for_role(
         commands.extend(
             [
                 BotCommand(command="menu", description="Bugungi taomlar"),
+                BotCommand(command="buyurtmalar", description="Buyurtmalarim"),
                 BotCommand(
                     command="hisobot", description="Oylik xarajat va buyurtmalar"
                 ),
@@ -324,6 +330,18 @@ async def cmd_report(message: Message) -> None:
     await message.answer(report.text, reply_markup=report.markup)
 
 
+@dp.message(Command("buyurtmalar", "orders"))
+async def cmd_employee_orders(message: Message) -> None:
+    if message.from_user is None:
+        return
+    try:
+        await send_recent_orders(
+            message.bot, message.from_user.id, message.chat.id
+        )
+    except EmployeeOrderError as exc:
+        await message.answer(str(exc))
+
+
 @dp.message(Command("me"))
 async def cmd_me(message: Message) -> None:
     if message.from_user is None:
@@ -380,6 +398,8 @@ async def cmd_unlink(message: Message) -> None:
 @dp.callback_query()
 async def handle_approval_callback(callback: CallbackQuery) -> None:
     data = callback.data or ""
+    if await handle_employee_order_callback(callback):
+        return
     if data.startswith("profile:"):
         try:
             user = await select_telegram_profile(

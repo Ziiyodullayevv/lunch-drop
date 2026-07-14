@@ -15,6 +15,7 @@ from bot.delivery import send_due_delivery_prompts
 from bot.employee_delivery import send_due_employee_delivery_notices
 from bot.menu import send_daily_telegram_menus
 from bot.orders import send_due_kitchen_order_summaries
+from bot.order_status import send_pending_order_statuses
 
 log = structlog.get_logger()
 
@@ -24,6 +25,14 @@ async def main() -> None:
     # Buyurtma statuslari — har 1 daqiqa.
     scheduler.add_job(
         transition_order_statuses, "interval", minutes=1, id="status_transitions"
+    )
+    scheduler.add_job(
+        send_pending_order_statuses,
+        "interval",
+        minutes=1,
+        id="telegram_order_status_outbox",
+        coalesce=True,
+        max_instances=1,
     )
     # Cutoff tugagach oshxona adminlariga bugungi buyurtmalar jamlanmasi.
     scheduler.add_job(

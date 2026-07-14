@@ -8,7 +8,10 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Integer,
+    JSON,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -168,4 +171,52 @@ class EmployeeDeliveryNotice(Base, TimestampMixin):
     )
     telegram_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+
+class TelegramOrderDraft(Base, TimestampMixin):
+    """Xodimning Telegramdagi restartdan keyin ham saqlanadigan savati."""
+
+    __tablename__ = "telegram_order_drafts"
+
+    id: Mapped[str] = uuid_pk()
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    branch_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("branches.id", ondelete="CASCADE"), nullable=True
+    )
+    kitchen_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("kitchens.id", ondelete="CASCADE"), nullable=True
+    )
+    items: Mapped[dict[str, int]] = mapped_column(JSON, default=dict, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class TelegramOrderStatusOutbox(Base, TimestampMixin):
+    """Order status xabarini Telegramga idempotent va retry bilan yuborish navbati."""
+
+    __tablename__ = "telegram_order_status_outbox"
+    __table_args__ = (
+        UniqueConstraint(
+            "order_id", "status", name="uq_telegram_order_status_order_status"
+        ),
+    )
+
+    id: Mapped[str] = uuid_pk()
+    order_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("orders.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )

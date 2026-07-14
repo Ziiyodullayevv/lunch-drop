@@ -41,6 +41,7 @@ from app.services.dashboard import (
     snapshot_card,
     today_tashkent,
 )
+from app.services.order_status import record_order_status
 from app.services.notification_service import notify
 from app.services.order_read import build_order_read, build_order_reads
 
@@ -307,18 +308,7 @@ class CompanyAdminService:
         )
         orders = result.scalars().all()
         for order in orders:
-            if order.system_fee == 0:
-                order.system_fee = (order.historical_price * Decimal("0.03")).quantize(
-                    Decimal("0.01")
-                )
-            order.status = OrderStatus.DELIVERED
-            await notify(
-                self.session,
-                order.employee_id,
-                "order_status",
-                "Buyurtmangiz yetkazildi",
-                "Bugungi buyurtmangiz yetkazildi.",
-            )
+            await record_order_status(self.session, order, OrderStatus.DELIVERED)
         await self.session.commit()
         return len(orders)
 
@@ -367,10 +357,7 @@ class CompanyAdminService:
             )
         ).scalars().all()
         for order in orders:
-            if order.system_fee == 0:
-                order.system_fee = (order.historical_price * Decimal("0.03")).quantize(Decimal("0.01"))
-            order.status = OrderStatus.DELIVERED
-            await notify(self.session, order.employee_id, "order_status", "Buyurtmangiz yetkazildi", "Bugungi buyurtmangiz yetkazildi.")
+            await record_order_status(self.session, order, OrderStatus.DELIVERED)
         await self.session.commit()
         return len(orders)
 

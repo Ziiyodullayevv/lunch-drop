@@ -14,12 +14,12 @@ from sqlalchemy import func, select
 from app.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.company import Company
-from app.models.enums import ORDER_STATUS_LABELS, InvoiceStatus, OrderStatus
+from app.models.enums import InvoiceStatus, OrderStatus
 from app.models.invoice import Invoice, InvoiceBranchSummary, InvoiceEmployeeSummary
 from app.models.kitchen import Kitchen
 from app.models.order import Order
 from app.models.user import User
-from app.services.notification_service import notify
+from app.services.order_status import record_order_status
 
 log = structlog.get_logger()
 
@@ -42,12 +42,7 @@ async def transition_order_statuses() -> dict:
             )
         ).scalars().all()
         for order in to_preparing:
-            order.status = OrderStatus.PREPARING
-            await notify(
-                session, order.employee_id, "order_status",
-                f"Buyurtma holati: {ORDER_STATUS_LABELS[OrderStatus.PREPARING]}",
-                "Buyurtmangiz tayyorlanmoqda.",
-            )
+            await record_order_status(session, order, OrderStatus.PREPARING)
         await session.flush()
 
         await session.commit()
