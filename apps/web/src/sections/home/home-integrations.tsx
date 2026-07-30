@@ -63,7 +63,7 @@ export function HomeIntegrations({ sx, ...other }: BoxProps) {
       <Stack spacing={3}>
         {steps.map((step, index) => (
           <Stack
-            key={step.title}
+            key={index}
             component={m.div}
             variants={varFade('inUp', { distance: 24 })}
             direction="row"
@@ -104,8 +104,8 @@ export function HomeIntegrations({ sx, ...other }: BoxProps) {
         component={m.img}
         variants={{ ...varScale('in'), initial: { scale: 0.8, opacity: 0 } }}
         alt={t('home.workflow.imageAlt')}
-        src={`${CONFIG.assetsDir}/assets/illustrations/illustration-integration.webp`}
-        sx={{ width: 720, objectFit: 'cover', aspectRatio: '1/1' }}
+        src={`${CONFIG.assetsDir}/assets/illustrations/lunchdrop-integrations.png`}
+        sx={{ width: { xs: '100%', md: 540 }, maxWidth: '100%', height: 'auto' }}
       />
 
     </Box>

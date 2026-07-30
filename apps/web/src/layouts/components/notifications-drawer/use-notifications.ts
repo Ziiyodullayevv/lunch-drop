@@ -269,7 +269,7 @@ export function useNotifications() {
     if (!isSuperAdmin && !isCompanyAdmin && !isKitchenAdmin) return undefined;
     const timer = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => clearInterval(timer);
-  }, [fetchNotifications, isSuperAdmin, isCompanyAdmin]);
+  }, [fetchNotifications, isSuperAdmin, isCompanyAdmin, isKitchenAdmin]);
 
   // ── unified approve/decline (caller'ga roli yashirilgan) ──────────────
 

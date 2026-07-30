@@ -175,7 +175,10 @@ function MapInfoRow({ icon, label, children }: { icon: ReactNode; label: string;
         {icon}
       </Box>
       <Box sx={{ minWidth: 0, maxWidth: 'calc(100% - 40px)', flex: 1, overflow: 'hidden' }}>
-        <Typography variant="caption" sx={{ display: 'block', mb: 0.15, color: 'text.disabled' }}>
+        <Typography
+          variant="subtitle2"
+          sx={{ display: 'block', mb: 0.25, color: 'text.primary' }}
+        >
           {label}
         </Typography>
         {children}
@@ -209,15 +212,21 @@ function KitchenPopupCard({ kitchen }: { kitchen: Kitchen }) {
 
       {kitchen.phone && (
         <MapInfoRow icon={<Iconify icon="solar:phone-bold" width={16} />} label={t('map.phone')}>
-          <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {kitchen.phone}
           </Typography>
         </MapInfoRow>
       )}
 
       <MapInfoRow icon={<Iconify icon="solar:clock-circle-bold" width={16} />} label={t('map.orderCutoff')}>
-        <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           {kitchen.order_cutoff_time} {t('mapExtra.until')}
+        </Typography>
+      </MapInfoRow>
+
+      <MapInfoRow icon={<Iconify icon="custom:delivery-bold" width={16} />} label={t('map.deliveryTime')}>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          {kitchen.delivery_start_time} — {kitchen.delivery_end_time}
         </Typography>
       </MapInfoRow>
     </Stack>
@@ -270,7 +279,7 @@ function BranchPopupCard({
         <Typography
           variant="body2"
           sx={{
-            color: 'text.primary',
+            color: 'text.secondary',
             lineHeight: 1.45,
             overflowWrap: 'anywhere',
             display: '-webkit-box',
@@ -285,13 +294,13 @@ function BranchPopupCard({
 
       {company && (
         <>
-          <MapInfoRow icon={<Iconify icon="solar:home-2-outline" width={16} />} label={t('map.company')}>
-            <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }} noWrap>
+          <MapInfoRow icon={<Iconify icon="solar:case-minimalistic-bold" width={16} />} label={t('map.company')}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
               {company.name}
             </Typography>
           </MapInfoRow>
           <MapInfoRow icon={<Iconify icon="solar:calendar-date-bold" width={16} />} label={t('map.billingDay')}>
-            <Typography variant="body2" sx={{ color: 'text.primary', fontWeight: 600 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {t('mapExtra.monthlyDay', { day: company.billing_day })}
             </Typography>
           </MapInfoRow>
@@ -756,7 +765,7 @@ export function MapOverviewView() {
             </FormControl>
           )}
 
-          {(isCompanyAdmin || isKitchenAdmin) && (entityType !== 'kitchen' || isCompanyAdmin) && (
+          {isCompanyAdmin && (
             <FormControl sx={{ minWidth: { xs: 1, sm: 220 } }}>
             <InputLabel>{t('map.branch')}</InputLabel>
               <Select size="small" label={t('map.branch')} value={branchFilter} onChange={handleBranchChange} sx={{ '& .MuiSelect-select': { display: 'flex', alignItems: 'center' } }}>

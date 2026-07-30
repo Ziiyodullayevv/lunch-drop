@@ -60,7 +60,7 @@ export function HomeFAQs({ sx, ...other }: BoxProps) {
     >
       {faqs.map((item, index) => (
         <Accordion
-          key={item.question}
+          key={index}
           disableGutters
           component={m.div}
           variants={varFade('inUp', { distance: 24 })}

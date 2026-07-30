@@ -191,8 +191,8 @@ export function HomeTestimonials({ sx, ...other }: BoxProps) {
           { label: t('home.testimonials.delivered'), value: 12.121, unit: 'k+', digits: 1 },
           { label: t('home.testimonials.activeUsers'), value: 160, unit: '+', digits: 0 },
           { label: t('home.testimonials.rating'), value: 4.9, unit: '+', digits: 1 },
-        ].map((item) => (
-          <Stack key={item.label} spacing={2} sx={{ textAlign: 'center', width: 1 }}>
+        ].map((item, index) => (
+          <Stack key={index} spacing={2} sx={{ textAlign: 'center', width: 1 }}>
             <m.div variants={varFade('inUp', { distance: 24 })}>
               <AnimateCountUp
                 to={item.value}

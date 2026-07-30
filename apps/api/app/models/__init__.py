@@ -24,6 +24,7 @@ from app.models.notification import Notification
 from app.models.order import Order, OrderItem
 from app.models.otp_code import OtpCode
 from app.models.refresh_token import RefreshToken
+from app.models.settlement_payment import SettlementPayment
 from app.models.telegram import (
     ApprovalAction,
     EmployeeDeliveryNotice,
@@ -61,6 +62,7 @@ __all__ = [
     "OrderStatus",
     "OtpCode",
     "RefreshToken",
+    "SettlementPayment",
     "TelegramAccount",
     "TelegramDeliveryPrompt",
     "TelegramKitchenOrderSummaryDelivery",

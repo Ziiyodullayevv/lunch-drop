@@ -52,7 +52,7 @@ export function HomeMinimal({ sx, ...other }: BoxProps) {
           <Box
             component={m.div}
             variants={varFade('inUp', { distance: 24 })}
-            key={item.title}
+            key={item.icon}
             sx={{ gap: 2.5, display: 'flex' }}
           >
             <Box

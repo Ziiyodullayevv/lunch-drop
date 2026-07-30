@@ -20,7 +20,8 @@ const ICONS = {
   banking: icon('ic-banking'),
   analytics: icon('ic-analytics'),
   dashboard: icon('ic-dashboard'),
-  invoice: icon('ic-menu'),
+  menu: icon('ic-menu'),
+  invoice: <Iconify icon="custom:invoice-duotone" width={24} />,
   product: icon('ic-kitchen'),
   lock: <Iconify icon="custom:settings-bold" width={24} />,
   map: icon('ic-location'),
@@ -79,16 +80,6 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
         ],
       },
       {
-        title: t('navigation.users'),
-        path: paths.dashboard.user.list,
-        icon: ICONS.user,
-        allowedRoles: ['super_admin'],
-        children: [
-          { title: t('common.all'), path: paths.dashboard.user.list },
-          { title: t('common.add'), path: paths.dashboard.user.new },
-        ],
-      },
-      {
         title: t('navigation.kitchens'),
         path: paths.dashboard.kitchen.root,
         icon: ICONS.product,
@@ -99,9 +90,19 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
         ],
       },
       {
+        title: t('navigation.users'),
+        path: paths.dashboard.user.list,
+        icon: ICONS.user,
+        allowedRoles: ['super_admin'],
+        children: [
+          { title: t('common.all'), path: paths.dashboard.user.list },
+          { title: t('common.add'), path: paths.dashboard.user.new },
+        ],
+      },
+      {
         title: t('navigation.menu'),
         path: paths.dashboard.menu.root,
-        icon: ICONS.invoice,
+        icon: ICONS.menu,
         allowedRoles: ['kitchen_admin'],
         children: [
           { title: t('common.all'), path: paths.dashboard.menu.root },
@@ -109,9 +110,9 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
         ],
       },
       {
-        title: t('navigation.partnersRequests'),
-        path: paths.dashboard.kitchen.partners,
-        icon: ICONS.banking,
+        title: t('navigation.settlements'),
+        path: paths.dashboard.kitchen.settlements,
+        icon: ICONS.invoice,
         allowedRoles: ['kitchen_admin'],
       },
       {
@@ -123,7 +124,7 @@ export function getDashboardNavData(t: (key: string) => string): NavSectionProps
       {
         title: t('navigation.invoices'),
         path: paths.dashboard.invoice.root,
-        icon: ICONS.banking,
+        icon: ICONS.invoice,
         allowedRoles: ['super_admin', 'company_admin'],
       },
     ],

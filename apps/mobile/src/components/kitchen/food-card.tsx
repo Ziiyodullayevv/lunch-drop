@@ -14,6 +14,7 @@ import { useCart } from '@/stores/cart-store';
 import type { MenuItem } from '@/types/domain';
 
 const DELIVERY_META_COLOR = '#8E8E93';
+const EMPTY_CART_IMAGE = require('@/assets/images/illustrations/empty-cart.svg');
 
 function DeliveryIcon({ size = 13, color = '#8E8E93' }: { size?: number; color?: string }) {
   return (
@@ -158,7 +159,7 @@ export function FoodCard({ item }: Props) {
           />
         ) : (
           <View style={{ width: '100%', aspectRatio: 16 / 8, alignItems: 'center', justifyContent: 'center' }}>
-            <Text fontSize={48}>🍽️</Text>
+            <Image source={EMPTY_CART_IMAGE} style={{ width: 104, height: 104 }} contentFit="contain" />
           </View>
         )}
 

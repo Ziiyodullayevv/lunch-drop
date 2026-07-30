@@ -26,6 +26,12 @@ from app.schemas.meal import (
 )
 from app.schemas.kitchen import KitchenMapCompanyRead, KitchenRead, KitchenSettingsUpdate
 from app.schemas.kitchen_connection import KitchenConnectionRead, KitchenPartnerReport
+from app.schemas.settlement import (
+    SettlementCompanyRead,
+    SettlementPaymentCreate,
+    SettlementPaymentRead,
+    SettlementPaymentUpdate,
+)
 from app.schemas.order import (
     BranchOrderStatusUpdate,
     BulkOrderStatusResponse,
@@ -35,6 +41,7 @@ from app.schemas.order import (
 from app.integrations.s3 import upload_image
 from app.services.kitchen_service import KitchenService
 from app.services.kitchen_connection_service import KitchenConnectionService
+from app.services.settlement_service import SettlementService
 
 router = APIRouter(prefix="/api/v1/kitchen", tags=["kitchen-admin"])
 
@@ -50,6 +57,13 @@ def _svc(
     session: AsyncSession = Depends(get_session),
 ) -> KitchenService:
     return KitchenService(session, current_user.kitchen_id)
+
+
+def _settlements(
+    current_user: User = Depends(require_kitchen_admin),
+    session: AsyncSession = Depends(get_session),
+) -> SettlementService:
+    return SettlementService(session, current_user.kitchen_id)
 
 
 @router.get(
@@ -162,6 +176,60 @@ async def partners(
     return await svc.partner_report(
         kitchen_id=current_user.kitchen_id, month_start=start, month_end=end
     )
+
+
+@router.get("/settlements", response_model=list[SettlementCompanyRead], summary="Oylik to'lov nazorati")
+async def settlements(
+    month: str,
+    svc: SettlementService = Depends(_settlements),
+) -> list[SettlementCompanyRead]:
+    try:
+        year, mon = (int(part) for part in month.split("-"))
+        period = date(year, mon, 1)
+    except ValueError as exc:
+        from app.core.exceptions import ValidationAppError
+        raise ValidationAppError("Oy formati noto'g'ri (YYYY-MM)") from exc
+    return await svc.report(period)
+
+
+@router.post("/settlement-payments", response_model=SettlementPaymentRead, status_code=status.HTTP_201_CREATED, summary="To'lov qayd etish")
+async def create_settlement_payment(
+    body: SettlementPaymentCreate,
+    current_user: User = Depends(require_kitchen_admin),
+    svc: SettlementService = Depends(_settlements),
+) -> SettlementPaymentRead:
+    return await svc.create_payment(body, current_user.id)
+
+
+@router.patch("/settlement-payments/{payment_id}", response_model=SettlementPaymentRead, summary="To'lovni tahrirlash")
+async def update_settlement_payment(
+    payment_id: str, body: SettlementPaymentUpdate, svc: SettlementService = Depends(_settlements)
+) -> SettlementPaymentRead:
+    return await svc.update_payment(payment_id, body)
+
+
+@router.delete("/settlement-payments/{payment_id}", status_code=status.HTTP_204_NO_CONTENT, summary="To'lovni o'chirish")
+async def delete_settlement_payment(
+    payment_id: str, svc: SettlementService = Depends(_settlements)
+) -> None:
+    await svc.delete_payment(payment_id)
+
+
+@router.post("/settlement-payments/{payment_id}/receipt", response_model=SettlementPaymentRead, summary="To'lov cheki yuklash")
+async def upload_settlement_receipt(
+    payment_id: str,
+    file: UploadFile = File(...),
+    svc: SettlementService = Depends(_settlements),
+) -> SettlementPaymentRead:
+    if not (file.content_type or "").startswith("image/"):
+        from app.core.exceptions import ValidationAppError
+        raise ValidationAppError("Faqat rasm fayllari qabul qilinadi")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        from app.core.exceptions import ValidationAppError
+        raise ValidationAppError("Rasm hajmi 5 MB dan oshmasin")
+    url = await run_in_threadpool(upload_image, content, file.filename or "receipt", file.content_type or "image/jpeg", "settlements")
+    return await svc.set_receipt(payment_id, url)
 
 
 # --- Categories ---

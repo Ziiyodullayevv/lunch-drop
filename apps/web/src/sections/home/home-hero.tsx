@@ -70,29 +70,37 @@ export function HomeHero({ sx, ...other }: BoxProps) {
           }),
         ]}
       >
-        <Box component="span" sx={{ width: 1, opacity: 0.24 }}>
+        <Box component="span" sx={{ width: 1, opacity: 0.24, whiteSpace: 'nowrap' }}>
           {t('home.hero.management')}
         </Box>
         <Box
-          component={m.span}
-          animate={{ backgroundPosition: '200% center' }}
-          transition={{
-            duration: 20,
-            ease: 'linear',
-            repeat: Infinity,
-            repeatType: 'reverse',
-          }}
-          sx={[
-            (theme) => ({
-              ...theme.mixins.textGradient(
-                `300deg, ${theme.vars.palette.primary.main} 0%, ${theme.vars.palette.warning.main} 25%, ${theme.vars.palette.primary.main} 50%, ${theme.vars.palette.warning.main} 75%, ${theme.vars.palette.primary.main} 100%`
-              ),
-              backgroundSize: '400%',
-              ml: { xs: 0.75, md: 1, xl: 1.5 },
-            }),
-          ]}
+          component="span"
+          sx={{ ml: { xs: 0.75, md: 1, xl: 1.5 }, color: 'text.primary', whiteSpace: 'nowrap' }}
         >
-          {t('home.hero.withLunchDrop')}
+          {t('home.hero.withLunchDropPrefix')}
+          {t('home.hero.withLunchDropPrefix') && ' '}
+          <Box
+            component={m.span}
+            animate={{ backgroundPosition: '200% center' }}
+            transition={{
+              duration: 20,
+              ease: 'linear',
+              repeat: Infinity,
+              repeatType: 'reverse',
+            }}
+            sx={[
+              (theme) => ({
+                ...theme.mixins.textGradient(
+                  `300deg, ${theme.vars.palette.primary.main} 0%, ${theme.vars.palette.warning.main} 25%, ${theme.vars.palette.primary.main} 50%, ${theme.vars.palette.warning.main} 75%, ${theme.vars.palette.primary.main} 100%`
+                ),
+                backgroundSize: '400%',
+              }),
+            ]}
+          >
+            Lunch Drop
+          </Box>
+          {t('home.hero.withLunchDropSuffix') && ' '}
+          {t('home.hero.withLunchDropSuffix')}
         </Box>
       </Box>
     </m.div>
@@ -227,7 +235,7 @@ export function HomeHero({ sx, ...other }: BoxProps) {
             { label: t('navigation.employees'), icon: 'solar:users-group-rounded-bold-duotone' },
           ] as const
         ).map((item) => (
-          <m.div {...motionProps} key={item.label}>
+          <m.div {...motionProps} key={item.icon}>
             <Stack
               direction="row"
               spacing={0.75}

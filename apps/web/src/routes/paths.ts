@@ -114,7 +114,7 @@ export const paths = {
       details: (id: string) => `${ROOTS.DASHBOARD}/kitchen/${id}`,
       edit: (id: string) => `${ROOTS.DASHBOARD}/kitchen/${id}/edit`,
       settings: `${ROOTS.DASHBOARD}/kitchen/settings`,
-      partners: `${ROOTS.DASHBOARD}/kitchen/partners`,
+      settlements: `${ROOTS.DASHBOARD}/kitchen/settlements`,
     },
     order: {
       root: `${ROOTS.DASHBOARD}/order`,

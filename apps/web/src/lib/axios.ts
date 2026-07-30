@@ -229,6 +229,10 @@ export const endpoints = {
     approveConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/approve`,
     rejectConnection: (id: string) => `/api/v1/kitchen/connection-requests/${id}/reject`,
     partners: '/api/v1/kitchen/partners',
+    settlements: '/api/v1/kitchen/settlements',
+    settlementPayments: '/api/v1/kitchen/settlement-payments',
+    settlementPayment: (id: string) => `/api/v1/kitchen/settlement-payments/${id}`,
+    settlementReceipt: (id: string) => `/api/v1/kitchen/settlement-payments/${id}/receipt`,
     mapCompanies: '/api/v1/kitchen/map-companies',
   },
   // ----------------------------------------------------------------------

@@ -4,14 +4,13 @@ import type { OrderStatus } from 'src/lib/api/orders';
 
 import dayjs from 'dayjs';
 import { useMemo, useState, useCallback } from 'react';
-import { useBoolean, usePopover, useDebounce } from 'minimal-shared/hooks';
+import { useBoolean, usePopover, useDebounce, usePopoverHover } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
-import Select from '@mui/material/Select';
 import Avatar from '@mui/material/Avatar';
 import Drawer from '@mui/material/Drawer';
 import Divider from '@mui/material/Divider';
@@ -49,6 +48,7 @@ import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { CustomPopover } from 'src/components/custom-popover';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+import { NavDropdown, NavDropdownPaper } from 'src/components/nav-basic/components';
 import {
   useTable,
   TableNoData,
@@ -56,6 +56,9 @@ import {
   TableSelectedAction,
   TablePaginationCustom,
 } from 'src/components/table';
+
+import { useBranches } from 'src/sections/branch/hooks/use-branches';
+import { useCompanies } from 'src/sections/company/hooks/use-companies';
 
 import { useAuthContext } from 'src/auth/hooks';
 
@@ -604,6 +607,84 @@ function GroupedOrderRow({
 
 type OrdersViewScope = 'kitchen' | 'super_admin' | 'company_admin';
 
+type CompanyFilterOption = { id: string; name: string };
+type BranchFilterOption = { id: string; company_id: string; name: string };
+
+function CompanyCascadeFilterItem({
+  company,
+  branches,
+  selectedCompanyId,
+  selectedBranchId,
+  showBranches,
+  onCompanySelect,
+  onBranchSelect,
+}: {
+  company: CompanyFilterOption;
+  branches: BranchFilterOption[];
+  selectedCompanyId: string;
+  selectedBranchId: string;
+  showBranches: boolean;
+  onCompanySelect: (companyId: string) => void;
+  onBranchSelect: (companyId: string, branchId: string) => void;
+}) {
+  const { open, onOpen, onClose, anchorEl, elementRef } = usePopoverHover<HTMLLIElement>();
+
+  return (
+    <>
+      <MenuItem
+        ref={elementRef}
+        selected={selectedCompanyId === company.id && !selectedBranchId}
+        sx={{ borderRadius: 1 }}
+        onClick={() => onCompanySelect(company.id)}
+        onMouseEnter={onOpen}
+        onMouseLeave={onClose}
+      >
+        <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+          {company.name}
+        </Typography>
+        {showBranches && (
+          <Iconify icon="eva:arrow-ios-forward-fill" width={18} sx={{ ml: 1, color: 'text.disabled' }} />
+        )}
+      </MenuItem>
+
+      {showBranches && (
+        <NavDropdown
+          disableScrollLock
+          open={open}
+          anchorEl={anchorEl}
+          onClose={onClose}
+          anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'center', horizontal: 'left' }}
+          slotProps={{ paper: { onMouseEnter: onOpen, onMouseLeave: onClose } }}
+          sx={{ '--nav-dropdown-width': '220px' }}
+        >
+          <NavDropdownPaper sx={{ p: 1 }}>
+            <MenuList disablePadding sx={{ gap: 0.5 }}>
+              <MenuItem
+                selected={selectedCompanyId === company.id && !selectedBranchId}
+                sx={{ borderRadius: 1 }}
+                onClick={() => onCompanySelect(company.id)}
+              >
+                Barcha filiallar
+              </MenuItem>
+              {branches.map((branch) => (
+                <MenuItem
+                  key={branch.id}
+                  selected={selectedBranchId === branch.id}
+                  sx={{ borderRadius: 1 }}
+                  onClick={() => onBranchSelect(company.id, branch.id)}
+                >
+                  {branch.name}
+                </MenuItem>
+              ))}
+            </MenuList>
+          </NavDropdownPaper>
+        </NavDropdown>
+      )}
+    </>
+  );
+}
+
 export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewScope }) {
   const { t } = useTranslate('common');
   useAuthContext();
@@ -616,6 +697,7 @@ export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewSco
   const [activeRow, setActiveRow] = useState<GroupedOrder | null>(null);
   const rowMenu = usePopover();
   const toolbarMenu = usePopover();
+  const companySelect = usePopoverHover<HTMLDivElement>();
 
   const [searchText, setSearchText] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
@@ -630,9 +712,21 @@ export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewSco
     limit: 1_000_000,
     offset: 0,
   };
+  const isSingleDay = Boolean(
+    startDate?.isValid() && endDate?.isValid() && startDate.isSame(endDate, 'day')
+  );
+  const superAdminOrdersParams = {
+    ...allOrdersParams,
+    limit: isSingleDay ? 100 : allOrdersParams.limit,
+    target_date: isSingleDay ? startDate?.format('YYYY-MM-DD') : undefined,
+    start_date: isSingleDay ? undefined : allOrdersParams.start_date,
+    end_date: isSingleDay ? undefined : allOrdersParams.end_date,
+  };
   const kitchenQuery = useKitchenOrders(undefined, scope === 'kitchen');
   const companyQuery = useCompanyOrders(allOrdersParams, scope === 'company_admin');
-  const superAdminQuery = useSuperAdminOrders(allOrdersParams, scope === 'super_admin');
+  const superAdminQuery = useSuperAdminOrders(superAdminOrdersParams, scope === 'super_admin');
+  const superAdminCompaniesQuery = useCompanies({ limit: 100 }, scope === 'super_admin');
+  const superAdminBranchesQuery = useBranches({ limit: 100 }, scope === 'super_admin');
   const { data: kitchenMe } = useKitchenMe(scope === 'kitchen');
   const kitchenStatusMutation = useUpdateOrderStatus();
   const superAdminStatusMutation = useUpdateSuperAdminOrderStatus();
@@ -650,7 +744,7 @@ export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewSco
 
   const kitchenName = kitchenMe?.name ?? '—';
 
-  const companies = useMemo(() => {
+  const companiesFromOrders = useMemo(() => {
     const companyMap = new Map<string, string>();
     (kitchenOrders ?? []).forEach((order) => {
       if (order.company_id) {
@@ -659,16 +753,32 @@ export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewSco
     });
     return Array.from(companyMap, ([id, name]) => ({ id, name }));
   }, [kitchenOrders]);
+  const companies = scope === 'super_admin'
+    ? superAdminCompaniesQuery.data?.items ?? []
+    : companiesFromOrders;
 
-  const branches = useMemo(() => {
-    const branchMap = new Map<string, string>();
+  const branchesFromOrders = useMemo(() => {
+    const branchMap = new Map<string, { name: string; company_id: string }>();
     (kitchenOrders ?? []).forEach((order) => {
       if (order.branch_id && (!companyFilter || order.company_id === companyFilter)) {
-        branchMap.set(order.branch_id, order.branch_name ?? order.branch_id);
+        branchMap.set(order.branch_id, {
+          name: order.branch_name ?? order.branch_id,
+          company_id: order.company_id ?? '',
+        });
       }
     });
-    return Array.from(branchMap, ([id, name]) => ({ id, name }));
+    return Array.from(branchMap, ([id, branch]) => ({ id, ...branch }));
   }, [companyFilter, kitchenOrders]);
+  const allBranches = useMemo(
+    () => scope === 'super_admin' ? superAdminBranchesQuery.data?.items ?? [] : branchesFromOrders,
+    [branchesFromOrders, scope, superAdminBranchesQuery.data?.items]
+  );
+  const branches = useMemo(
+    () => allBranches.filter(
+      (branch) => !companyFilter || branch.company_id === companyFilter
+    ),
+    [allBranches, companyFilter]
+  );
 
   const filteredOrders = useMemo(
     () =>
@@ -870,52 +980,100 @@ export function KitchenOrdersView({ scope = 'kitchen' }: { scope?: OrdersViewSco
             gridTemplateColumns: {
               xs: 'minmax(0, 1fr)',
               sm: 'repeat(2, minmax(0, 1fr))',
-              lg: 'repeat(4, minmax(0, 1fr))',
+              lg: 'repeat(3, minmax(0, 1fr))',
             },
           }}
         >
-          <Select
-            displayEmpty
-            value={companyFilter}
-            onChange={(event) => {
-              setCompanyFilter(event.target.value);
-              setBranchFilter('');
-              table.onResetPage();
-            }}
-            renderValue={(selected) => {
-              if (!selected) {
-                return <Box component="span" sx={{ color: 'text.disabled' }}>Kompaniya</Box>;
-              }
-              return companies.find((company) => company.id === selected)?.name ?? selected;
-            }}
-            sx={{ width: 1 }}
-          >
-            <MenuItem value="">{t('common.all')}</MenuItem>
-            {companies.map((company) => (
-              <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>
-            ))}
-          </Select>
+          <Box sx={{ width: 1 }}>
+            <Box
+              ref={companySelect.elementRef}
+              role="button"
+              tabIndex={0}
+              aria-haspopup="menu"
+              aria-expanded={companySelect.open}
+              onClick={companySelect.onOpen}
+              onMouseEnter={companySelect.onOpen}
+              onMouseLeave={companySelect.onClose}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') companySelect.onOpen();
+              }}
+              sx={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: 56,
+                px: 1.75,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1,
+                cursor: 'pointer',
+                '&:hover': { borderColor: 'text.primary' },
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ position: 'absolute', top: -9, left: 10, px: 0.5, bgcolor: 'background.paper' }}
+              >
+                {t('map.company')}
+              </Typography>
+              <Typography variant="body2" noWrap sx={{ flex: 1 }}>
+                {branchFilter
+                  ? branches.find((branch) => branch.id === branchFilter)?.name
+                  : companies.find((company) => company.id === companyFilter)?.name ?? t('map.allCompanies')}
+              </Typography>
+              <Iconify icon="eva:arrow-ios-downward-fill" width={18} sx={{ color: 'text.disabled' }} />
+            </Box>
 
-          <Select
-            displayEmpty
-            value={branchFilter}
-            onChange={(event) => {
-              setBranchFilter(event.target.value);
-              table.onResetPage();
-            }}
-            renderValue={(selected) => {
-              if (!selected) {
-                return <Box component="span" sx={{ color: 'text.disabled' }}>Filial</Box>;
-              }
-              return branches.find((branch) => branch.id === selected)?.name ?? selected;
-            }}
-            sx={{ width: 1 }}
-          >
-            <MenuItem value="">{t('common.all')}</MenuItem>
-            {branches.map((branch) => (
-              <MenuItem key={branch.id} value={branch.id}>{branch.name}</MenuItem>
-            ))}
-          </Select>
+            <NavDropdown
+              disableScrollLock
+              open={companySelect.open}
+              anchorEl={companySelect.anchorEl}
+              onClose={companySelect.onClose}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              slotProps={{ paper: { onMouseEnter: companySelect.onOpen, onMouseLeave: companySelect.onClose } }}
+              sx={{ '--nav-dropdown-width': '280px', '& .MuiPopover-paper': { pt: 1, ml: -0.75 } }}
+            >
+              <NavDropdownPaper sx={{ p: 1 }}>
+                <MenuList disablePadding sx={{ gap: 0.5 }}>
+                  <MenuItem
+                    selected={!companyFilter}
+                    sx={{ borderRadius: 1 }}
+                    onClick={() => {
+                      setCompanyFilter('');
+                      setBranchFilter('');
+                      companySelect.onClose();
+                      table.onResetPage();
+                    }}
+                  >
+                    {t('map.allCompanies')}
+                  </MenuItem>
+                  {companies.map((company) => (
+                    <CompanyCascadeFilterItem
+                      key={company.id}
+                      company={company}
+                      branches={allBranches.filter((branch) => branch.company_id === company.id)}
+                      selectedCompanyId={companyFilter}
+                      selectedBranchId={branchFilter}
+                      showBranches={scope !== 'kitchen'}
+                      onCompanySelect={(companyId) => {
+                        setCompanyFilter(companyId);
+                        setBranchFilter('');
+                        companySelect.onClose();
+                        table.onResetPage();
+                      }}
+                      onBranchSelect={(companyId, branchId) => {
+                        setCompanyFilter(companyId);
+                        setBranchFilter(branchId);
+                        companySelect.onClose();
+                        table.onResetPage();
+                      }}
+                    />
+                  ))}
+                </MenuList>
+              </NavDropdownPaper>
+            </NavDropdown>
+          </Box>
 
           <DatePicker
             label={t('orderExtra.startDate')}
