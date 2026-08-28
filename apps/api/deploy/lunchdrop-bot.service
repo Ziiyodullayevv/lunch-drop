@@ -1,0 +1,20 @@
+[Unit]
+Description=LunchDrop Telegram bot
+After=network-online.target postgresql.service lunchdrop-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azureuser
+Group=www-data
+WorkingDirectory=/opt/lunchdrop-api
+Environment=PYTHONUNBUFFERED=1
+Environment=DEBUG=false
+ExecStart=/opt/lunchdrop-api/.venv/bin/python -m bot.main
+Restart=always
+RestartSec=5
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

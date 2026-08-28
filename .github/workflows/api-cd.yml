@@ -66,11 +66,11 @@ jobs:
           script: |
             set -eu
 
-            APP_DIR=/home/lunchdrop
-            VENV="$APP_DIR/venv"
+            APP_DIR=/opt/lunchdrop-api
+            VENV="$APP_DIR/.venv"
             ARCHIVE="/tmp/lunchdrop-api-${RELEASE_SHA}.tar.gz"
             RELEASE_DIR="/tmp/lunchdrop-api-${RELEASE_SHA}"
-            BACKUP_DIR="/home/lunchdrop-backups/${RELEASE_SHA}"
+            BACKUP_DIR="/opt/lunchdrop-backups/${RELEASE_SHA}"
 
             test -f "$APP_DIR/.env"
             test -x "$VENV/bin/python"
@@ -105,43 +105,41 @@ jobs:
             rollback() {
               echo "Deployment failed; restoring the previous API source."
               # shellcheck disable=SC2086
-              rsync -a --delete --chown=lunchdrop:lunchdrop $RSYNC_EXCLUDES "$BACKUP_DIR/" "$APP_DIR/"
-              supervisorctl restart lunchdrop lunchdrop-scheduler || true
-              if supervisorctl status lunchdrop-bot >/dev/null 2>&1; then
-                supervisorctl restart lunchdrop-bot || true
-              fi
+              rsync -a --delete --chown=azureuser:www-data $RSYNC_EXCLUDES "$BACKUP_DIR/" "$APP_DIR/"
+              systemctl restart lunchdrop-api lunchdrop-scheduler || true
+              systemctl restart lunchdrop-bot || true
             }
             trap rollback INT TERM HUP EXIT
 
             # shellcheck disable=SC2086
-            rsync -a --delete --chown=lunchdrop:lunchdrop $RSYNC_EXCLUDES "$RELEASE_DIR/" "$APP_DIR/"
+            rsync -a --delete --chown=azureuser:www-data $RSYNC_EXCLUDES "$RELEASE_DIR/" "$APP_DIR/"
             "$VENV/bin/pip" install -q -r "$APP_DIR/requirements.txt"
             cd "$APP_DIR"
             "$VENV/bin/alembic" upgrade head
-            install -m 0644 \
-              "$APP_DIR/deploy/lunchdrop-bot.supervisor.conf" \
-              /etc/supervisor/conf.d/lunchdrop-bot.conf
-            supervisorctl reread
-            supervisorctl update
-            supervisorctl restart lunchdrop lunchdrop-scheduler lunchdrop-bot
+            install -o root -g root -m 0644 \
+              "$APP_DIR/deploy/lunchdrop-bot.service" \
+              /etc/systemd/system/lunchdrop-bot.service
+            systemctl daemon-reload
+            systemctl enable lunchdrop-bot
+            systemctl restart lunchdrop-api lunchdrop-scheduler lunchdrop-bot
 
             healthy=false
             for attempt in $(seq 1 12); do
-              if curl -fsS http://127.0.0.1:8000/api/v1/health; then
+              if curl -fsS http://127.0.0.1:8001/api/v1/health; then
                 healthy=true
                 break
               fi
               sleep 5
             done
             test "$healthy" = true
-            supervisorctl status lunchdrop | grep -q RUNNING
-            supervisorctl status lunchdrop-scheduler | grep -q RUNNING
-            supervisorctl status lunchdrop-bot | grep -q RUNNING
+            systemctl is-active --quiet lunchdrop-api
+            systemctl is-active --quiet lunchdrop-scheduler
+            systemctl is-active --quiet lunchdrop-bot
 
             trap - INT TERM HUP EXIT
             rm -rf "$RELEASE_DIR" "$ARCHIVE"
-            find /home/lunchdrop-backups -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+            find /opt/lunchdrop-backups -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
               | sort -nr \
               | awk 'NR > 5 { sub(/^[^ ]+ /, ""); print }' \
               | xargs -r rm -rf
-            supervisorctl status lunchdrop lunchdrop-scheduler lunchdrop-bot
+            systemctl --no-pager --full status lunchdrop-api lunchdrop-scheduler lunchdrop-bot
