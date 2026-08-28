@@ -77,7 +77,8 @@ jobs:
             test -f "$ARCHIVE"
 
             rm -rf "$RELEASE_DIR"
-            mkdir -p "$RELEASE_DIR" "$BACKUP_DIR"
+            mkdir -p "$RELEASE_DIR"
+            sudo mkdir -p "$BACKUP_DIR"
             tar --no-same-owner -xzf "$ARCHIVE" -C "$RELEASE_DIR"
             test -f "$RELEASE_DIR/app/main.py"
             test -f "$RELEASE_DIR/requirements.txt"
@@ -100,28 +101,28 @@ jobs:
             # Keep a source-only rollback snapshot. Runtime data and secrets stay
             # in their existing locations and are never copied to GitHub.
             # shellcheck disable=SC2086
-            rsync -a --delete $RSYNC_EXCLUDES "$APP_DIR/" "$BACKUP_DIR/"
+            sudo rsync -a --delete $RSYNC_EXCLUDES "$APP_DIR/" "$BACKUP_DIR/"
 
             rollback() {
               echo "Deployment failed; restoring the previous API source."
               # shellcheck disable=SC2086
-              rsync -a --delete --chown=azureuser:www-data $RSYNC_EXCLUDES "$BACKUP_DIR/" "$APP_DIR/"
-              systemctl restart lunchdrop-api lunchdrop-scheduler || true
-              systemctl restart lunchdrop-bot || true
+              sudo rsync -a --delete --chown=azureuser:www-data $RSYNC_EXCLUDES "$BACKUP_DIR/" "$APP_DIR/"
+              sudo systemctl restart lunchdrop-api lunchdrop-scheduler || true
+              sudo systemctl restart lunchdrop-bot || true
             }
             trap rollback INT TERM HUP EXIT
 
             # shellcheck disable=SC2086
-            rsync -a --delete --chown=azureuser:www-data $RSYNC_EXCLUDES "$RELEASE_DIR/" "$APP_DIR/"
+            sudo rsync -a --delete --chown=azureuser:www-data $RSYNC_EXCLUDES "$RELEASE_DIR/" "$APP_DIR/"
             "$VENV/bin/pip" install -q -r "$APP_DIR/requirements.txt"
             cd "$APP_DIR"
             "$VENV/bin/alembic" upgrade head
-            install -o root -g root -m 0644 \
+            sudo install -o root -g root -m 0644 \
               "$APP_DIR/deploy/lunchdrop-bot.service" \
               /etc/systemd/system/lunchdrop-bot.service
-            systemctl daemon-reload
-            systemctl enable lunchdrop-bot
-            systemctl restart lunchdrop-api lunchdrop-scheduler lunchdrop-bot
+            sudo systemctl daemon-reload
+            sudo systemctl enable lunchdrop-bot
+            sudo systemctl restart lunchdrop-api lunchdrop-scheduler lunchdrop-bot
 
             healthy=false
             for attempt in $(seq 1 12); do
@@ -132,14 +133,14 @@ jobs:
               sleep 5
             done
             test "$healthy" = true
-            systemctl is-active --quiet lunchdrop-api
-            systemctl is-active --quiet lunchdrop-scheduler
-            systemctl is-active --quiet lunchdrop-bot
+            sudo systemctl is-active --quiet lunchdrop-api
+            sudo systemctl is-active --quiet lunchdrop-scheduler
+            sudo systemctl is-active --quiet lunchdrop-bot
 
             trap - INT TERM HUP EXIT
             rm -rf "$RELEASE_DIR" "$ARCHIVE"
-            find /opt/lunchdrop-backups -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+            sudo find /opt/lunchdrop-backups -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
               | sort -nr \
               | awk 'NR > 5 { sub(/^[^ ]+ /, ""); print }' \
-              | xargs -r rm -rf
-            systemctl --no-pager --full status lunchdrop-api lunchdrop-scheduler lunchdrop-bot
+              | sudo xargs -r rm -rf
+            sudo systemctl --no-pager --full status lunchdrop-api lunchdrop-scheduler lunchdrop-bot
