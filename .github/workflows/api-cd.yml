@@ -48,9 +48,9 @@ jobs:
       - name: Upload API release
         uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.API_VPS_HOST }}
-          username: ${{ secrets.API_VPS_USER }}
-          key: ${{ secrets.API_VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           source: lunchdrop-api-${{ env.RELEASE_SHA }}.tar.gz
           target: /tmp
 
@@ -59,9 +59,9 @@ jobs:
         env:
           RELEASE_SHA: ${{ env.RELEASE_SHA }}
         with:
-          host: ${{ secrets.API_VPS_HOST }}
-          username: ${{ secrets.API_VPS_USER }}
-          key: ${{ secrets.API_VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
           envs: RELEASE_SHA
           script: |
             set -eu
